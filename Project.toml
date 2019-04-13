@@ -1,0 +1,6 @@
+authors = ["Philipp Gabler <phipsgabler@users.noreply.github.com>"]
+name = "DynamicComputationGraphs"
+uuid = "591544fa-5de1-11e9-31f7-cbfeeb0dfc0e"
+version = "0.1.0"
+
+[deps]
