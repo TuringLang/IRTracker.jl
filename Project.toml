@@ -3,6 +3,10 @@ uuid = "591544fa-5de1-11e9-31f7-cbfeeb0dfc0e"
 authors = ["Philipp Gabler <phipsgabler@users.noreply.github.com>"]
 version = "0.1.0"
 
+[deps]
+Cassette = "7057c7e9-c182-5462-911a-8362d720325c"
+MacroTools = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
+
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
