@@ -64,9 +64,6 @@ using DiffRules
 
 Cassette.@context FDiffCtx
 
-const FDiffCtxWithTag{T} = FDiffCtx{Nothing, T}
-
-
 Cassette.metadatatype(::Type{<:FDiffCtx}, ::Type{T}) where {T<:Real} = T
 
 
@@ -84,6 +81,25 @@ end
 
 for (M, f, arity) in DiffRules.diffrules()
     M == :Base || continue
+
+    # x = ntuple(i -> Symbol(:x, i), arity)
+    # dfdx = DiffRules.diffrule.(M, f, vars...)
+
+    # tx = [Symbol(:t, xᵢ) for xᵢ in x]
+    # untaggins = [:(Cassette.untag($txᵢ, ctx)) for txᵢ in tx]
+    # dx = [Symbol(:d, xᵢ) for xᵢ in x]
+    # tangents = [:(tangent($txᵢ, ctx)) for txᵢ in tx]
+    # dotproduct = foldr(map((dfdxᵢ, dxᵢ) -> :(dfdxᵢ * dxᵢ), dfdx, dx)) do product, rest
+    #     :($rest + $product)
+    # end
+    
+    # @eval begin
+    #     function Cassette.overdub(ctx::FDiffCtx, f::typeof($f), $(inputs...)) where
+    #         $(x...) = $(untaggings...)
+    #         $(dx...) = $(tangents...)
+    #         return Cassette.tag(f($(x...)), ctx, dotproduct)
+    #     end
+    # end
     
     if arity == 1
         dfdx = DiffRules.diffrule(M, f, :x)
