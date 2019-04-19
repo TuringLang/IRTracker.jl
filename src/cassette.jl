@@ -73,7 +73,7 @@ tangent(x, ctx) = Cassette.hasmetadata(x, ctx) ?
 
 
 function forward(f, x)
-    ctx = Cassette.enabletagging(FDiffCtx(), f)
+    ctx = Cassette.enabletagging(Cassette.disablehooks(FDiffCtx()), f)
     r = Cassette.overdub(ctx, f, Cassette.tag(x, ctx, oftype(x, 1.0)))
     Cassette.untag(r, ctx), tangent(r, ctx)
 end
@@ -81,25 +81,6 @@ end
 
 for (M, f, arity) in DiffRules.diffrules()
     M == :Base || continue
-
-    # x = ntuple(i -> Symbol(:x, i), arity)
-    # dfdx = DiffRules.diffrule.(M, f, vars...)
-
-    # tx = [Symbol(:t, xᵢ) for xᵢ in x]
-    # untaggins = [:(Cassette.untag($txᵢ, ctx)) for txᵢ in tx]
-    # dx = [Symbol(:d, xᵢ) for xᵢ in x]
-    # tangents = [:(tangent($txᵢ, ctx)) for txᵢ in tx]
-    # dotproduct = foldr(map((dfdxᵢ, dxᵢ) -> :(dfdxᵢ * dxᵢ), dfdx, dx)) do product, rest
-    #     :($rest + $product)
-    # end
-    
-    # @eval begin
-    #     function Cassette.overdub(ctx::FDiffCtx, f::typeof($f), $(inputs...)) where
-    #         $(x...) = $(untaggings...)
-    #         $(dx...) = $(tangents...)
-    #         return Cassette.tag(f($(x...)), ctx, dotproduct)
-    #     end
-    # end
     
     if arity == 1
         dfdx = DiffRules.diffrule(M, f, :x)
