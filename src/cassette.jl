@@ -72,10 +72,14 @@ tangent(x, ctx) = Cassette.hasmetadata(x, ctx) ?
     zero(Cassette.untag(x, ctx))
 
 
-function forward(f, x)
+function forward(f, xs...)
     ctx = Cassette.enabletagging(Cassette.disablehooks(FDiffCtx()), f)
-    r = Cassette.overdub(ctx, f, Cassette.tag(x, ctx, oftype(x, 1.0)))
-    Cassette.untag(r, ctx), tangent(r, ctx)
+    
+    function (dxs...)
+        txs = [Cassette.tag(x, ctx, dx) for (x, dx) in zip(xs, dxs)]
+        r = Cassette.overdub(ctx, f, txs...)
+        Cassette.untag(r, ctx), tangent(r, ctx)
+    end
 end
 
 
@@ -172,7 +176,26 @@ function ngradient(f, x)
     return dfdx
 end
 
+# function ngradient(f, xs...)
+#     xs = collect(xs)
+#     Δs = similar(xs)
+#     δ = sqrt(eps())
+    
+#     for i in eachindex(xs)
+#         tmp = xs[i]
+#         xs[i] = tmp - δ/2
+#         y1 = f(xs...)
+#         xs[i] = tmp + δ/2
+#         y2 = f(xs...)
+#         xs[i] = tmp
+#         Δs[i] = (y2 - y1) / δ
+#     end
+    
+#     return Δs
+# end
+
 gradcheck(f, x, dfdx) = isapprox(ngradient(f, x), dfdx, rtol = 1e-5, atol = 1e-5)
+# gradcheck(f, xs, ∇f) = all(isapprox.(ngradient(f, xs...), ∇f, rtol = 1e-5, atol = 1e-5))
 
 # f(x) = 9.5 * cos(x)
 # h(x) = -1 ≤ x ≤ 1 ? x^2 / 2 : abs(x) - 1/2
