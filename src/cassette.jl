@@ -83,25 +83,98 @@ for (M, f, arity) in DiffRules.diffrules()
     M == :Base || continue
     
     if arity == 1
-        dfdx = DiffRules.diffrule(M, f, :x)
+        ∂₁f = DiffRules.diffrule(M, f, :x)
         
         @eval begin
             function Cassette.overdub(ctx::FDiffCtx{T}, f::typeof($f), tx) where {T}
                 x = Cassette.untag(tx, ctx)
                 dx = tangent(tx, ctx)
-                return Cassette.tag(f(x), ctx, $dfdx * dx)
+                return Cassette.tag(f(x), ctx, $∂₁f * dx)
             end
         end
     elseif arity == 2
-        dfdx, dfdy = DiffRules.diffrule(M, f, :x, :y)
+        ∂₁f, ∂₂f = DiffRules.diffrule(M, f, :x, :y)
         
         @eval begin
             function Cassette.overdub(ctx::FDiffCtx, f::typeof($f), tx, ty)
                 x, y = Cassette.untag(tx, ctx), Cassette.untag(ty, ctx)
                 dx, dy = tangent(tx, ctx), tangent(ty, ctx)
-                return Cassette.tag(f(x, y), ctx, $dfdx * dx + $dfdy * dy)
+                return Cassette.tag(f(x, y), ctx, $∂₁f * dx + $∂₂f * dy)
             end
         end
     end
 end
 
+
+Cassette.@context BDiffCtx
+
+struct Backpropagator
+    back::Any
+end
+
+(b::Backpropagator)(Δ) = b.back(Δ)
+
+Cassette.metadatatype(::Type{<:BDiffCtx}, ::Type{T}) where {T<:Real} = Backpropagator
+
+propagator(x, ctx) = Cassette.hasmetadata(x, ctx) ?
+    Cassette.metadata(x, ctx) :
+    Backpropagator(Δ -> zero(x))
+
+function backward(f, x)
+    ctx = Cassette.enabletagging(Cassette.disablehooks(BDiffCtx()), f)
+    r = Cassette.overdub(ctx, f, Cassette.tag(x, ctx, Backpropagator(Δ -> Δ)))
+    Cassette.untag(r, ctx), propagator(r, ctx)
+end
+
+
+for (M, f, arity) in DiffRules.diffrules()
+    M == :Base || continue
+    
+    if arity == 1
+        ∂₁f = DiffRules.diffrule(M, f, :x)
+        
+        @eval begin
+            function Cassette.overdub(ctx::BDiffCtx{T}, f::typeof($f), tx) where {T}
+                x = Cassette.untag(tx, ctx)
+                δx = propagator(tx, ctx)
+                back = Backpropagator(Δ -> δx(Δ) * $∂₁f)
+                return Cassette.tag(f(x), ctx, back)
+            end
+        end
+    elseif arity == 2
+        ∂₁f, ∂₂f = DiffRules.diffrule(M, f, :x, :y)
+        
+        @eval begin
+            function Cassette.overdub(ctx::BDiffCtx, f::typeof($f), tx, ty)
+                x, y = Cassette.untag(tx, ctx), Cassette.untag(ty, ctx)
+                δx, δy = propagator(tx, ctx), propagator(ty, ctx)
+                back = Backpropagator(Δ -> δx(Δ) * $∂₁f + δy(Δ) * $∂₂f)
+                return Cassette.tag(f(x, y), ctx, back)
+            end
+        end
+    end
+end
+
+
+
+######## Numerical test code from Flux ###########
+function ngradient(f, x)
+    dfdx = zero(x)
+    δ = sqrt(eps())
+    tmp = x
+    x = tmp - δ/2
+    y1 = f(x)
+    x = tmp + δ/2
+    y2 = f(x)
+    x = tmp
+    dfdx = (y2 - y1) / δ
+    
+    return dfdx
+end
+
+gradcheck(f, x, dfdx) = isapprox(ngradient(f, x), dfdx, rtol = 1e-5, atol = 1e-5)
+
+# f(x) = 9.5 * cos(x)
+# h(x) = -1 ≤ x ≤ 1 ? x^2 / 2 : abs(x) - 1/2
+# ∇(f, x) = DynamicComputationGraphs.backward(f, x)[2](1.0)
+# DynamicComputationGraphs.gradcheck(f, 1, ∇(h, 1))
