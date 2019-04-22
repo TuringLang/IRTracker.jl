@@ -74,8 +74,8 @@ tangent(tx, ctx) = Cassette.hasmetadata(tx, ctx) ?
 function forward(f, x)
     ctx = Cassette.enabletagging(Cassette.disablehooks(FDiffCtx()), f)
     
-    function (Δ₁)
-        tx = Cassette.tag(x, ctx, Δ₁)
+    function (Δx)
+        tx = Cassette.tag(x, ctx, Δx)
         r = Cassette.overdub(ctx, f, tx)
         Cassette.untag(r, ctx), ChainRules.extern(tangent(r, ctx))
     end
@@ -88,8 +88,8 @@ function Cassette.overdub(ctx::FDiffCtx, f, tx)
     
     if !(rule === nothing)
         Ω, dΩ = rule
-        Δ₁ = tangent(tx, ctx)
-        return Cassette.tag(Ω, ctx, dΩ(Δ₁))
+        Δx = tangent(tx, ctx)
+        return Cassette.tag(Ω, ctx, dΩ(Δx))
     else
         return Cassette.recurse(ctx, f, tx)
     end
@@ -101,8 +101,8 @@ function Cassette.overdub(ctx::FDiffCtx, f, tx, ty)
     
     if !(rule === nothing)
         Ω, dΩ = rule
-        Δ₁, Δ₂ = tangent(tx, ctx), tangent(ty, ctx)
-        return Cassette.tag(Ω, ctx, dΩ(Δ₁, Δ₂))
+        Δx, Δy = tangent(tx, ctx), tangent(ty, ctx)
+        return Cassette.tag(Ω, ctx, dΩ(Δx, Δy))
     else
         return Cassette.recurse(ctx, f, tx, ty)
     end
@@ -110,61 +110,55 @@ end
 
 
 
-# Cassette.@context BDiffCtx
+Cassette.@context BDiffCtx
+
+struct Backpropagator
+    back::Any
+end
+
+(b::Backpropagator)(Δ) = b.back(Δ)
+
+Cassette.metadatatype(::Type{<:BDiffCtx}, ::Type{T}) where {T<:Real} = Backpropagator
+
+propagator(tx, ctx) = Cassette.hasmetadata(tx, ctx) ?
+    Cassette.metadata(tx, ctx) :
+    Backpropagator(ΔΩ -> zero(Cassette.untag(tx, ctx)))
+
+function backward(f, x)
+    ctx = Cassette.enabletagging(Cassette.disablehooks(BDiffCtx()), f)
+    r = Cassette.overdub(ctx, f, Cassette.tag(x, ctx, Backpropagator(ΔΩ -> ΔΩ)))
+    Cassette.untag(r, ctx), propagator(r, ctx)
+end
 
 
-# struct Backpropagator{T<:Real}
-#     adjoints::Vector{T}
-#     parents::Vector{Backpropagator{T}}
+function Cassette.overdub(ctx::BDiffCtx, f, tx) where {T}
+    x = Cassette.untag(tx, ctx)
+    rule = ChainRules.rrule(f, x)
 
-#     Backpropagator{T}() where {T<:Real} = new{T}(T[], Backpropagator{T}[])
-# end
-
-# (b::Backpropagator)(Δ) = sum(δxᵢ(Δ) * ∂ᵢf for (δxᵢ, ∂ᵢf) in zip(b.parents, b.adjoints))
-
-# Cassette.metadatatype(::Type{<:BDiffCtx}, ::Type{T}) where {T<:Real} = Backpropagator{T}
-
-
-# propagator(x, ctx) = Cassette.hasmetadata(x, ctx) ?
-#     Cassette.metadata(x, ctx) :
-#     Backpropagator{typeof(x)}()
+    if !(rule === nothing)
+        Ω, dx = rule
+        δx = propagator(tx, ctx)
+        back = Backpropagator(ΔΩ -> dx(δx(ΔΩ)))
+        return Cassette.tag(Ω, ctx, back)
+    else
+        return Cassette.recurse(ctx, f, tx)
+    end
+end
 
 
-# function backward(f, xs...)
-#     ctx = Cassette.enabletagging(Cassette.disablehooks(BDiffCtx()), f)
-#     txs = [Cassette.tag(x, ctx, Backpropagator{typeof(x)}()) for x in xs]
-#     r = Cassette.overdub(ctx, f, txs...)
-#     Cassette.untag(r, ctx), propagator(r, ctx)
-# end
+function Cassette.overdub(ctx::BDiffCtx, f, tx, ty)
+    x, y = Cassette.untag(tx, ctx), Cassette.untag(ty, ctx)
+    rule = ChainRules.rrule(f, x, y)
 
-
-# for (M, f, arity) in DiffRules.diffrules()
-#     M == :Base || continue
-    
-#     if arity == 1
-#         ∂₁f = DiffRules.diffrule(M, f, :x)
-        
-#         @eval begin
-#             function Cassette.overdub(ctx::BDiffCtx{T}, f::typeof($f), tx) where {T}
-#                 x = Cassette.untag(tx, ctx)
-#                 δx = propagator(tx, ctx)
-#                 back = Backpropagator([δx], [$∂₁f])
-#                 return Cassette.tag(f(x), ctx, back)
-#             end
-#         end
-#     elseif arity == 2
-#         ∂₁f, ∂₂f = DiffRules.diffrule(M, f, :x, :y)
-        
-#         @eval begin
-#             function Cassette.overdub(ctx::BDiffCtx, f::typeof($f), tx, ty)
-#                 x, y = Cassette.untag(tx, ctx), Cassette.untag(ty, ctx)
-#                 δx, δy = propagator(tx, ctx), propagator(ty, ctx)
-#                 back = Backpropagator([δx, δy], [$∂₁f, $∂₂f])
-#                 return Cassette.tag(f(x, y), ctx, back)
-#             end
-#         end
-#     end
-# end
+    if !(rule === nothing)
+        Ω, (dx, dy) = rule
+        δx, δy = propagator(tx, ctx), propagator(ty, ctx)
+        back = Backpropagator(ΔΩ -> dx(δx(ΔΩ)) + dy(δy(ΔΩ)))
+        return Cassette.tag(Ω, ctx, back)
+    else
+        return Cassette.recurse(ctx, f, tx, ty)
+    end
+end
 
 
 
@@ -206,5 +200,12 @@ gradcheck(f, x, dfdx) = isapprox(ngradient(f, x), dfdx, rtol = 1e-5, atol = 1e-5
 
 # f(x) = 9.5 * cos(x)
 # h(x) = -1 ≤ x ≤ 1 ? x^2 / 2 : abs(x) - 1/2
-# ∇(f, x) = DynamicComputationGraphs.backward(f, x)[2](1.0)
-# DynamicComputationGraphs.gradcheck(f, 1, ∇(h, 1))
+# D(f, x) = DynamicComputationGraphs.forward(f, x)(oftype(x, 1))[2]
+# D(f, x) = DynamicComputationGraphs.backward(f, x)[2](oftype(x, 1))
+# DynamicComputationGraphs.gradcheck(f, 1, D(h, 1))
+
+# D(sin, 1) === cos(1)
+# D(x -> D(sin, x), 1) === -sin(1)
+# D(x -> sin(x) * cos(x), 1) === cos(1)^2 - sin(1)^2
+# D(x -> x * D(y -> x * y, 1), 2) === 4
+# D(x -> x * D(y -> x * y, 2), 1) === 2
