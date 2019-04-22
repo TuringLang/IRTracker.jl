@@ -59,105 +59,112 @@ end
 
 
 
-using DiffRules
+using ChainRules
 
 
 Cassette.@context FDiffCtx
 
 Cassette.metadatatype(::Type{<:FDiffCtx}, ::Type{T}) where {T<:Real} = T
 
+tangent(tx, ctx) = Cassette.hasmetadata(tx, ctx) ?
+    Cassette.metadata(tx, ctx) :
+    zero(Cassette.untag(tx, ctx))
 
-tangent(x, ctx) = Cassette.hasmetadata(x, ctx) ?
-    Cassette.metadata(x, ctx) :
-    zero(Cassette.untag(x, ctx))
 
-
-function forward(f, xs...)
+function forward(f, x)
     ctx = Cassette.enabletagging(Cassette.disablehooks(FDiffCtx()), f)
     
-    function (dxs...)
-        txs = [Cassette.tag(x, ctx, dx) for (x, dx) in zip(xs, dxs)]
-        r = Cassette.overdub(ctx, f, txs...)
-        Cassette.untag(r, ctx), tangent(r, ctx)
+    function (Δ₁)
+        tx = Cassette.tag(x, ctx, Δ₁)
+        r = Cassette.overdub(ctx, f, tx)
+        Cassette.untag(r, ctx), ChainRules.extern(tangent(r, ctx))
     end
 end
 
 
-for (M, f, arity) in DiffRules.diffrules()
-    M == :Base || continue
+function Cassette.overdub(ctx::FDiffCtx, f, tx)
+    x = Cassette.untag(tx, ctx)
+    rule = ChainRules.frule(f, x)
     
-    if arity == 1
-        ∂₁f = DiffRules.diffrule(M, f, :x)
-        
-        @eval begin
-            function Cassette.overdub(ctx::FDiffCtx{T}, f::typeof($f), tx) where {T}
-                x = Cassette.untag(tx, ctx)
-                dx = tangent(tx, ctx)
-                return Cassette.tag(f(x), ctx, $∂₁f * dx)
-            end
-        end
-    elseif arity == 2
-        ∂₁f, ∂₂f = DiffRules.diffrule(M, f, :x, :y)
-        
-        @eval begin
-            function Cassette.overdub(ctx::FDiffCtx, f::typeof($f), tx, ty)
-                x, y = Cassette.untag(tx, ctx), Cassette.untag(ty, ctx)
-                dx, dy = tangent(tx, ctx), tangent(ty, ctx)
-                return Cassette.tag(f(x, y), ctx, $∂₁f * dx + $∂₂f * dy)
-            end
-        end
+    if !(rule === nothing)
+        Ω, dΩ = rule
+        Δ₁ = tangent(tx, ctx)
+        return Cassette.tag(Ω, ctx, dΩ(Δ₁))
+    else
+        return Cassette.recurse(ctx, f, tx)
     end
 end
 
-
-Cassette.@context BDiffCtx
-
-struct Backpropagator
-    back::Any
-end
-
-(b::Backpropagator)(Δ) = b.back(Δ)
-
-Cassette.metadatatype(::Type{<:BDiffCtx}, ::Type{T}) where {T<:Real} = Backpropagator
-
-propagator(x, ctx) = Cassette.hasmetadata(x, ctx) ?
-    Cassette.metadata(x, ctx) :
-    Backpropagator(Δ -> zero(x))
-
-function backward(f, x)
-    ctx = Cassette.enabletagging(Cassette.disablehooks(BDiffCtx()), f)
-    r = Cassette.overdub(ctx, f, Cassette.tag(x, ctx, Backpropagator(Δ -> Δ)))
-    Cassette.untag(r, ctx), propagator(r, ctx)
-end
-
-
-for (M, f, arity) in DiffRules.diffrules()
-    M == :Base || continue
+function Cassette.overdub(ctx::FDiffCtx, f, tx, ty)
+    x, y = Cassette.untag(tx, ctx), Cassette.untag(ty, ctx)
+    rule = ChainRules.frule(f, x, y)
     
-    if arity == 1
-        ∂₁f = DiffRules.diffrule(M, f, :x)
-        
-        @eval begin
-            function Cassette.overdub(ctx::BDiffCtx{T}, f::typeof($f), tx) where {T}
-                x = Cassette.untag(tx, ctx)
-                δx = propagator(tx, ctx)
-                back = Backpropagator(Δ -> δx(Δ) * $∂₁f)
-                return Cassette.tag(f(x), ctx, back)
-            end
-        end
-    elseif arity == 2
-        ∂₁f, ∂₂f = DiffRules.diffrule(M, f, :x, :y)
-        
-        @eval begin
-            function Cassette.overdub(ctx::BDiffCtx, f::typeof($f), tx, ty)
-                x, y = Cassette.untag(tx, ctx), Cassette.untag(ty, ctx)
-                δx, δy = propagator(tx, ctx), propagator(ty, ctx)
-                back = Backpropagator(Δ -> δx(Δ) * $∂₁f + δy(Δ) * $∂₂f)
-                return Cassette.tag(f(x, y), ctx, back)
-            end
-        end
+    if !(rule === nothing)
+        Ω, dΩ = rule
+        Δ₁, Δ₂ = tangent(tx, ctx), tangent(ty, ctx)
+        return Cassette.tag(Ω, ctx, dΩ(Δ₁, Δ₂))
+    else
+        return Cassette.recurse(ctx, f, tx, ty)
     end
 end
+
+
+
+# Cassette.@context BDiffCtx
+
+
+# struct Backpropagator{T<:Real}
+#     adjoints::Vector{T}
+#     parents::Vector{Backpropagator{T}}
+
+#     Backpropagator{T}() where {T<:Real} = new{T}(T[], Backpropagator{T}[])
+# end
+
+# (b::Backpropagator)(Δ) = sum(δxᵢ(Δ) * ∂ᵢf for (δxᵢ, ∂ᵢf) in zip(b.parents, b.adjoints))
+
+# Cassette.metadatatype(::Type{<:BDiffCtx}, ::Type{T}) where {T<:Real} = Backpropagator{T}
+
+
+# propagator(x, ctx) = Cassette.hasmetadata(x, ctx) ?
+#     Cassette.metadata(x, ctx) :
+#     Backpropagator{typeof(x)}()
+
+
+# function backward(f, xs...)
+#     ctx = Cassette.enabletagging(Cassette.disablehooks(BDiffCtx()), f)
+#     txs = [Cassette.tag(x, ctx, Backpropagator{typeof(x)}()) for x in xs]
+#     r = Cassette.overdub(ctx, f, txs...)
+#     Cassette.untag(r, ctx), propagator(r, ctx)
+# end
+
+
+# for (M, f, arity) in DiffRules.diffrules()
+#     M == :Base || continue
+    
+#     if arity == 1
+#         ∂₁f = DiffRules.diffrule(M, f, :x)
+        
+#         @eval begin
+#             function Cassette.overdub(ctx::BDiffCtx{T}, f::typeof($f), tx) where {T}
+#                 x = Cassette.untag(tx, ctx)
+#                 δx = propagator(tx, ctx)
+#                 back = Backpropagator([δx], [$∂₁f])
+#                 return Cassette.tag(f(x), ctx, back)
+#             end
+#         end
+#     elseif arity == 2
+#         ∂₁f, ∂₂f = DiffRules.diffrule(M, f, :x, :y)
+        
+#         @eval begin
+#             function Cassette.overdub(ctx::BDiffCtx, f::typeof($f), tx, ty)
+#                 x, y = Cassette.untag(tx, ctx), Cassette.untag(ty, ctx)
+#                 δx, δy = propagator(tx, ctx), propagator(ty, ctx)
+#                 back = Backpropagator([δx, δy], [$∂₁f, $∂₂f])
+#                 return Cassette.tag(f(x, y), ctx, back)
+#             end
+#         end
+#     end
+# end
 
 
 
