@@ -1,4 +1,4 @@
-# Automatic Differentiation & Related Graphs
+# Automatic Differentiation & Related Stuff on Graphs
 
 
 ## General Introduction
@@ -101,4 +101,11 @@ interface.  Especially, it provides code snippets and types (!) for everything.
 
 - S. Peyton Jones, “Automatic differentiation for dummies,” presented at the IC Colloquium, EPFL, 22-Jan-2019.
 - C. Elliott, “The simple essence of automatic differentiation,” arXiv:1804.00746 [cs], Apr. 2018.
+
+The talk and the paper present AD in a purely functional, strongly typed concept with a category theoretic background 
+(to show, as usual, that the trivial is trivially trivial :))
+
 - B. A. Pearlmutter, “Reverse-Mode AD in a Functional Framework: Lambda the Ultimate Backpropagator,” ACM Transactions on Programming Languages and Systems, p. 35.
+
+Quite mathematical presentation of AD and description of the source-to-source transformations used in VLAD/Stalin∇.
+
