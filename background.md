@@ -27,6 +27,10 @@ Survey paper from 2000, introducing mostly source-to-source AD in a quite techni
 
 Gives a concise overview over state of the art methods, and introduces Myia, an AD framework based on python and functional principles.
 
+- J. Revels, T. Besard, V. Churavy, B. De Sutter, and J. P. Vielma, “Dynamic Automatic Differentiation of GPU Broadcast Kernels,” arXiv:1810.08297 [cs], Oct. 2018.
+
+Analyses the `broadcast` operation in forward and reverse mode.  Relevant because it uses Julia notions, and introduces mixed mode, which appears in all newer Julia AD packages.
+
 
 ## Zygote
 
