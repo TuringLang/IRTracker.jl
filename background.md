@@ -31,6 +31,10 @@ Gives a concise overview over state of the art methods, and introduces Myia, an 
 
 Analyses the `broadcast` operation in forward and reverse mode.  Relevant because it uses Julia notions, and introduces mixed mode, which appears in all newer Julia AD packages.
 
+- A. Griewank and A. Walther, Evaluating derivatives: principles and techniques of algorithmic differentiation, 2nd ed. Philadelphia, PA: Society for Industrial and Applied Mathematics, 2008.
+
+Extremely in-depth book about automatic differentiation; deals with all the details of math and implementation.
+
 
 ## Zygote
 
