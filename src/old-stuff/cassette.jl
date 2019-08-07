@@ -2,40 +2,86 @@ using Cassette
 
 Cassette.@context TrackingCtx
 
-mutable struct Tracker
+import Base: show
+
+struct Call{F, As<:Tuple}
+    func::F
+    args::As
+    body::Vector{Call}
+end
+
+Call(f::F, args::As) where {F, As<:Tuple} = Call{F, As}(f, args, Call[])
+
+function show(io::IO, call::Call, indent = 0)
+    print(io, " " ^ indent)
+    print(io, "(")
+    join(io, (call.func, call.args...), " ")
+    print(io, ")\n")
+    
+    for c in call.body
+        show(io, c, indent + 2)
+    end
+end
+
+mutable struct Trace
     root::Union{Nothing, Call}
     parent::Union{Nothing, Call}
 end
 
-Tracker() = Tracker(nothing, nothing)
+Trace() = Trace(nothing, nothing)
 
 
 function Cassette.overdub(ctx::TrackingCtx, f, args...)
-    if Cassette.canrecurse(ctx, f, args...)
-        tracker = ctx.metadata
-        call = Call(f, args)
-        
-        oldparent = tracker.parent
+    rule = ChainRules.frule(f, args...)
 
-        if oldparent === nothing # this was the first call
-            tracker.root = call
-        else
-            push!(oldparent.body, call)
-        end
-
-        tracker.parent = call
-        result = Cassette.recurse(ctx, f, args...)
-        tracker.parent = oldparent
+    if rule !== nothing
+        println(f)
+        # tracker = ctx.metadata
+        # call = Call(f, args)
         
-        return result
+        # oldparent = tracker.parent
+
+        # if oldparent === nothing # this was the first call
+        #     tracker.root = call
+        # else
+        #     push!(oldparent.body, call)
+        # end
+
+        # tracker.parent = call
+        # result = Cassette.recurse(ctx, f, args...)
+        # tracker.parent = oldparent
+
+        # return result
+        return Cassette.recurse(ctx, f, args...)
     else
-        return Cassette.fallback(ctx, f, args...)
+        return Cassette.recurse(ctx, f, args...)
     end
+    
+    # if Cassette.canrecurse(ctx, f, args...)
+    #     tracker = ctx.metadata
+    #     call = Call(f, args)
+        
+    #     oldparent = tracker.parent
+
+    #     if oldparent === nothing # this was the first call
+    #         tracker.root = call
+    #     else
+    #         push!(oldparent.body, call)
+    #     end
+
+    #     tracker.parent = call
+    #     result = Cassette.recurse(ctx, f, args...)
+    #     tracker.parent = oldparent
+        
+    #     return result
+    # else
+    #     return Cassette.fallback(ctx, f, args...)
+    # end
 end
 
 
 function track(f, args...)
-    ctx = Cassette.disablehooks(TrackingCtx(metadata = Tracker()))
+    ctx = Cassette.disablehooks(TrackingCtx(metadata = Trace()))
     r = Cassette.@overdub ctx f(args...)
     r, ctx.metadata.root
 end
@@ -71,14 +117,12 @@ tangent(tx, ctx) = Cassette.hasmetadata(tx, ctx) ?
     zero(Cassette.untag(tx, ctx))
 
 
-function forward(f, x)
+function forward(f, x...; Δxs = oftype.(x, 1))
     ctx = Cassette.enabletagging(Cassette.disablehooks(FDiffCtx()), f)
     
-    function (Δx)
-        tx = Cassette.tag(x, ctx, Δx)
-        r = Cassette.overdub(ctx, f, tx)
-        Cassette.untag(r, ctx), ChainRules.extern(tangent(r, ctx))
-    end
+    tx = Cassette.tag.(x, Ref(ctx), Δxs)
+    r = Cassette.overdub(ctx, f, tx...)
+    Cassette.untag(r, ctx), ChainRules.extern(tangent(r, ctx))
 end
 
 
