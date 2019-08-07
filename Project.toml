@@ -6,6 +6,7 @@ version = "0.1.0"
 [deps]
 Cassette = "7057c7e9-c182-5462-911a-8362d720325c"
 ChainRules = "082447d4-558c-5d27-93f4-14fc19e9eca2"
+IRTools = "7869d1d1-7146-5819-86e3-90919afe41df"
 MacroTools = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
 
 [extras]
