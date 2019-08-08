@@ -4,7 +4,6 @@ using Core.Compiler: LineInfoNode
 import Base: show
 
 
-
 export StatementInfo
 
 """Extra data and metadata associated with an SSA statement"""
@@ -127,10 +126,8 @@ end
 # end
 
 
-
-
-
 # v = Node[]
 # push!(v, Argument(2, "hi", StatementInfo()))
 # push!(v, PrimitiveCall(:rand, [], 0.4534, StatementInfo()))
 # push!(v, PrimitiveCall(:Foo, [IndexRef(2)], "sdf", StatementInfo()))
+
