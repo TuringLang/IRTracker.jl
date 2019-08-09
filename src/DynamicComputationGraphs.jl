@@ -7,6 +7,7 @@ include("tracker.jl")
 
 
 f(x) = x + 1
-println(track(f, 1))
+weird(n) = rand() < 1/(n + 1) ? n : weird(n + 1)
+println(track(weird, 2))
 
 end # module

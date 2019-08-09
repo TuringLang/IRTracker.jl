@@ -1,22 +1,59 @@
 import Cassette
-using IRTools
+# using IRTools
+using Core: CodeInfo, SlotNumber, SSAValue
+
+function instructions(block::IRTools.BasicBlock)
+    return [getfield.(block.stmts, :expr); block.branches]
+end
+
+function instructions(ir::IRTools.IR)
+    mapreduce(instructions, vcat, ir.blocks)
+end
 
 
 IRTools.@dynamo function track(args...)
     ir = IRTools.IR(args...)
+    new_ir = IRTools.IR()
+
+    trace = IRTools.argument!(new_ir)
+    ssa_mappings = Dict{IRTools.Variable, IRTools.Variable}()
     
-    for x in reverse(eachindex(ir))
-        IRTools.insertafter!(ir, x, ir[x])
-    end
-    
-    for block in blocks(ir)
-        if isreturn(block.branches[end])
-            block.branches[end].args[1] = block.statements[end]
+
+    for block in IRTools.blocks(ir)
+        if block.id ∉ axes(new_ir.blocks, 1)
+            new_block = IRTools.block!(new_ir)
+        else
+            new_block = IRTools.block(new_ir, block.id)
+        end
+
+        for arg in IRTools.arguments(block)
+            IRTools.argument!(new_block, arg)
+        end
+        
+        for (x, stmt) in block
+            new_x = push!(new_block, stmt)
+            push!(ssa_mappings, x => new_x)
+            call_expr = string(stmt.expr) # TODO actually quote this
+            record = IRTools.xcall(DynamicComputationGraphs, :PrimitiveCall, call_expr, new_x)
+            push!(new_block, IRTools.xcall(Main, :push!, trace, record))
+        end
+
+        for branch in IRTools.branches(block)
+            new_args = [get!(ssa_mappings, arg, arg) for arg in branch.args]
+            IRTools.branch!(new_block, branch.block, new_args..., unless = branch.condition)
         end
     end
+
+    println(new_ir)
     
     return ir
 end
+
+
+# https://github.com/MikeInnes/IRTools.jl/blob/b204489d143122c7508c202bb68181bd537fc798/src/ir/utils.jl#L12
+# xcall(mod::Module, f::Symbol, args...) = Expr(:call, GlobalRef(mod, f), args...)
+# xcall(f::Symbol, args...) = xcall(Base, f, args...)
+
 
 # Cassette.@context DynamicGraphCtx
 
@@ -27,21 +64,18 @@ end
 
 # function insert_graph_tracker(::Type{<:DynamicGraphCtx}, reflection::Cassette.Reflection)
 #     ci = reflection.code_info
-#     ir = IRTools.IR(ci, reflection.method.nargs)
 
-#     Cassette.insert_statements!(ir.code, ir.codelocs,
-#                                (stmt, i) -> Meta.isexpr(stmt, :call) ? 2 : nothing,
-#                                 function (stmt, i)
-#                                     println(stmt)
-#                                     return [:(println("hi")), stmt]
-#                                    # return [stmt, :(println($(Meta.quot(stmt))))]
-#                                end)
-#     # for i in reverse(eachindex(ir.code))
-#     #     expr = ir[i].expr
-#     #     IRTools.insertafter!(ir, i, :(println($(Meta.quot(expr)))))
-#     # end
+#     # Cassette.insert_statements!(ci.code, ci.codelocs,
+#     #                            (stmt, i) -> Meta.isexpr(stmt, :call) ? 2 : nothing,
+#     #                             function (stmt, i)
+#     #                                 return [stmt, Expr(:(=), SSAValue(1), xcall(Main, :println, "hi"))]
+#     #                                # return [stmt, :(println($(Meta.quot(stmt))))]
+#     #                            end)
+
+#     println(reflection)
+
     
-#     return ir
+#     return ci
 # end
 
 # const graph_pass = Cassette.@pass insert_graph_tracker
