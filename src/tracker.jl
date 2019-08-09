@@ -17,7 +17,6 @@ IRTools.@dynamo function track(args...)
 
     trace = IRTools.argument!(new_ir)
     ssa_mappings = Dict{IRTools.Variable, IRTools.Variable}()
-    
 
     for block in IRTools.blocks(ir)
         if block.id ∉ axes(new_ir.blocks, 1)
@@ -28,6 +27,9 @@ IRTools.@dynamo function track(args...)
 
         for arg in IRTools.arguments(block)
             IRTools.argument!(new_block, arg)
+            arg === trace && continue
+            record = IRTools.xcall(DynamicComputationGraphs, :Argument, string(arg), arg)
+            push!(new_block, IRTools.xcall(Main, :push!, trace, record))
         end
         
         for (x, stmt) in block
