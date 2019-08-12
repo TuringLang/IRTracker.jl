@@ -5,12 +5,17 @@ using Core: CodeInfo, SlotNumber, SSAValue
 
 const VariableMapping = Dict{IRTools.Variable, IRTools.Variable}
 
+pushstatement!(ir, tape, stmt) = push!(ir, IRTools.xcall(Main, :push!, tape, stmt))
+
 
 function track_branches!(new_block::IRTools.Block, old_block::IRTools.Block,
                          tape::IRTools.Variable, variable_mapping::VariableMapping)
     for branch in IRTools.branches(old_block)
+        # apply variable renamings resulting from the shift by inserting statements
         renamed_args = [get!(variable_mapping, arg, arg) for arg in branch.args]
+        
         if IRTools.isreturn(branch)
+            # add tape to return values
             return_value = IRTools.push!(new_block, :(($tape, $(renamed_args...))))
             IRTools.return!(new_block, return_value)
         else
@@ -29,7 +34,7 @@ function track_statements!(new_block::IRTools.Block, old_block::IRTools.Block,
         push!(variable_mapping, x => new_x)
         call_expr = string(stmt.expr) # TODO actually quote this
         record = IRTools.xcall(DynamicComputationGraphs, :PrimitiveCall, call_expr, new_x)
-        push!(new_block, IRTools.xcall(Main, :push!, tape, record))
+        pushstatement!(new_block, tape, record)
     end
 
     return new_block
@@ -38,18 +43,19 @@ end
 
 function track_first_block!(new_block::IRTools.Block, old_block::IRTools.Block,
                             variable_mapping::VariableMapping)
-    
     # copy block arguments
     for arg in IRTools.arguments(old_block)
         IRTools.argument!(new_block, arg)
     end
 
+    # set up tape variable
     tape = push!(new_block, IRTools.xcall(DynamicComputationGraphs, :GraphTape))
 
-    # record block arguments
+    # set up block arguments, record them as function arguments
     for arg in IRTools.arguments(new_block)
+        # TODO actually quote this
         record = IRTools.xcall(DynamicComputationGraphs, :Argument, string(arg), arg)
-        push!(new_block, IRTools.xcall(Main, :push!, tape, record))
+        pushstatement!(new_block, tape, record)
     end
 
     track_statements!(new_block, old_block, tape, variable_mapping)
@@ -79,7 +85,8 @@ function track_ir(old_ir)
     old_first_block = IRTools.block(old_ir, 1)
     new_first_block = IRTools.block(new_ir, 1)
     tape, first_block = track_first_block!(new_first_block, old_first_block, variable_mapping)
-    
+
+    # handle all other blocks
     for (i, old_block) in enumerate(IRTools.blocks(old_ir))
         i == 1 && continue # skip first block
         new_block = IRTools.block!(new_ir)
@@ -94,6 +101,7 @@ IRTools.@dynamo function track(args...)
     ir = IRTools.IR(args...)
     new_ir = track_ir(ir)
     println(new_ir)
+    println(ir)
     return ir
 end
 
