@@ -1,53 +1,94 @@
-import Cassette
-# using IRTools
+# import Cassette
+using IRTools
 using Core: CodeInfo, SlotNumber, SSAValue
 
-function instructions(block::IRTools.BasicBlock)
-    return [getfield.(block.stmts, :expr); block.branches]
+
+const VariableMapping = Dict{IRTools.Variable, IRTools.Variable}
+
+
+function track_branches!(new_block::IRTools.Block, old_block::IRTools.Block,
+                         tape::IRTools.Variable, variable_mapping::VariableMapping)
+    for branch in IRTools.branches(old_block)
+        new_args = [get!(variable_mapping, arg, arg) for arg in branch.args]
+        IRTools.branch!(new_block, branch.block, new_args..., unless = branch.condition)
+    end
+
+    return new_block
 end
 
-function instructions(ir::IRTools.IR)
-    mapreduce(instructions, vcat, ir.blocks)
+
+function track_statements!(new_block::IRTools.Block, old_block::IRTools.Block,
+                           tape::IRTools.Variable, variable_mapping::VariableMapping)
+    for (x, stmt) in old_block
+        new_x = push!(new_block, stmt)
+        push!(variable_mapping, x => new_x)
+        call_expr = string(stmt.expr) # TODO actually quote this
+        record = IRTools.xcall(DynamicComputationGraphs, :PrimitiveCall, call_expr, new_x)
+        push!(new_block, IRTools.xcall(Main, :push!, tape, record))
+    end
+
+    return new_block
+end
+
+
+function track_first_block!(new_block::IRTools.Block, old_block::IRTools.Block,
+                            variable_mapping::VariableMapping)
+    
+    # copy block arguments
+    for arg in IRTools.arguments(old_block)
+        IRTools.argument!(new_block, arg)
+    end
+
+    tape = push!(new_block, IRTools.xcall(DynamicComputationGraphs, :GraphTape))
+
+    # record block arguments
+    for arg in IRTools.arguments(new_block)
+        record = IRTools.xcall(DynamicComputationGraphs, :Argument, string(arg), arg)
+        push!(new_block, IRTools.xcall(Main, :push!, tape, record))
+    end
+
+    track_statements!(new_block, old_block, tape, variable_mapping)
+    track_branches!(new_block, old_block, tape, variable_mapping)
+    return tape, new_block
+end
+
+
+function track_block!(new_block::IRTools.Block, old_block::IRTools.Block,
+                      tape::IRTools.Variable, variable_mapping)
+    # set up block arguments
+    for arg in IRTools.arguments(old_block)
+        IRTools.argument!(new_block, arg)
+    end
+
+    track_statements!(new_block, old_block, tape, variable_mapping)
+    track_branches!(new_block, old_block, tape, variable_mapping)
+    return new_block
+end
+
+
+function track_ir(old_ir)
+    variable_mapping = VariableMapping()
+    new_ir = empty(old_ir)
+
+    # get first block (created by default), handle it, and store tape variable
+    old_first_block = IRTools.block(old_ir, 1)
+    new_first_block = IRTools.block(new_ir, 1)
+    tape, first_block = track_first_block!(new_first_block, old_first_block, variable_mapping)
+    
+    for (i, old_block) in enumerate(IRTools.blocks(old_ir))
+        i == 1 && continue # skip first block
+        new_block = IRTools.block!(new_ir)
+        track_block!(new_block, old_block, tape, variable_mapping)
+    end
+
+    return new_ir
 end
 
 
 IRTools.@dynamo function track(args...)
     ir = IRTools.IR(args...)
-    new_ir = IRTools.IR()
-
-    trace = IRTools.argument!(new_ir)
-    ssa_mappings = Dict{IRTools.Variable, IRTools.Variable}()
-
-    for block in IRTools.blocks(ir)
-        if block.id ∉ axes(new_ir.blocks, 1)
-            new_block = IRTools.block!(new_ir)
-        else
-            new_block = IRTools.block(new_ir, block.id)
-        end
-
-        for arg in IRTools.arguments(block)
-            IRTools.argument!(new_block, arg)
-            arg === trace && continue
-            record = IRTools.xcall(DynamicComputationGraphs, :Argument, string(arg), arg)
-            push!(new_block, IRTools.xcall(Main, :push!, trace, record))
-        end
-        
-        for (x, stmt) in block
-            new_x = push!(new_block, stmt)
-            push!(ssa_mappings, x => new_x)
-            call_expr = string(stmt.expr) # TODO actually quote this
-            record = IRTools.xcall(DynamicComputationGraphs, :PrimitiveCall, call_expr, new_x)
-            push!(new_block, IRTools.xcall(Main, :push!, trace, record))
-        end
-
-        for branch in IRTools.branches(block)
-            new_args = [get!(ssa_mappings, arg, arg) for arg in branch.args]
-            IRTools.branch!(new_block, branch.block, new_args..., unless = branch.condition)
-        end
-    end
-
+    new_ir = track_ir(ir)
     println(new_ir)
-    
     return ir
 end
 
