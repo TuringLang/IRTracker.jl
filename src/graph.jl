@@ -39,8 +39,7 @@ export Argument,
 abstract type Node end
 
 struct PrimitiveCall <: Node
-    head::Symbol
-    args::Vector{Union{Any, IndexRef}}
+    expr::Expr
     value::Any
     info::StatementInfo
 end
@@ -48,8 +47,7 @@ end
 PrimitiveCall((e, v)::Pair{Expr, Any}, info = nothing) = PrimitiveCall(e, v, info)
 
 struct NestedCall <: Node
-    head::Symbol
-    args::Vector{Union{Any, IndexRef}}
+    expr::Expr
     value::Any
     children::Vector{<:Node}
     info::StatementInfo
@@ -62,7 +60,7 @@ struct Argument <: Node
 end
 
 struct Return <: Node
-    expr::Union{Any, IndexRef}
+    expr::Any
     value::Any
     info::StatementInfo
 end
