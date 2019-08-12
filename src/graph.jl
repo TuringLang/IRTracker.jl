@@ -14,6 +14,9 @@ end
 
 StatementInfo() = StatementInfo(nothing)
 
+show(io::IO, si::StatementInfo) =
+    print(io, "StatementInfo(", si === nothing ? "" : si.metadata,")")
+
 
 
 export IndexRef
@@ -38,20 +41,25 @@ export Argument,
 
 abstract type Node end
 
+
 struct PrimitiveCall <: Node
-    expr::Expr
+    expr::Any
     value::Any
     info::StatementInfo
 end
 
-PrimitiveCall((e, v)::Pair{Expr, Any}, info = nothing) = PrimitiveCall(e, v, info)
+PrimitiveCall(expr, value) = PrimitiveCall(expr, value, StatementInfo())
+
 
 struct NestedCall <: Node
-    expr::Expr
+    expr::Any
     value::Any
     children::Vector{<:Node}
     info::StatementInfo
 end
+
+NestedCall(expr, value, children) = NestedCall(expr, value, children, StatementInfo())
+
 
 struct Argument <: Node
     number::Int
@@ -59,17 +67,24 @@ struct Argument <: Node
     info::StatementInfo
 end
 
+Argument(number, value) = Argument(number, value, StatementInfo())
+
+
 struct Return <: Node
     expr::Any
     value::Any
     info::StatementInfo
 end
 
+Return(expr, value) = Return(expr, value, StatementInfo())
+
 struct Branch
     target::Int
     args::Vector{Int}
     info::StatementInfo
 end
+
+Branch(target, args) = Branch(target, args, StatementInfo())
 
 # struct UnconditionalBranch
 #     target::Int

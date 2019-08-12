@@ -32,7 +32,7 @@ function track_statements!(new_block::IRTools.Block, old_block::IRTools.Block,
     for (x, stmt) in old_block
         new_x = push!(new_block, stmt)
         push!(variable_mapping, x => new_x)
-        call_expr = string(stmt.expr) # TODO actually quote this
+        call_expr = stmt.expr # TODO actually quote this
         record = IRTools.xcall(DynamicComputationGraphs, :PrimitiveCall, call_expr, new_x)
         pushstatement!(new_block, tape, record)
     end
@@ -54,7 +54,7 @@ function track_first_block!(new_block::IRTools.Block, old_block::IRTools.Block,
     # set up block arguments, record them as function arguments
     for arg in IRTools.arguments(new_block)
         # TODO actually quote this
-        record = IRTools.xcall(DynamicComputationGraphs, :Argument, string(arg), arg)
+        record = IRTools.xcall(DynamicComputationGraphs, :Argument, arg.id, arg)
         pushstatement!(new_block, tape, record)
     end
 
@@ -97,12 +97,16 @@ function track_ir(old_ir)
 end
 
 
+
+export track
+
 IRTools.@dynamo function track(args...)
     ir = IRTools.IR(args...)
     new_ir = track_ir(ir)
+    # println(ir)
     println(new_ir)
-    println(ir)
-    return ir
+
+    return new_ir
 end
 
 
