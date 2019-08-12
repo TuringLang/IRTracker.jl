@@ -9,18 +9,11 @@ const VariableMapping = Dict{IRTools.Variable, IRTools.Variable}
 function track_branches!(new_block::IRTools.Block, old_block::IRTools.Block,
                          tape::IRTools.Variable, variable_mapping::VariableMapping)
     for branch in IRTools.branches(old_block)
+        renamed_args = [get!(variable_mapping, arg, arg) for arg in branch.args]
         if IRTools.isreturn(branch)
-            renamed_args = map(branch.args) do arg
-                if haskey(variable_mapping, arg)
-                    SSAValue(variable_mapping[arg].id)
-                else
-                    arg
-                end
-            end
             return_value = IRTools.push!(new_block, :(($tape, $(renamed_args...))))
             IRTools.return!(new_block, return_value)
         else
-            renamed_args = [get!(variable_mapping, arg, arg) for arg in branch.args]
             IRTools.branch!(new_block, branch.block, renamed_args..., unless = branch.condition)
         end
     end
