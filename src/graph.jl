@@ -102,12 +102,12 @@ Branch(target, args) = Branch(target, args, StatementInfo())
 
 function show(io::IO, node::PrimitiveCall, level = 0)
     print(io, " " ^ 2level)
-    print(io, node.head, "(", join(node.args, ", "), ")", " = ", node.value)
+    print(io, node.expr, " = ", node.value)
 end
 
 function show(io::IO, node::NestedCall, level = 0)
     print(io, " " ^ 2level)
-    print(io, node.head, "(", join(node.args, ", "), ")", " = ", node.value, "\n")
+    print(io, node.expr, " = ", node.value, "\n")
     for child in node.children
         show(io, child, level + 1)
     end
