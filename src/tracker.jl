@@ -2,6 +2,7 @@
 using IRTools
 using Core: CodeInfo, SlotNumber, SSAValue
 import IRTools: pushfirst!
+using InteractiveUtils: typesof
 
 
 function pushfirst!(p::IRTools.Pipe, x)
@@ -26,10 +27,18 @@ end
 
 
 function track_statement!(p::IRTools.Pipe, tape, variable, statement)
+    p[variable] = IRTools.xcall(DynamicComputationGraphs, :track, statement.expr.args...)
+    
+    original_return = IRTools.insertafter!(p, variable, IRTools.xcall(:getfield, variable, 1))
+    subgraph = IRTools.insertafter!(p, original_return, IRTools.xcall(:getfield, variable, 2))
+    
     original_expr = QuoteNode(statement.expr)
-    tracked_expr = IRTools.xcall(DynamicComputationGraphs, :PrimitiveCall, original_expr, variable)
+    tracked_expr = IRTools.xcall(DynamicComputationGraphs, :NestedCall,
+                                 original_expr, original_return, subgraph)
     stmt_record = IRTools.xcall(:push!, tape, tracked_expr)
-    return IRTools.insertafter!(p, variable, stmt_record)
+    IRTools.insertafter!(p, subgraph, stmt_record)
+
+    return nothing
 end
 
 
@@ -41,11 +50,8 @@ function track_arguments!(p::IRTools.Pipe, tape, arguments)
         arg_record = IRTools.xcall(:push!, tape, arg_expr)
         previous_stmt = IRTools.insertafter!(p, previous_stmt, arg_record)
     end
-end
 
-
-function add_tape_argument!(p::IRTools.Pipe, tape)
-    tape = IRTools.argument!(p)
+    return nothing
 end
 
 
@@ -69,16 +75,51 @@ function track_ir(old_ir::IRTools.IR)
 end
 
 
+function track_primitive(F, args)
+    f = Core.Compiler.singleton_type(F)
+    T = Tuple{args...}
+    dummy(args...) = nothing
+    ir = empty(IRTools.IR(IRTools.meta(Tuple{typeof(dummy), Core.Typeof.(args)...})))
+    self = IRTools.argument!(ir)
+    
+    for arg in args
+        IRTools.argument!(ir)
+    end
+    
+    tape = IRTools.push!(ir, IRTools.xcall(DynamicComputationGraphs, :GraphTape))
+    primitive_expr = IRTools.xcall(nameof(f), IRTools.arguments(ir)[2:end]...)
+    primitive_result = push!(ir, primitive_expr)
+
+    tracked_expr = IRTools.xcall(DynamicComputationGraphs, :PrimitiveCall,
+                                 QuoteNode(primitive_expr), primitive_result)
+    stmt_record = IRTools.xcall(:push!, tape, tracked_expr)
+    push!(ir, stmt_record)
+
+    return_expr = IRTools.xcall(:tuple, primitive_result, tape)
+    return_value = IRTools.push!(ir, return_expr)
+    IRTools.return!(ir, return_value)
+    return ir
+end
+
 
 export track
 
-IRTools.@dynamo function track(f, args...)
-    ir = IRTools.IR(f, args...)
-    new_ir = track_ir(ir)
-    println(new_ir)
+IRTools.@dynamo function track(F, args...)
+    is_primitive = (F <: Core.Builtin) && !(Core.Compiler.typename(F).module === Core.Compiler)
 
-    return new_ir
+    if !is_primitive
+        ir = IRTools.IR(F, args...)
+        new_ir = track_ir(ir)
+        println(new_ir)
+        return new_ir
+    else
+        ir = track_primitive(F, args)
+        println(ir)
+        return ir
+    end
 end
+
+
 
 # function track(f, args...)
 #     tape = GraphTape()

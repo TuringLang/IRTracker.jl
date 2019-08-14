@@ -41,6 +41,9 @@ export Argument,
 
 abstract type Node end
 
+# hack for https://github.com/JuliaLang/julia/issues/269 (recursive type declarations)
+abstract type AbstractGraphTape end
+
 
 struct PrimitiveCall <: Node
     expr::Any
@@ -54,7 +57,7 @@ PrimitiveCall(expr, value) = PrimitiveCall(expr, value, StatementInfo())
 struct NestedCall <: Node
     expr::Any
     value::Any
-    children::Vector{<:Node}
+    inner::AbstractGraphTape
     info::StatementInfo
 end
 

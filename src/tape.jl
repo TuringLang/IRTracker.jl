@@ -4,7 +4,7 @@ import Base: push!
 export GraphTape
 
 """Record of data and control flow of evaluating IR."""
-struct GraphTape
+struct GraphTape <: AbstractGraphTape
     nodes::Vector{<:Node}
 end
 
