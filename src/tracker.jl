@@ -35,7 +35,7 @@ end
 
 function track_arguments!(p::IRTools.Pipe, tape, arguments)
     previous_stmt = tape
-    for arg in reverse(arguments)
+    for arg in arguments
         arg === tape && continue
         arg_expr = IRTools.xcall(DynamicComputationGraphs, :Argument, arg.id, arg)
         arg_record = IRTools.xcall(:push!, tape, arg_expr)
@@ -72,24 +72,12 @@ end
 
 export track
 
-# IRTools.@dynamo function track(f, args...)
-#     ir = IRTools.IR(f, args...)
-#     new_ir = track_ir(ir)
-#     println(new_ir)
+IRTools.@dynamo function track(f, args...)
+    ir = IRTools.IR(f, args...)
+    new_ir = track_ir(ir)
+    println(new_ir)
 
-#     return new_ir
-# end
-
-@generated function track(f, args...)
-    ir = track_ir(IRTools.IR(f, args...))
-    println(ir)
-
-    m = ir.meta::IRTools.Meta
-    ir = IRTools.varargs!(m, ir)
-    IRTools.argnames!(m, :args)
-    _self = IRTools.splicearg!(m, ir, Symbol("#self#"))
-    IRTools.prewalk!(x -> x === IRTools.self ? _self : x, ir)
-    return IRTools.update!(m.code, ir)
+    return new_ir
 end
 
 # function track(f, args...)
@@ -97,18 +85,32 @@ end
 #     return _track(f, args..., tape)
 # end
 
-@generated function test1(f, args...)
-    ir = IRTools.empty(IRTools.IR(f, args...))
-    push!(ir, IRTools.xcall(Main, :println, "hi"))
-    IRTools.return!(ir, nothing)
+# @generated function track(f, args...)
+#     ir = track_ir(IRTools.IR(f, args...))
+#     println(ir)
 
-    m = ir.meta::IRTools.Meta
-    ir = IRTools.varargs!(m, ir)
-    IRTools.argnames!(m, :args)
-    _self = IRTools.splicearg!(m, ir, Symbol("#self#"))
-    IRTools.prewalk!(x -> x === IRTools.self ? _self : x, ir)
-    return IRTools.update!(m.code, ir)
-end
+#     m = ir.meta::IRTools.Meta
+#     ir = IRTools.varargs!(m, ir)
+#     IRTools.argnames!(m, :args)
+#     _self = IRTools.splicearg!(m, ir, Symbol("#self#"))
+#     IRTools.prewalk!(x -> x === IRTools.self ? _self : x, ir)
+#     return IRTools.update!(m.code, ir)
+# end
+
+
+
+# @generated function test1(f, args...)
+#     ir = IRTools.empty(IRTools.IR(f, args...))
+#     push!(ir, IRTools.xcall(Main, :println, "hi"))
+#     IRTools.return!(ir, nothing)
+
+#     m = ir.meta::IRTools.Meta
+#     ir = IRTools.varargs!(m, ir)
+#     IRTools.argnames!(m, :args)
+#     _self = IRTools.splicearg!(m, ir, Symbol("#self#"))
+#     IRTools.prewalk!(x -> x === IRTools.self ? _self : x, ir)
+#     return IRTools.update!(m.code, ir)
+# end
 
 
 
