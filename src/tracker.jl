@@ -27,18 +27,24 @@ end
 
 
 function track_statement!(p::IRTools.Pipe, tape, variable, statement)
-    args = statement.expr isa Expr ? statement.expr.args : (statement.expr.value,)
-    p[variable] = IRTools.xcall(DynamicComputationGraphs, :track, args...)
+    if Meta.isexpr(statement.expr, :call)
+        p[variable] = IRTools.xcall(DynamicComputationGraphs, :track, statement.expr.args...)
+        
+        original_return = IRTools.insertafter!(p, variable, IRTools.xcall(:getfield, variable, 1))
+        subgraph = IRTools.insertafter!(p, original_return, IRTools.xcall(:getfield, variable, 2))
+        
+        original_expr = string(statement.expr)
+        tracked_expr = IRTools.xcall(DynamicComputationGraphs, :NestedCall,
+                                     original_expr, original_return, subgraph)
+        stmt_record = IRTools.xcall(:push!, tape, tracked_expr)
+        IRTools.insertafter!(p, subgraph, stmt_record)
+    else
+        # for statements that are just constants (like type literals, which become QuoteNodes)
+        tracked_expr = IRTools.xcall(DynamicComputationGraphs, :Constant, variable)
+        stmt_record = IRTools.xcall(:push!, tape, tracked_expr)
+        IRTools.insertafter!(p, variable, stmt_record)
+    end
     
-    original_return = IRTools.insertafter!(p, variable, IRTools.xcall(:getfield, variable, 1))
-    subgraph = IRTools.insertafter!(p, original_return, IRTools.xcall(:getfield, variable, 2))
-    
-    original_expr = string(statement.expr)
-    tracked_expr = IRTools.xcall(DynamicComputationGraphs, :NestedCall,
-                                 original_expr, original_return, subgraph)
-    stmt_record = IRTools.xcall(:push!, tape, tracked_expr)
-    IRTools.insertafter!(p, subgraph, stmt_record)
-
     return nothing
 end
 
@@ -109,17 +115,18 @@ export track
 IRTools.@dynamo function track(F, args...)
     # from Cassette.canrecurse
     # (https://github.com/jrevels/Cassette.jl/blob/79eabe829a16b6612e0eba491d9f43dc9c11ff02/src/context.jl#L457-L473)
-    is_primitive = ((F <: Core.Builtin) && !(Core.Compiler.typename(F).module === Core.Compiler))
+    is_builtin = ((F <: Core.Builtin) && !(Core.Compiler.typename(F).module === Core.Compiler))
+    is_type = 
     
-    if !is_primitive
+    if !is_builtin
         ir = IRTools.IR(F, args...)
-        println("handling $F")
+        println("handling $F with args $args")
         new_ir = track_ir(ir)
         println(new_ir)
         return new_ir
     else
         ir = track_primitive(F, args)
-        println("handling primitive $F")
+        println("handling primitive $F with args $args")
         println(ir)
         return ir
     end

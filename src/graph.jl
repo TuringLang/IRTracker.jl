@@ -45,6 +45,14 @@ abstract type Node end
 abstract type AbstractGraphTape end
 
 
+struct Constant <: Node
+    value::Any
+    info::StatementInfo
+end
+
+Constant(value) = Constant(value, StatementInfo())
+
+
 struct PrimitiveCall <: Node
     expr::Any
     value::Any
@@ -102,6 +110,11 @@ Branch(target, args) = Branch(target, args, StatementInfo())
 #     info::StatementInfo
 # end
 
+
+function show(io::IO, node::Constant, level = 0)
+    print(io, " " ^ 2level)
+    print(io, "Constant ", node.value)
+end
 
 function show(io::IO, node::PrimitiveCall, level = 0)
     print(io, " " ^ 2level)
