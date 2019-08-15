@@ -28,21 +28,21 @@ end
 
 function track_statement!(p::IRTools.Pipe, tape, variable, statement)
     if Meta.isexpr(statement.expr, :call)
-        p[variable] = IRTools.xcall(DynamicComputationGraphs, :track, statement.expr.args...)
+        tracking_stmt = IRTools.xcall(DynamicComputationGraphs, :track, statement.expr.args...)
+        tracking_result = IRTools.insert!(p, variable, tracking_stmt)
+        p[variable] = IRTools.xcall(:getfield, tracking_result, 1)
+        subgraph = IRTools.push!(p, IRTools.xcall(:getfield, tracking_result, 2))
         
-        original_return = IRTools.insertafter!(p, variable, IRTools.xcall(:getfield, variable, 1))
-        subgraph = IRTools.insertafter!(p, original_return, IRTools.xcall(:getfield, variable, 2))
-        
-        original_expr = string(statement.expr)
         tracked_expr = IRTools.xcall(DynamicComputationGraphs, :NestedCall,
-                                     original_expr, original_return, subgraph)
+                                     string(statement.expr),
+                                     variable, subgraph)
         stmt_record = IRTools.xcall(:push!, tape, tracked_expr)
-        IRTools.insertafter!(p, subgraph, stmt_record)
-    else
-        # for statements that are just constants (like type literals, which become QuoteNodes)
+        IRTools.push!(p, stmt_record)
+    elseif statement.expr isa QuoteNode
+       # for statements that are just constants (like type literals, which become QuoteNodes)
         tracked_expr = IRTools.xcall(DynamicComputationGraphs, :Constant, variable)
         stmt_record = IRTools.xcall(:push!, tape, tracked_expr)
-        IRTools.insertafter!(p, variable, stmt_record)
+        IRTools.push!(p, stmt_record)
     end
     
     return nothing
@@ -50,12 +50,11 @@ end
 
 
 function track_arguments!(p::IRTools.Pipe, tape, arguments)
-    previous_stmt = tape
     for arg in arguments
         arg === tape && continue
         arg_expr = IRTools.xcall(DynamicComputationGraphs, :Argument, arg.id, arg)
         arg_record = IRTools.xcall(:push!, tape, arg_expr)
-        previous_stmt = IRTools.insertafter!(p, previous_stmt, arg_record)
+        IRTools.push!(p, arg_record)
     end
 
     return nothing
@@ -63,11 +62,10 @@ end
 
 
 function track_ir(old_ir::IRTools.IR)
-    
     p = IRTools.Pipe(old_ir)
-    tape = IRTools.pushfirst!(p, IRTools.xcall(DynamicComputationGraphs, :GraphTape))
+    tape = IRTools.push!(p, IRTools.xcall(DynamicComputationGraphs, :GraphTape))
     track_arguments!(p, tape, IRTools.arguments(old_ir))
-    
+
     for (v, stmt) in p
         track_statement!(p, tape, v, stmt)
     end
@@ -112,6 +110,7 @@ function track_primitive(F, args)
     return_expr = IRTools.xcall(:tuple, primitive_result, tape)
     return_value = IRTools.push!(ir, return_expr)
     IRTools.return!(ir, return_value)
+    
     return ir
 end
 
@@ -122,7 +121,6 @@ IRTools.@dynamo function track(F, args...)
     # from Cassette.canrecurse
     # (https://github.com/jrevels/Cassette.jl/blob/79eabe829a16b6612e0eba491d9f43dc9c11ff02/src/context.jl#L457-L473)
     is_builtin = ((F <: Core.Builtin) && !(Core.Compiler.typename(F).module === Core.Compiler))
-    is_type = 
     
     if !is_builtin
         ir = IRTools.IR(F, args...)
