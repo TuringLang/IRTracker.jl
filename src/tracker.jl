@@ -27,12 +27,13 @@ end
 
 
 function track_statement!(p::IRTools.Pipe, tape, variable, statement)
-    p[variable] = IRTools.xcall(DynamicComputationGraphs, :track, statement.expr.args...)
+    args = statement.expr isa Expr ? statement.expr.args : (statement.expr.value,)
+    p[variable] = IRTools.xcall(DynamicComputationGraphs, :track, args...)
     
     original_return = IRTools.insertafter!(p, variable, IRTools.xcall(:getfield, variable, 1))
     subgraph = IRTools.insertafter!(p, original_return, IRTools.xcall(:getfield, variable, 2))
     
-    original_expr = QuoteNode(statement.expr)
+    original_expr = string(statement.expr)
     tracked_expr = IRTools.xcall(DynamicComputationGraphs, :NestedCall,
                                  original_expr, original_return, subgraph)
     stmt_record = IRTools.xcall(:push!, tape, tracked_expr)
@@ -91,7 +92,8 @@ function track_primitive(F, args)
     primitive_result = push!(ir, primitive_expr)
 
     tracked_expr = IRTools.xcall(DynamicComputationGraphs, :PrimitiveCall,
-                                 QuoteNode(primitive_expr), primitive_result)
+                                 string(primitive_expr),
+                                 primitive_result)
     stmt_record = IRTools.xcall(:push!, tape, tracked_expr)
     push!(ir, stmt_record)
 
@@ -105,15 +107,19 @@ end
 export track
 
 IRTools.@dynamo function track(F, args...)
-    is_primitive = (F <: Core.Builtin) && !(Core.Compiler.typename(F).module === Core.Compiler)
-
+    # from Cassette.canrecurse
+    # (https://github.com/jrevels/Cassette.jl/blob/79eabe829a16b6612e0eba491d9f43dc9c11ff02/src/context.jl#L457-L473)
+    is_primitive = ((F <: Core.Builtin) && !(Core.Compiler.typename(F).module === Core.Compiler))
+    
     if !is_primitive
         ir = IRTools.IR(F, args...)
+        println("handling $F")
         new_ir = track_ir(ir)
         println(new_ir)
         return new_ir
     else
         ir = track_primitive(F, args)
+        println("handling primitive $F")
         println(ir)
         return ir
     end
