@@ -63,6 +63,7 @@ end
 
 
 function track_ir(old_ir::IRTools.IR)
+    
     p = IRTools.Pipe(old_ir)
     tape = IRTools.pushfirst!(p, IRTools.xcall(DynamicComputationGraphs, :GraphTape))
     track_arguments!(p, tape, IRTools.arguments(old_ir))
@@ -83,7 +84,12 @@ end
 
 
 function track_primitive(F, args)
+    # primitives (i.e., builtin functions) have no IR, so they are converted to wrapped methods,
+    # which do the same thing, but track a PrimitiveCall without recursion.
+    
+    
     f = Core.Compiler.singleton_type(F)
+    mod = Core.Compiler.typename(F).module
     T = Tuple{args...}
     dummy(args...) = nothing
     ir = empty(IRTools.IR(IRTools.meta(Tuple{typeof(dummy), Core.Typeof.(args)...})))
@@ -94,7 +100,7 @@ function track_primitive(F, args)
     end
     
     tape = IRTools.push!(ir, IRTools.xcall(DynamicComputationGraphs, :GraphTape))
-    primitive_expr = IRTools.xcall(nameof(f), IRTools.arguments(ir)[2:end]...)
+    primitive_expr = IRTools.xcall(mod, nameof(f), IRTools.arguments(ir)[2:end]...)
     primitive_result = push!(ir, primitive_expr)
 
     tracked_expr = IRTools.xcall(DynamicComputationGraphs, :PrimitiveCall,
