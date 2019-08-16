@@ -1,7 +1,7 @@
 using IRTools
 using Core.Compiler: LineInfoNode
 
-import Base: show
+import Base: push!, show
 
 
 export StatementInfo
@@ -19,20 +19,12 @@ show(io::IO, si::StatementInfo) =
 
 
 
-export IndexRef
-
-"""Reference to another SSA value."""
-struct IndexRef
-    index::Int
-end
-
-show(io::IO, r::IndexRef) = print(io, "[$(r.index)]")
-
 
 
 export Argument,
     # ConditionalBranch,
     Branch,
+    GraphTape,
     NestedCall,
     Node,
     PrimitiveCall,
@@ -41,8 +33,13 @@ export Argument,
 
 abstract type Node end
 
-# hack for https://github.com/JuliaLang/julia/issues/269 (recursive type declarations)
-abstract type AbstractGraphTape end
+"""Record of data and control flow of evaluating IR."""
+struct GraphTape
+    nodes::Vector{<:Node}
+end
+
+GraphTape() = GraphTape(Node[])
+push!(tape::GraphTape, node::Node) = push!(tape.nodes, node)
 
 
 struct Constant <: Node
@@ -65,11 +62,12 @@ PrimitiveCall(expr, value) = PrimitiveCall(expr, value, StatementInfo())
 struct NestedCall <: Node
     expr::Any
     value::Any
-    inner::AbstractGraphTape
+    children::GraphTape
     info::StatementInfo
 end
 
-NestedCall(expr, value, children) = NestedCall(expr, value, children, StatementInfo())
+NestedCall(expr, value, children = Node[]) = NestedCall(expr, value, children, StatementInfo())
+push!(node::NestedCall, child::Node) = (push!(node.children, child); node)
 
 
 struct Argument <: Node
