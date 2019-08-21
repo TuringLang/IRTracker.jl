@@ -18,9 +18,9 @@ record!(tape::GraphTape, value::Union{Constant, Argument, Return}) =
     # from Cassette.canrecurse
     # (https://github.com/jrevels/Cassette.jl/blob/79eabe829a16b6612e0eba491d9f43dc9c11ff02/src/context.jl#L457-L473)
     mod = Core.Compiler.typename(F).module
-    is_builtin = ((F <: Core.Builtin) && !(mod === Core.Compiler))
+    is_builtin = ((F <: Core.Builtin) && !(mod === Core.Compiler)) || F <: Core.IntrinsicFunction
 
-    if is_builtin
+    if is_builtin 
         quote
             result = f(args...)
             call = PrimitiveCall(expr, result)
@@ -113,10 +113,23 @@ function track_ir(old_ir::IRTools.IR)
 end
 
 
+function print_intrinsic_error(f::Core.IntrinsicFunction, args...)
+    name = unsafe_string(ccall(:jl_intrinsic_name, Cstring, (Core.IntrinsicFunction,), f))
+    error("Can't track the intrinsic function ", name, " with arguments ",
+          join(args, ", "))
+end
+
+
 function error_ir(F, args...)
-    ir = IRTools.empty(IRTools.IR(meta(Tuple{Core.Typeof(F), Core.Typeof.(args)...})))
-    push!(ir, IRTools.xcall(:error, "You probably tried tracking a builting function: $F"))
-    IRTools.return!(ir, nothing)
+    dummy(args...) = nothing
+    ir = IRTools.empty(IRTools.IR(IRTools.meta(Tuple{Core.Typeof(dummy), Core.Typeof.(args)...})))
+    
+    self = IRTools.argument!(ir)
+    arg_values = ntuple(_ -> IRTools.argument!(ir), length(args))
+
+    error_expr = DCGCall.print_intrinsic_error(self, arg_values...)
+    error_result = push!(ir, error_expr)
+    IRTools.return!(ir, error_result)
     return ir
 end
 
@@ -129,8 +142,7 @@ IRTools.@dynamo function track(F, args...)
     ir = IRTools.IR(F, args...)
 
     if isnothing(ir)
-        @show error_result =  error_ir(F, args...)
-        return error_result
+        return error_ir(F, args...)
     else
         new_ir = track_ir(ir)
         # @show ir

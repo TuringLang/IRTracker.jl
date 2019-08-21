@@ -16,7 +16,7 @@ function test(x)
     t[1] + 1
 end
 
-result, graph = track(weird, 2)
+result, graph = track(Core.add_int, 2, 1)
 @show graph
 # track(weird, 2)
 # @show track(typeof, 1)
