@@ -141,7 +141,7 @@ end
 export track
 
 IRTools.@dynamo function track(F, args...)
-    println("handling $F with args $args")
+    # println("handling $F with args $args")
     ir = IRTools.IR(F, args...)
     if isnothing(ir)
         @error "You probably tried tracking a builting function: $F"
@@ -149,7 +149,7 @@ IRTools.@dynamo function track(F, args...)
     
     new_ir = track_ir(ir)
     # @show ir
-    @show new_ir
+    # @show new_ir
     return new_ir
 end
 

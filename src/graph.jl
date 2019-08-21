@@ -62,12 +62,12 @@ PrimitiveCall(expr, value) = PrimitiveCall(expr, value, StatementInfo())
 struct NestedCall <: Node
     expr::Any
     value::Any
-    children::GraphTape
+    subtape::GraphTape
     info::StatementInfo
 end
 
-NestedCall(expr, value, children = Node[]) = NestedCall(expr, value, children, StatementInfo())
-push!(node::NestedCall, child::Node) = (push!(node.children, child); node)
+NestedCall(expr, value, subtape = GraphTape()) = NestedCall(expr, value, subtape, StatementInfo())
+push!(node::NestedCall, child::Node) = (push!(node.subtape, child); node)
 
 
 struct Argument <: Node
@@ -109,6 +109,14 @@ Branch(target, args) = Branch(target, args, StatementInfo())
 # end
 
 
+function show(io::IO, tape::GraphTape, level = 0)
+    for node in tape.nodes
+        print(io, " " ^ 2level)
+        show(io, node, level + 1)
+        print(io, "\n")
+    end
+end
+
 function show(io::IO, node::Constant, level = 0)
     print(io, " " ^ 2level)
     print(io, "Constant ", node.value)
@@ -122,9 +130,7 @@ end
 function show(io::IO, node::NestedCall, level = 0)
     print(io, " " ^ 2level)
     print(io, node.expr, " = ", node.value, "\n")
-    for child in node.children
-        show(io, child, level + 1)
-    end
+    show(io, node.subtape, level + 1)
 end
 
 function show(io::IO, node::Argument, level = 0)

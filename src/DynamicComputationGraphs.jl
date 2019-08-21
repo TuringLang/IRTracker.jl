@@ -16,7 +16,8 @@ function test(x)
     t[1] + 1
 end
 
-@show track(weird, 2)
+result, graph = track(test, 2)
+@show graph
 # track(weird, 2)
 # @show track(typeof, 1)
 
