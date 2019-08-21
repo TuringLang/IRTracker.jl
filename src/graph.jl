@@ -119,28 +119,28 @@ end
 
 function show(io::IO, node::Constant, level = 0)
     print(io, " " ^ 2level)
-    print(io, "Constant ", node.value)
+    print(io, "Constant ", repr(node.value))
 end
 
 function show(io::IO, node::PrimitiveCall, level = 0)
     print(io, " " ^ 2level)
-    print(io, node.expr, " = ", node.value)
+    print(io, node.expr, " = ", repr(node.value))
 end
 
 function show(io::IO, node::NestedCall, level = 0)
     print(io, " " ^ 2level)
-    print(io, node.expr, " = ", node.value, "\n")
+    print(io, node.expr, " = ", repr(node.value), "\n")
     show(io, node.subtape, level + 1)
 end
 
 function show(io::IO, node::Argument, level = 0)
     print(io, " " ^ 2level)
-    print(io, "Argument ", node.number, " = ", node.value)
+    print(io, "Argument ", node.number, " = ", repr(node.value))
 end
 
 function show(io::IO, node::Return, level = 0)
     print(io, " " ^ 2level)
-    print(io, "return ", node.expr, " = ", node.value)
+    print(io, "return ", node.expr, " = ", repr(node.value))
 end
 
 function show(io::IO, node::Branch, level = 0)
