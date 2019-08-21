@@ -11,7 +11,7 @@ TrackerResult(value) = TrackerResult{PrimitiveCall}(value, nothing)
 TrackerResult(value, children) = TrackerResult{NestedCall}(value, children)
 
 
-record!(tape::GraphTape, value::Union{Constant, Argument}) =
+record!(tape::GraphTape, value::Union{Constant, Argument, Return}) =
     push!(tape, value)
 
 function record!(tape::GraphTape, expr, f::F, args...) where F
@@ -41,6 +41,11 @@ function update_returns!(block::IRTools.Block, tape)
     for branch in IRTools.branches(block)
         if IRTools.isreturn(branch)
             return_arg = branch.args[1]
+            reified_return_arg = string(return_arg)
+
+            return_record = DCGCall.record!(tape, DCGCall.Return(reified_return_arg, return_arg))
+            IRTools.push!(block, return_record)
+            
             return_expr = IRTools.xcall(:tuple, return_arg, tape)
             return_value = IRTools.push!(block, return_expr)
             IRTools.return!(block, return_value)
@@ -54,11 +59,13 @@ end
 function track_statement!(p::IRTools.Pipe, tape, variable, statement)
     if Meta.isexpr(statement.expr, :call)
         reified_call = string(statement.expr)
-        p[variable] = DCGCall.record!(tape, reified_call, statement.expr.args...)
+        p[variable] = IRTools.stmt(DCGCall.record!(tape, reified_call, statement.expr.args...),
+                                   line = statement.line)
     elseif statement.expr isa QuoteNode
         # for statements that are just constants (like type literals)
         constant_expr = DCGCall.Constant(variable)
-        constant_record = DCGCall.record!(tape, constant_expr)
+        constant_record = IRTools.stmt(DCGCall.record!(tape, constant_expr),
+                                       line = statement.line)
         IRTools.push!(p, constant_record)
     else
         # other special things, like `Expr(:boundscheck)`
@@ -92,10 +99,11 @@ function track_ir(old_ir::IRTools.IR)
     end
     
     new_ir = IRTools.finish(p)
+    tape = IRTools.substitute(p, tape)
 
     # update all return values to include `tape`
     for block in IRTools.blocks(new_ir)
-        update_returns!(block, IRTools.substitute(p, tape))
+        update_returns!(block, tape)
     end
 
     return new_ir

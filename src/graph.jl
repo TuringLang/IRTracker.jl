@@ -110,10 +110,9 @@ Branch(target, args) = Branch(target, args, StatementInfo())
 
 
 function show(io::IO, tape::GraphTape, level = 0)
-    for node in tape.nodes
-        print(io, " " ^ 2level)
+    for (i, node) in enumerate(tape.nodes)
+        print(io, " " ^ 2level, "%", i, ": ")
         show(io, node, level + 1)
-        print(io, "\n")
     end
 end
 
@@ -140,7 +139,7 @@ end
 
 function show(io::IO, node::Return, level = 0)
     print(io, " " ^ 2level)
-    print(io, "return ", node.value)
+    print(io, "return ", node.expr, " = ", node.value)
 end
 
 function show(io::IO, node::Branch, level = 0)
