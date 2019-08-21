@@ -14,24 +14,26 @@ TrackerResult(value, children) = TrackerResult{NestedCall}(value, children)
 record!(tape::GraphTape, value::Union{Constant, Argument, Return}) =
     push!(tape, value)
 
-function record!(tape::GraphTape, expr, f::F, args...) where F
-    # TODO: make this generated!
-
+@generated function record!(tape::GraphTape, expr, f::F, args...) where F
     # from Cassette.canrecurse
     # (https://github.com/jrevels/Cassette.jl/blob/79eabe829a16b6612e0eba491d9f43dc9c11ff02/src/context.jl#L457-L473)
     mod = Core.Compiler.typename(F).module
     is_builtin = ((F <: Core.Builtin) && !(mod === Core.Compiler))
 
     if is_builtin
-        result = f(args...)
-        call = PrimitiveCall(expr, result)
-        push!(tape, call)
-        return result
+        quote
+            result = f(args...)
+            call = PrimitiveCall(expr, result)
+            push!(tape, call)
+            return result
+        end
     else
-        result, children = track(f, args...)
-        call = NestedCall(expr, result, children)
-        push!(tape, call)
-        return result
+        quote
+            result, graph = track(f, args...)
+            call = NestedCall(expr, result, graph)
+            push!(tape, call)
+            return result
+        end
     end
 end
 
