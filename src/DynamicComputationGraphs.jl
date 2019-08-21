@@ -1,5 +1,6 @@
 module DynamicComputationGraphs
 
+include("utils.jl")
 include("graph.jl")
 # include("tape.jl")
 include("tracker.jl")
