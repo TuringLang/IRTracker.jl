@@ -113,6 +113,7 @@ function show(io::IO, tape::GraphTape, level = 0)
     for (i, node) in enumerate(tape.nodes)
         print(io, " " ^ 2level, "%", i, ": ")
         show(io, node, level + 1)
+        print(io, "\n")
     end
 end
 
