@@ -69,6 +69,8 @@ function track_statement!(p::IRTools.Pipe, tape, variable, statement)
         constant_record = IRTools.stmt(DCGCall.record!(tape, constant_expr),
                                        line = statement.line)
         IRTools.push!(p, constant_record)
+    elseif Meta.isexpr(statement.expr, :foreigncall)
+        # TODO: handle this specially?
     else
         # other special things, like `Expr(:boundscheck)`
         # currently unhandled and simply kept
@@ -93,7 +95,6 @@ end
 function track_ir(old_ir::IRTools.IR)
     p = IRTools.Pipe(old_ir)
     tape = push!(p, DCGCall.GraphTape())
-    # tape = IRTools.push!(p, IRTools.xcall(DynamicComputationGraphs, :GraphTape))
     track_arguments!(p, tape, IRTools.arguments(old_ir))
 
     for (v, stmt) in p
@@ -112,19 +113,30 @@ function track_ir(old_ir::IRTools.IR)
 end
 
 
+function error_ir(F, args...)
+    ir = IRTools.empty(IRTools.IR(meta(Tuple{Core.Typeof(F), Core.Typeof.(args)...})))
+    push!(ir, IRTools.xcall(:error, "You probably tried tracking a builting function: $F"))
+    IRTools.return!(ir, nothing)
+    return ir
+end
+
 
 export track
+
 
 IRTools.@dynamo function track(F, args...)
     # println("handling $F with args $args")
     ir = IRTools.IR(F, args...)
+
     if isnothing(ir)
-        @error "You probably tried tracking a builting function: $F"
+        @show error_result =  error_ir(F, args...)
+        return error_result
+    else
+        new_ir = track_ir(ir)
+        # @show ir
+        # @show new_ir 
+        return new_ir
     end
     
-    new_ir = track_ir(ir)
-    # @show ir
-    # @show new_ir
-    return new_ir
 end
 
