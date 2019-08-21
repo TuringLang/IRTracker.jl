@@ -55,14 +55,10 @@ function track_statement!(p::IRTools.Pipe, tape, variable, statement)
     if Meta.isexpr(statement.expr, :call)
         reified_call = string(statement.expr)
         p[variable] = DCGCall.record!(tape, reified_call, statement.expr.args...)
-        # p[variable] = IRTools.xcall(DynamicComputationGraphs, :record, reified_call,
-                                    # statement.expr.head, statement.expr.args...)
     elseif statement.expr isa QuoteNode
         # for statements that are just constants (like type literals)
         constant_expr = DCGCall.Constant(variable)
         constant_record = DCGCall.record!(tape, constant_expr)
-        # constant_expr = IRTools.xcall(DynamicComputationGraphs, :Constant, variable)
-        # constant_record = IRTools.xcall(DynamicComputationGraphs, :record!, tape, constant_expr)
         IRTools.push!(p, constant_record)
     else
         # other special things, like `Expr(:boundscheck)`
@@ -78,8 +74,6 @@ function track_arguments!(p::IRTools.Pipe, tape, arguments)
         argument === tape && continue
         argument_expr = DCGCall.Argument(argument.id, argument)
         argument_record = DCGCall.record!(tape, argument_expr)
-        # argument_expr = IRTools.xcall(DynamicComputationGraphs, :Argument, argument.id, argument)
-        # argument_record = IRTools.xcall(DynamicComputationGraphs, :record!, tape, argument_expr)
         IRTools.push!(p, argument_record)
     end
 
@@ -108,35 +102,6 @@ function track_ir(old_ir::IRTools.IR)
 end
 
 
-# function track_builtin(stmt, F, args)
-#     # builtin functions have no IR, so they are converted to wrapped methods,
-#     # which do the same thing, but track a PrimitiveCall without recursion.
-
-#     f = Core.Compiler.singleton_type(F)
-#     mod = Core.Compiler.typename(F).module
-#     dummy(args...) = nothing
-#     new_ir = empty(IRTools.IR(IRTools.meta(Tuple{typeof(dummy), Core.Typeof.(args)...})))
-#     self = IRTools.argument!(new_ir)
-    
-#     for arg in args
-#         IRTools.argument!(new_ir)
-#     end
-    
-#     builtin_expr = IRTools.xcall(mod, nameof(f), IRTools.arguments(new_ir)[2:end]...)
-#     builtin_value = IRTools.push!(new_ir, builtin_expr)
-
-#     tracked_expr = IRTools.xcall(DynamicComputationGraphs, :TrackerResult, builtin_value)
-#     tracked_value = IRTools.push!(new_ir, tracked_expr)
-
-#     return_expr = IRTools.xcall(:tuple, builtin_value, tracked_value)
-#     return_value = IRTools.push!(new_ir, return_expr)
-#     IRTools.return!(new_ir, return_value)
-    
-#     return new_ir
-# end
-
-
-
 
 export track
 
@@ -152,40 +117,4 @@ IRTools.@dynamo function track(F, args...)
     # @show new_ir
     return new_ir
 end
-
-
-# macro track(expr)
-#     isexpr(expr, :call) || error("Expression not in the form @track f(args...)")
-#     f, args = ex.args[1], ex.args[2:end]
-#     :(_track($(Meta.quot(expr)), $(esc.((f, args...))...)))
-# end
-
-# @generated function track(f, args...)
-#     ir = track_ir(IRTools.IR(f, args...))
-#     println(ir)
-
-#     m = ir.meta::IRTools.Meta
-#     ir = IRTools.varargs!(m, ir)
-#     IRTools.argnames!(m, :args)
-#     _self = IRTools.splicearg!(m, ir, Symbol("#self#"))
-#     IRTools.prewalk!(x -> x === IRTools.self ? _self : x, ir)
-#     return IRTools.update!(m.code, ir)
-# end
-
-
-
-# @generated function test1(f, args...)
-#     ir = IRTools.empty(IRTools.IR(f, args...))
-#     push!(ir, IRTools.xcall(Main, :println, "hi"))
-#     IRTools.return!(ir, nothing)
-
-#     m = ir.meta::IRTools.Meta
-#     ir = IRTools.varargs!(m, ir)
-#     IRTools.argnames!(m, :args)
-#     _self = IRTools.splicearg!(m, ir, Symbol("#self#"))
-#     IRTools.prewalk!(x -> x === IRTools.self ? _self : x, ir)
-#     return IRTools.update!(m.code, ir)
-# end
-
-
 
