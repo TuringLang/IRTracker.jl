@@ -2,6 +2,7 @@ module DynamicComputationGraphs
 
 include("utils.jl")
 include("graph.jl")
+include("show.jl")
 # include("tape.jl")
 include("tracker.jl")
 
@@ -16,8 +17,9 @@ function test(x)
     t[1] + 1
 end
 
-result, graph = track(Core.add_int, 2, 1)
+result, graph = track(test, 1)
 @show graph
+@show @code_ir test(1)
 # track(weird, 2)
 # @show track(typeof, 1)
 
