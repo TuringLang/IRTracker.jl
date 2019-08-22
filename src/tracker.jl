@@ -28,7 +28,7 @@ record!(tape::GraphTape, value::Union{Argument, Constant, Return, SpecialStateme
 end
 
 
-function update_returns!(block::IRTools.Block, tape, d::VarToRecordDict)
+function update_branches!(block::IRTools.Block, tape, d::VarToRecordDict)
     # called only from within a non-primitive call
     for (position, branch) in enumerate(IRTools.branches(block))
         if IRTools.isreturn(branch)
@@ -115,7 +115,7 @@ function track_ir(old_ir::IRTools.IR)
 
     # update all return values to include `tape`
     for block in IRTools.blocks(new_ir)
-        update_returns!(block, tape, d)
+        update_branches!(block, tape, d)
     end
 
     return new_ir
