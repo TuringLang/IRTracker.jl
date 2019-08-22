@@ -108,13 +108,6 @@ function track_ir(old_ir::IRTools.IR)
 end
 
 
-function print_intrinsic_error(f::Core.IntrinsicFunction, args...)
-    name = unsafe_string(ccall(:jl_intrinsic_name, Cstring, (Core.IntrinsicFunction,), f))
-    error("Can't track the intrinsic function ", name, " with arguments ",
-          join(args, ", "))
-end
-
-
 function error_ir(F, args...)
     dummy(args...) = nothing
     ir = IRTools.empty(IRTools.IR(IRTools.meta(Tuple{Core.Typeof(dummy), Core.Typeof.(args)...})))
