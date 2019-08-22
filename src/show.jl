@@ -24,20 +24,26 @@ function show(io::IO, node::NestedCall, level = 0)
     show(io, node.subtape, level + 1)
 end
 
+function show(io::IO, node::SpecialStatement, level = 0)
+    print(io, " " ^ 2level)
+    print(io, "(", node.index, ") ")
+    print(io, node.expr, " = ", repr(node.value))
+end
+
 function show(io::IO, node::Argument, level = 0)
     print(io, " " ^ 2level)
-    print(io, "Argument ", node.number, " = ", repr(node.value))
+    print(io, "Argument ", node.index, " = ", repr(node.value))
 end
 
 function show(io::IO, node::Return, level = 0)
     print(io, " " ^ 2level)
-    print(io, "(", node.index, ") ")
+    # print(io, "(", node.index, ") ")
     print(io, "return ", node.expr, " = ", repr(node.value))
 end
 
 function show(io::IO, node::Branch, level = 0)
     print(io, " " ^ 2level)
-    print(io, "(", node.index, ") ")
+    # print(io, "(", node.index, ") ")
     print(io, "br ", node.target)
 end
 

@@ -74,13 +74,23 @@ NestedCall(expr, value, index, subtape = GraphTape()) =
 push!(node::NestedCall, child::Node) = (push!(node.subtape, child); node)
 
 
-struct Argument <: Node
-    number::Int
+struct SpecialStatement <: Node
+    expr::Any
     value::Any
+    index::StmtIndex
     info::StatementInfo
 end
 
-Argument(number, value) = Argument(number, value, StatementInfo())
+SpecialStatement(expr, value, index) = SpecialStatement(expr, value, index, StatementInfo())
+
+
+struct Argument <: Node
+    value::Any
+    index::StmtIndex
+    info::StatementInfo
+end
+
+Argument(value, index) = Argument(value, index, StatementInfo())
 
 
 struct Return <: Node

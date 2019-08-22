@@ -4,7 +4,7 @@ using IRTools
 const VarToRecordDict = Dict{IRTools.Variable, Int}
 
 
-record!(tape::GraphTape, value::Union{Constant, Argument, Return}) =
+record!(tape::GraphTape, value::Union{Argument, Constant, Return, SpecialStatement}) =
     push!(tape, value)
 
 @generated function record!(tape::GraphTape, index::StmtIndex, expr, f::F, args...) where F
@@ -59,6 +59,13 @@ function track_statement!(p::IRTools.Pipe, d::VarToRecordDict, tape, variable, s
         reified_call = reify_quote(statement.expr)
         p[variable] = IRTools.stmt(DCGCall.record!(tape, index, reified_call, statement.expr.args...),
                                    line = statement.line)
+    elseif statement.expr isa Expr
+        # other special things, like `:boundscheck` or `foreigncall`
+        # TODO: handle some things specially? esp. foreigncall?
+        index = IRTools.insert!(p, variable, DCGCall.StmtIndex(variable.id))
+        special_expr = DCGCall.SpecialStatement(reify_quote(statement.expr), variable, index)
+        special_record = DCGCall.record!(tape, special_expr)
+        IRTools.push!(p, special_record)
     elseif statement.expr isa QuoteNode
         # for statements that are just constants (like type literals)
         index = IRTools.insert!(p, variable, DCGCall.StmtIndex(variable.id))
@@ -66,11 +73,9 @@ function track_statement!(p::IRTools.Pipe, d::VarToRecordDict, tape, variable, s
         constant_record = IRTools.stmt(DCGCall.record!(tape, constant_expr),
                                        line = statement.line)
         IRTools.push!(p, constant_record)
-    elseif Meta.isexpr(statement.expr, :foreigncall)
-        # TODO: handle this specially?
     else
-        # other special things, like `Expr(:boundscheck)`
         # currently unhandled and simply kept
+        # TODO: issue a warning here?
     end
     
     return nothing
@@ -80,7 +85,8 @@ end
 function track_arguments!(p::IRTools.Pipe, d::VarToRecordDict, tape, arguments)
     for argument in arguments
         argument === tape && continue
-        argument_expr = DCGCall.Argument(argument.id, argument)
+        index = IRTools.push!(p, DCGCall.StmtIndex(argument.id))
+        argument_expr = DCGCall.Argument(argument, index)
         argument_record = DCGCall.record!(tape, argument_expr)
         IRTools.push!(p, argument_record)
     end
