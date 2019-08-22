@@ -7,7 +7,7 @@ record!(tape::GraphTape, value::Union{Constant, Argument, Return}) =
 @generated function record!(tape::GraphTape, expr, f::F, args...) where F
     # from Cassette.canrecurse
     # (https://github.com/jrevels/Cassette.jl/blob/79eabe829a16b6612e0eba491d9f43dc9c11ff02/src/context.jl#L457-L473)
-    mod = Core.Compiler.typename(F).module
+    mod = Base.typename(F).module
     is_builtin = ((F <: Core.Builtin) && !(mod === Core.Compiler)) || F <: Core.IntrinsicFunction
 
     if is_builtin 
