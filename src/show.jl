@@ -50,6 +50,9 @@ end
 show(io::IO, index::StmtIndex) = print(io, "%", index.varid)
 show(io::IO, index::BranchIndex) = print(io, index.block, "-", index.position)
 
+show(io::IO, index::TapeIndex) = print(io, "@", index.id)
+
+
 # function show(io::IO, node::UnconditionalBranch, level = 0)
 #     print(io, " " ^ 2level)
 #     print(io, "br ", node.target, " (", join(node.args, ", "), ")")

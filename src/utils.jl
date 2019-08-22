@@ -34,4 +34,21 @@ function print_intrinsic_error(f::Core.IntrinsicFunction, args...)
 end
 
 
+
+struct TapeIndex
+    id::Int
+end
+
+const VarToRecordDict = Dict{IRTools.Variable, TapeIndex}
+
+record_variable!(d::VarToRecordDict, v::IRTools.Variable) = push!(d, v => TapeIndex(length(d) + 1))
+
+
 reify_quote(expr) = Expr(:copyast, QuoteNode(expr))
+
+prepare_expression(d::VarToRecordDict, var::IRTools.Variable) = d[var]
+prepare_expression(::VarToRecordDict, expr) = expr
+
+function prepare_expression(d::VarToRecordDict, expr::Expr)
+    Expr(expr.head, map(expr -> prepare_expression(d, expr), expr.args)...)
+end
