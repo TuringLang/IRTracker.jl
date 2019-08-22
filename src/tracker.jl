@@ -1,14 +1,4 @@
 using IRTools
-import IRTools: pushfirst!
-
-
-struct TrackerResult{T}
-    value
-    children
-end
-
-TrackerResult(value) = TrackerResult{PrimitiveCall}(value, nothing)
-TrackerResult(value, children) = TrackerResult{NestedCall}(value, children)
 
 
 record!(tape::GraphTape, value::Union{Constant, Argument, Return}) =
