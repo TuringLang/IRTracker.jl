@@ -32,3 +32,6 @@ function print_intrinsic_error(f::Core.IntrinsicFunction, args...)
     error("Can't track the intrinsic function ", name, " with arguments ",
           join(args, ", "))
 end
+
+
+reify_quote(expr) = Expr(:copyast, QuoteNode(expr))

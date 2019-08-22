@@ -1,6 +1,9 @@
 using IRTools
 
 
+const VarToRecordDict = Dict{IRTools.Variable, Int}
+
+
 record!(tape::GraphTape, value::Union{Constant, Argument, Return}) =
     push!(tape, value)
 
@@ -28,12 +31,12 @@ record!(tape::GraphTape, value::Union{Constant, Argument, Return}) =
 end
 
 
-function update_returns!(block::IRTools.Block, tape)
+function update_returns!(block::IRTools.Block, tape, d::VarToRecordDict)
     # called only from within a non-primitive call
     for (position, branch) in enumerate(IRTools.branches(block))
         if IRTools.isreturn(branch)
             return_arg = branch.args[1]
-            reified_return_arg = string(return_arg)
+            reified_return_arg = reify_quote(return_arg)
 
             index = DCGCall.BranchIndex(block.id, position)
             return_record = DCGCall.record!(tape, DCGCall.Return(reified_return_arg, return_arg,
@@ -50,11 +53,10 @@ function update_returns!(block::IRTools.Block, tape)
 end
 
 
-function track_statement!(p::IRTools.Pipe, tape, variable, statement)
-    
+function track_statement!(p::IRTools.Pipe, d::VarToRecordDict, tape, variable, statement)
     if Meta.isexpr(statement.expr, :call)
         index = IRTools.insert!(p, variable, DCGCall.StmtIndex(variable.id))
-        reified_call = string(statement.expr)
+        reified_call = reify_quote(statement.expr)
         p[variable] = IRTools.stmt(DCGCall.record!(tape, index, reified_call, statement.expr.args...),
                                    line = statement.line)
     elseif statement.expr isa QuoteNode
@@ -75,7 +77,7 @@ function track_statement!(p::IRTools.Pipe, tape, variable, statement)
 end
 
 
-function track_arguments!(p::IRTools.Pipe, tape, arguments)
+function track_arguments!(p::IRTools.Pipe, d::VarToRecordDict, tape, arguments)
     for argument in arguments
         argument === tape && continue
         argument_expr = DCGCall.Argument(argument.id, argument)
@@ -89,11 +91,13 @@ end
 
 function track_ir(old_ir::IRTools.IR)
     p = IRTools.Pipe(old_ir)
+    d = VarToRecordDict()
+    
     tape = push!(p, DCGCall.GraphTape())
-    track_arguments!(p, tape, IRTools.arguments(old_ir))
+    track_arguments!(p, d, tape, IRTools.arguments(old_ir))
     
     for (v, stmt) in p
-        track_statement!(p, tape, v, stmt)
+        track_statement!(p, d, tape, v, stmt)
     end
     
     new_ir = IRTools.finish(p)
@@ -101,7 +105,7 @@ function track_ir(old_ir::IRTools.IR)
 
     # update all return values to include `tape`
     for block in IRTools.blocks(new_ir)
-        update_returns!(block, tape)
+        update_returns!(block, tape, d)
     end
 
     return new_ir
@@ -133,8 +137,8 @@ IRTools.@dynamo function track(F, args...)
         return error_ir(F, args...)
     else
         new_ir = track_ir(ir)
-        @show ir
-        # @show new_ir 
+        # @show ir
+        @show new_ir 
         return new_ir
     end
     
