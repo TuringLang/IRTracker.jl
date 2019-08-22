@@ -4,7 +4,7 @@ using IRTools
 record!(tape::GraphTape, value::Union{Constant, Argument, Return}) =
     push!(tape, value)
 
-@generated function record!(tape::GraphTape, expr, f::F, args...) where F
+@generated function record!(tape::GraphTape, index::StmtIndex, expr, f::F, args...) where F
     # from Cassette.canrecurse
     # (https://github.com/jrevels/Cassette.jl/blob/79eabe829a16b6612e0eba491d9f43dc9c11ff02/src/context.jl#L457-L473)
     mod = Base.typename(F).module
@@ -13,14 +13,14 @@ record!(tape::GraphTape, value::Union{Constant, Argument, Return}) =
     if is_builtin 
         quote
             result = f(args...)
-            call = PrimitiveCall(expr, result)
+            call = PrimitiveCall(expr, result, index)
             push!(tape, call)
             return result
         end
     else
         quote
             result, graph = track(f, args...)
-            call = NestedCall(expr, result, graph)
+            call = NestedCall(expr, result, index, graph)
             push!(tape, call)
             return result
         end
@@ -30,12 +30,14 @@ end
 
 function update_returns!(block::IRTools.Block, tape)
     # called only from within a non-primitive call
-    for branch in IRTools.branches(block)
+    for (position, branch) in enumerate(IRTools.branches(block))
         if IRTools.isreturn(branch)
             return_arg = branch.args[1]
             reified_return_arg = string(return_arg)
 
-            return_record = DCGCall.record!(tape, DCGCall.Return(reified_return_arg, return_arg))
+            index = DCGCall.BranchIndex(block.id, position)
+            return_record = DCGCall.record!(tape, DCGCall.Return(reified_return_arg, return_arg,
+                                                                 index))
             IRTools.push!(block, return_record)
             
             return_expr = IRTools.xcall(:tuple, return_arg, tape)
@@ -49,13 +51,16 @@ end
 
 
 function track_statement!(p::IRTools.Pipe, tape, variable, statement)
+    
     if Meta.isexpr(statement.expr, :call)
+        index = IRTools.insert!(p, variable, DCGCall.StmtIndex(variable.id))
         reified_call = string(statement.expr)
-        p[variable] = IRTools.stmt(DCGCall.record!(tape, reified_call, statement.expr.args...),
+        p[variable] = IRTools.stmt(DCGCall.record!(tape, index, reified_call, statement.expr.args...),
                                    line = statement.line)
     elseif statement.expr isa QuoteNode
         # for statements that are just constants (like type literals)
-        constant_expr = DCGCall.Constant(variable)
+        index = IRTools.insert!(p, variable, DCGCall.StmtIndex(variable.id))
+        constant_expr = DCGCall.Constant(variable, index)
         constant_record = IRTools.stmt(DCGCall.record!(tape, constant_expr),
                                        line = statement.line)
         IRTools.push!(p, constant_record)
@@ -86,7 +91,7 @@ function track_ir(old_ir::IRTools.IR)
     p = IRTools.Pipe(old_ir)
     tape = push!(p, DCGCall.GraphTape())
     track_arguments!(p, tape, IRTools.arguments(old_ir))
-
+    
     for (v, stmt) in p
         track_statement!(p, tape, v, stmt)
     end
@@ -135,7 +140,7 @@ IRTools.@dynamo function track(F, args...)
         return error_ir(F, args...)
     else
         new_ir = track_ir(ir)
-        # @show ir
+        @show ir
         # @show new_ir 
         return new_ir
     end

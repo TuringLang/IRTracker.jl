@@ -44,29 +44,33 @@ push!(tape::GraphTape, node::Node) = push!(tape.nodes, node)
 
 struct Constant <: Node
     value::Any
+    index::StmtIndex
     info::StatementInfo
 end
 
-Constant(value) = Constant(value, StatementInfo())
+Constant(value, index) = Constant(value, index, StatementInfo())
 
 
 struct PrimitiveCall <: Node
     expr::Any
     value::Any
+    index::StmtIndex
     info::StatementInfo
 end
 
-PrimitiveCall(expr, value) = PrimitiveCall(expr, value, StatementInfo())
+PrimitiveCall(expr, value, index) = PrimitiveCall(expr, value, index, StatementInfo())
 
 
 struct NestedCall <: Node
     expr::Any
     value::Any
+    index::StmtIndex
     subtape::GraphTape
     info::StatementInfo
 end
 
-NestedCall(expr, value, subtape = GraphTape()) = NestedCall(expr, value, subtape, StatementInfo())
+NestedCall(expr, value, index, subtape = GraphTape()) =
+    NestedCall(expr, value, index, subtape, StatementInfo())
 push!(node::NestedCall, child::Node) = (push!(node.subtape, child); node)
 
 
@@ -82,18 +86,20 @@ Argument(number, value) = Argument(number, value, StatementInfo())
 struct Return <: Node
     expr::Any
     value::Any
+    index::BranchIndex
     info::StatementInfo
 end
 
-Return(expr, value) = Return(expr, value, StatementInfo())
+Return(expr, value, index) = Return(expr, value, index, StatementInfo())
 
 struct Branch
     target::Int
     args::Vector{Int}
+    index::BranchIndex
     info::StatementInfo
 end
 
-Branch(target, args) = Branch(target, args, StatementInfo())
+Branch(target, args, index) = Branch(target, args, index, StatementInfo())
 
 # struct UnconditionalBranch
 #     target::Int

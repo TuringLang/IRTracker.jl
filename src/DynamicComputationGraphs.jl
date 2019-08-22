@@ -19,7 +19,7 @@ end
 
 result, graph = track(test, 1)
 @show graph
-@show @code_ir test(1)
+# @show @code_ir test(1)
 # track(weird, 2)
 # @show track(typeof, 1)
 

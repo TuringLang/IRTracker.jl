@@ -13,11 +13,13 @@ end
 
 function show(io::IO, node::PrimitiveCall, level = 0)
     print(io, " " ^ 2level)
+    print(io, "(", node.index, ") ")
     print(io, node.expr, " = ", repr(node.value))
 end
 
 function show(io::IO, node::NestedCall, level = 0)
     print(io, " " ^ 2level)
+    print(io, "(", node.index, ") ")
     print(io, node.expr, " = ", repr(node.value), "\n")
     show(io, node.subtape, level + 1)
 end
@@ -29,13 +31,18 @@ end
 
 function show(io::IO, node::Return, level = 0)
     print(io, " " ^ 2level)
+    print(io, "(", node.index, ") ")
     print(io, "return ", node.expr, " = ", repr(node.value))
 end
 
 function show(io::IO, node::Branch, level = 0)
     print(io, " " ^ 2level)
+    print(io, "(", node.index, ") ")
     print(io, "br ", node.target)
 end
+
+show(io::IO, index::StmtIndex) = print(io, "%", index.varid)
+show(io::IO, index::BranchIndex) = print(io, index.block, "-", index.position)
 
 # function show(io::IO, node::UnconditionalBranch, level = 0)
 #     print(io, " " ^ 2level)
