@@ -139,10 +139,18 @@ function error_ir(F, args...)
     self = IRTools.argument!(ir)
     arg_values = ntuple(_ -> IRTools.argument!(ir), length(args))
 
-    error_expr = DCGCall.print_intrinsic_error(self, arg_values...)
-    error_result = push!(ir, error_expr)
-    IRTools.return!(ir, error_result)
-    return ir
+
+    if F <: Core.IntrinsicFunction
+        error_expr = DCGCall.print_intrinsic_error(self, arg_values...)
+        error_result = push!(ir, error_expr)
+        IRTools.return!(ir, error_result)
+        return ir
+    else
+        error_result = push!(ir, IRTools.xcall(:error, "cannot handle ", F,
+                                               " with args ", args...))
+        IRTools.return!(ir, error_result)
+        return ir
+    end
 end
 
 
