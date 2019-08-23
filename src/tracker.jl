@@ -44,6 +44,11 @@ function track_branches!(block::IRTools.Block, vm::VariableMap, branches, tape)
             return_expr = IRTools.xcall(:tuple, return_arg, tape)
             return_value = push!(block, return_expr)
             IRTools.return!(block, return_value)
+        else
+            # TODO record this properly
+            args = [substitute(vm, arg) for arg in branch.args if !isnothing(arg)]
+            condition = substitute(vm, branch.condition)
+            IRTools.branch!(block, branch.block, args...; unless = condition)
         end
     end
 
@@ -127,7 +132,6 @@ function track_ir(old_ir::IRTools.IR)
         track_branches!(new_block, vm, IRTools.branches(old_block), tape)
     end
 
-    @show new_ir
     return new_ir
 end
 
@@ -158,7 +162,7 @@ export track
 
 
 IRTools.@dynamo function track(F, args...)
-    # println("handling $F with args $args")
+    println("handling $F with args $args")
     ir = IRTools.IR(F, args...)
 
     if isnothing(ir)
@@ -166,7 +170,7 @@ IRTools.@dynamo function track(F, args...)
     else
         new_ir = track_ir(ir)
         # @show ir
-        # @show new_ir
+        @show new_ir
         return new_ir
     end
     

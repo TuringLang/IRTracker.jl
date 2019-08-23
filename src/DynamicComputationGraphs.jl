@@ -24,7 +24,16 @@ function test2(x)
     end
 end
 
-# @show @code_ir test2(0.3)
+function test3(x)
+    y = zero(x)
+    while x > 0
+        y += 1
+    end
+
+    return y
+end
+
+@show @code_ir test2(2)
 result, graph = track(test2, 2)
 @show graph
 # track(weird, 2)
