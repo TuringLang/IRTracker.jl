@@ -48,7 +48,7 @@ end
 
 VariableMap() = VariableMap(Dict{Any, Any}())
 
-substitute(vm::VariableMap, x::Union{IRTools.Variable, IRTools.NewVariable}) = vm.map[x]
+# substitute(vm::VariableMap, x::Union{IRTools.Variable, IRTools.NewVariable}) = vm.map[x]
 substitute(vm::VariableMap, x) = get(vm.map, x, x)
 substitute(vm::VariableMap) = x -> substitute(p, x)
 
