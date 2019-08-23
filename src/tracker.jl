@@ -86,16 +86,19 @@ function track_statement!(block::IRTools.Block, vm::VariableMap, tape, variable,
 end
 
 
-function add_arguments!(ir::IRTools.IR, old_arguments)
-    map(_ -> IRTools.argument!(ir), old_arguments)
+function add_arguments!(block::IRTools.Block, vm::VariableMap, old_arguments)
+    map(old_arguments) do old_argument
+        argument = IRTools.argument!(block)
+        record_substitution!(vm, old_argument, argument)
+        argument
+    end
 end
 
-function track_arguments!(ir::IRTools.IR, vm::VariableMap, tape, arguments)
+function track_arguments!(block::IRTools.Block, vm::VariableMap, tape, arguments)
     for argument in arguments
-        index = push!(ir, DCGCall.StmtIndex(argument.id))
+        index = push!(block, DCGCall.StmtIndex(argument.id))
         argument_record = DCGCall.record!(tape, DCGCall.Argument(argument, index))
-        push!(ir, argument_record)
-        record_substitution!(vm, argument, argument)
+        push!(block, argument_record)
     end
 
     return nothing
@@ -105,14 +108,17 @@ end
 function track_ir(old_ir::IRTools.IR)
     new_ir = IRTools.empty(old_ir)
     vm = VariableMap()
+    tape = nothing
 
-    arguments = add_arguments!(new_ir, IRTools.arguments(old_ir))
-    tape = push!(new_ir, DCGCall.GraphTape())
-    track_arguments!(new_ir, vm, tape, arguments)
-
-    # update all return values to include `tape`
     for (b, old_block) in enumerate(IRTools.blocks(old_ir))
-        new_block = (b != 1) ? IRTools.block!(new_ir) : IRTools.block(new_ir, 1)
+        if b != 1
+            new_block = IRTools.block!(new_ir)
+        else
+            new_block = IRTools.block(new_ir, 1)
+            arguments = add_arguments!(new_block, vm, IRTools.arguments(old_block))
+            tape = push!(new_block, DCGCall.GraphTape())
+            track_arguments!(new_block, vm, tape, arguments)
+        end
         
         for (v, stmt) in old_block
             track_statement!(new_block, vm, tape, v, stmt)
