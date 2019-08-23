@@ -41,3 +41,16 @@ end
 
 reify_quote(expr) = Expr(:copyast, QuoteNode(expr))
 
+
+struct VariableMap
+    map::Dict{Any, Any}
+end
+
+VariableMap() = VariableMap(Dict{Any, Any}())
+
+substitute(vm::VariableMap, x::Union{IRTools.Variable, IRTools.NewVariable}) = vm.map[x]
+substitute(vm::VariableMap, x) = get(vm.map, x, x)
+substitute(vm::VariableMap) = x -> substitute(p, x)
+
+record_substitution!(vm::VariableMap, x, y) = push!(vm.map, x => y)
+
