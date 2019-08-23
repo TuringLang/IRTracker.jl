@@ -28,13 +28,11 @@ record!(tape::GraphTape, value::Union{Argument, Constant, Return, SpecialStateme
 end
 
 
-function update_branches!(block::IRTools.Block, tape, d::VarToRecordDict)
+function update_branches!(block::IRTools.Block, tape)
     # called only from within a non-primitive call
     for (position, branch) in enumerate(IRTools.branches(block))
         if IRTools.isreturn(branch)
             return_arg = branch.args[1]
-            # TODO: use original return variable here
-            # reified_return_arg = reify_quote(prepare_expression(d, return_arg))
             reified_return_arg = reify_quote(return_arg)
             
             index = DCGCall.BranchIndex(block.id, position)
@@ -52,30 +50,25 @@ function update_branches!(block::IRTools.Block, tape, d::VarToRecordDict)
 end
 
 
-function track_statement!(p::IRTools.Pipe, d::VarToRecordDict, tape, variable, statement)
+function track_statement!(p::IRTools.Pipe, tape, variable, statement)
     if Meta.isexpr(statement.expr, :call)
-        record_variable!(d, variable)
         index = IRTools.insert!(p, variable, DCGCall.StmtIndex(variable.id))
-        reified_call = reify_quote(prepare_expression(d, statement.expr))
+        reified_call = reify_quote(statement.expr)
         p[variable] = IRTools.stmt(DCGCall.record!(tape, index, reified_call, statement.expr.args...),
                                    line = statement.line)
     elseif statement.expr isa Expr
         # other special things, like `:boundscheck` or `foreigncall`
         # TODO: handle some things specially? esp. foreigncall?
-        record_variable!(d, variable)
         index = IRTools.insert!(p, variable, DCGCall.StmtIndex(variable.id))
-        reified_call = reify_quote(prepare_expression(d, statement.expr))
+        reified_call = reify_quote(d, statement.expr)
         special_expr = DCGCall.SpecialStatement(reified_call, variable, index)
         special_record = DCGCall.record!(tape, special_expr)
-        IRTools.push!(p, special_record)
     elseif statement.expr isa QuoteNode
         # for statements that are just constants (like type literals)
-        record_variable!(d, variable)
         index = IRTools.insert!(p, variable, DCGCall.StmtIndex(variable.id))
         constant_expr = DCGCall.Constant(variable, index)
         constant_record = IRTools.stmt(DCGCall.record!(tape, constant_expr),
                                        line = statement.line)
-        IRTools.push!(p, constant_record)
     else
         # currently unhandled and simply kept
         # TODO: issue a warning here?
@@ -85,14 +78,11 @@ function track_statement!(p::IRTools.Pipe, d::VarToRecordDict, tape, variable, s
 end
 
 
-function track_arguments!(p::IRTools.Pipe, d::VarToRecordDict, tape, arguments)
+function track_arguments!(p::IRTools.Pipe, tape, arguments)
     for argument in arguments
         index = IRTools.push!(p, DCGCall.StmtIndex(argument.id))
         argument_expr = DCGCall.Argument(argument, index)
         argument_record = DCGCall.record!(tape, argument_expr)
-        IRTools.push!(p, argument_record)
-
-        record_variable!(d, argument)
     end
 
     return nothing
@@ -101,13 +91,12 @@ end
 
 function track_ir(old_ir::IRTools.IR)
     p = IRTools.Pipe(old_ir)
-    d = VarToRecordDict()
     
     tape = push!(p, DCGCall.GraphTape())
-    track_arguments!(p, d, tape, IRTools.arguments(old_ir))
+    track_arguments!(p, tape, IRTools.arguments(old_ir))
     
     for (v, stmt) in p
-        track_statement!(p, d, tape, v, stmt)
+        track_statement!(p, tape, v, stmt)
     end
     
     new_ir = IRTools.finish(p)
@@ -115,7 +104,7 @@ function track_ir(old_ir::IRTools.IR)
 
     # update all return values to include `tape`
     for block in IRTools.blocks(new_ir)
-        update_branches!(block, tape, d)
+        update_branches!(block, tape)
     end
 
     return new_ir
