@@ -60,15 +60,17 @@ function track_statement!(p::IRTools.Pipe, tape, variable, statement)
         # other special things, like `:boundscheck` or `foreigncall`
         # TODO: handle some things specially? esp. foreigncall?
         index = IRTools.insert!(p, variable, DCGCall.StmtIndex(variable.id))
-        reified_call = reify_quote(d, statement.expr)
+        reified_call = reify_quote(statement.expr)
         special_expr = DCGCall.SpecialStatement(reified_call, variable, index)
         special_record = DCGCall.record!(tape, special_expr)
+        IRTools.push!(p, special_record)
     elseif statement.expr isa QuoteNode
         # for statements that are just constants (like type literals)
         index = IRTools.insert!(p, variable, DCGCall.StmtIndex(variable.id))
         constant_expr = DCGCall.Constant(variable, index)
         constant_record = IRTools.stmt(DCGCall.record!(tape, constant_expr),
                                        line = statement.line)
+        IRTools.push!(p, constant_record)
     else
         # currently unhandled and simply kept
         # TODO: issue a warning here?
@@ -83,6 +85,7 @@ function track_arguments!(p::IRTools.Pipe, tape, arguments)
         index = IRTools.push!(p, DCGCall.StmtIndex(argument.id))
         argument_expr = DCGCall.Argument(argument, index)
         argument_record = DCGCall.record!(tape, argument_expr)
+        IRTools.push!(p, argument_record)
     end
 
     return nothing
