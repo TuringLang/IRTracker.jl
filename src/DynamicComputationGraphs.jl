@@ -10,6 +10,7 @@ include("tracker.jl")
 f(x) = x + 1
 
 weird(n) = rand() < 1/(n + 1) ? n : weird(n + 1)
+geom(n, β) = rand() < β ? n : geom(n + 1, β)
 
 function test1(x)
     t = (x, x)
@@ -33,7 +34,7 @@ function test3(x)
     return y
 end
 
-@show @code_ir test2(2)
+# @show @code_ir test2(0.3)
 result, graph = track(test2, 2)
 @show graph
 # track(weird, 2)
