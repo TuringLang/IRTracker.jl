@@ -33,10 +33,11 @@ function track_branches!(block::IRTools.Block, vm::VariableMap, branches, tape)
     for (position, branch) in enumerate(branches)
         if IRTools.isreturn(branch)
             return_arg = substitute(vm, branch.args[1])
-            reified_return_arg = reify_quote(return_arg)
+            reified_return_arg = reify_quote(branch.args[1])
             
             index = DCGCall.BranchIndex(block.id, position)
-            return_record = DCGCall.record!(tape, DCGCall.Return(reified_return_arg, return_arg,
+            return_record = DCGCall.record!(tape, DCGCall.Return(reified_return_arg,
+                                                                 return_arg,
                                                                  index))
             push!(block, return_record)
             
@@ -54,7 +55,6 @@ function track_statement!(block::IRTools.Block, vm::VariableMap, tape, variable,
     if Meta.isexpr(statement.expr, :call)
         index = push!(block, DCGCall.StmtIndex(variable.id))
         reified_call = reify_quote(statement.expr)
-        @show vm, statement
         args = [substitute(vm, arg) for arg in statement.expr.args]
         stmt_record = IRTools.stmt(DCGCall.record!(tape, index, reified_call, args...),
                                    line = statement.line)
@@ -86,12 +86,14 @@ function track_statement!(block::IRTools.Block, vm::VariableMap, tape, variable,
 end
 
 
+function add_arguments!(ir::IRTools.IR, old_arguments)
+    map(_ -> IRTools.argument!(ir), old_arguments)
+end
+
 function track_arguments!(ir::IRTools.IR, vm::VariableMap, tape, arguments)
-    for _argument in arguments
-        argument = IRTools.argument!(ir)
+    for argument in arguments
         index = push!(ir, DCGCall.StmtIndex(argument.id))
-        argument_expr = DCGCall.Argument(argument, index)
-        argument_record = DCGCall.record!(tape, argument_expr)
+        argument_record = DCGCall.record!(tape, DCGCall.Argument(argument, index))
         push!(ir, argument_record)
         record_substitution!(vm, argument, argument)
     end
@@ -103,10 +105,11 @@ end
 function track_ir(old_ir::IRTools.IR)
     new_ir = IRTools.empty(old_ir)
     vm = VariableMap()
-    
+
+    arguments = add_arguments!(new_ir, IRTools.arguments(old_ir))
     tape = push!(new_ir, DCGCall.GraphTape())
-    track_arguments!(new_ir, vm, tape, IRTools.arguments(old_ir))
-    
+    track_arguments!(new_ir, vm, tape, arguments)
+
     # update all return values to include `tape`
     for (b, old_block) in enumerate(IRTools.blocks(old_ir))
         new_block = (b != 1) ? IRTools.block!(new_ir) : IRTools.block(new_ir, 1)
@@ -118,6 +121,7 @@ function track_ir(old_ir::IRTools.IR)
         track_branches!(new_block, vm, IRTools.branches(old_block), tape)
     end
 
+    @show new_ir
     return new_ir
 end
 
@@ -148,7 +152,7 @@ IRTools.@dynamo function track(F, args...)
     else
         new_ir = track_ir(ir)
         # @show ir
-        @show new_ir
+        # @show new_ir
         return new_ir
     end
     

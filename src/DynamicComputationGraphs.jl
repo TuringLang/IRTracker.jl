@@ -25,7 +25,7 @@ function test2(x)
 end
 
 # @show @code_ir test2(0.3)
-result, graph = track(test1, 2)
+result, graph = track(test2, 2)
 @show graph
 # track(weird, 2)
 # @show track(typeof, 1)
