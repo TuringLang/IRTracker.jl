@@ -150,3 +150,23 @@ Currently, there are no test or good examples, but the interface is simple:
 To run the small debug examples, I use
 
     julia --project=. src/DynamicComputationGraphs.jl
+
+
+# Project Goals
+
+With this graph tracker, one should be able to perform the following basic tasks
+
+- Perform the usual forward computation (without performance overhead by interpretation)
+- Record expression nodes representing the calculation (raw `Expr` or something equivalent, allowing to convert back)
+- Record meta-information from the original code, such as information about random variable types, conditions, etc.
+- Record, if applicable, information needed for backward calculation
+- The backward information in the graph should be mutable, so that one can update subgraphs without full re-evaluation when changing parts of a model.
+
+Here are a few corner cases which we should support, specifically relating to tracking Turing models:
+
+- [ ] stochastic and deterministic `For` loops i.e., `K ~ ...; for k in 1:K`
+- [ ] stochastic and deterministic While loops
+- [ ] stochastic and deterministic `If-Else` conditions 
+- [ ] stochastic and deterministic statements / assignments
+- [ ] model recursions / compositional models
+- [ ] recursions in general
