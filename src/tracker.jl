@@ -91,45 +91,68 @@ function track_statement!(block::IRTools.Block, vm::VariableMap, tape, variable,
 end
 
 
-function add_arguments!(block::IRTools.Block, vm::VariableMap, old_arguments)
-    map(old_arguments) do old_argument
-        argument = IRTools.argument!(block)
-        record_substitution!(vm, old_argument, argument)
-        argument
-    end
+function copy_argument!(block::IRTools.Block, vm::VariableMap, argument)
+    # without `insert = false`, `nothing` gets added to branches pointing here
+    new_argument = IRTools.argument!(block, insert = false)
+    record_substitution!(vm, argument, new_argument)
 end
 
-function track_arguments!(block::IRTools.Block, vm::VariableMap, tape, arguments)
-    for argument in arguments
-        index = push!(block, DCGCall.StmtIndex(argument.id))
-        argument_record = DCGCall.record!(tape, DCGCall.Argument(argument, index))
-        push!(block, argument_record)
+
+function track_argument!(block::IRTools.Block, vm::VariableMap, tape, argument)
+    index = push!(block, DCGCall.StmtIndex(argument.id))
+    new_argument = substitute(vm, argument)
+    argument_record = DCGCall.record!(tape, DCGCall.Argument(new_argument, index))
+    push!(block, argument_record)
+end
+
+
+function track_first_block!(new_block::IRTools.Block, vm::VariableMap, old_block)
+    # we should insert new argument slots for block before adding the tape
+    for argument in IRTools.arguments(old_block)
+        copy_argument!(new_block, vm, argument)
     end
 
-    return nothing
+    tape = push!(new_block, DCGCall.GraphTape())
+    
+    for argument in IRTools.arguments(old_block)
+        track_argument!(new_block, vm, tape, argument)
+    end
+    
+    for (v, stmt) in old_block
+        track_statement!(new_block, vm, tape, v, stmt)
+    end
+    
+    track_branches!(new_block, vm, IRTools.branches(old_block), tape)
+
+    return tape
+end
+
+
+function track_block!(new_block::IRTools.Block, vm::VariableMap, tape, old_block)
+    for argument in IRTools.arguments(old_block)
+        copy_argument!(new_block, vm, argument)
+        track_argument!(new_block, vm, tape, argument)
+    end
+    
+    for (v, stmt) in old_block
+        track_statement!(new_block, vm, tape, v, stmt)
+    end
+    
+    track_branches!(new_block, vm, IRTools.branches(old_block), tape)
 end
 
 
 function track_ir(old_ir::IRTools.IR)
     new_ir = IRTools.empty(old_ir)
     vm = VariableMap()
-    tape = nothing
 
-    for (b, old_block) in enumerate(IRTools.blocks(old_ir))
-        if b != 1
-            new_block = IRTools.block!(new_ir)
-        else
-            new_block = IRTools.block(new_ir, 1)
-            arguments = add_arguments!(new_block, vm, IRTools.arguments(old_block))
-            tape = push!(new_block, DCGCall.GraphTape())
-            track_arguments!(new_block, vm, tape, arguments)
-        end
-        
-        for (v, stmt) in old_block
-            track_statement!(new_block, vm, tape, v, stmt)
-        end
-        
-        track_branches!(new_block, vm, IRTools.branches(old_block), tape)
+    old_first_block = IRTools.block(old_ir, 1)
+    new_first_block = IRTools.block(new_ir, 1)
+    tape = track_first_block!(new_first_block, vm, old_first_block)
+    
+    for old_block in Iterators.drop(IRTools.blocks(old_ir), 1)
+        new_block = IRTools.block!(new_ir)
+        track_block!(new_block, vm, tape, old_block)
     end
 
     return new_ir
@@ -143,7 +166,6 @@ function error_ir(F, args...)
     self = IRTools.argument!(ir)
     arg_values = ntuple(_ -> IRTools.argument!(ir), length(args))
 
-
     if F <: Core.IntrinsicFunction
         error_expr = DCGCall.print_intrinsic_error(self, arg_values...)
         error_result = push!(ir, error_expr)
@@ -151,18 +173,18 @@ function error_ir(F, args...)
         return ir
     else
         error_result = push!(ir, IRTools.xcall(:error, "cannot handle ", F,
-                                               " with args ", args...))
+                                               " with args ", join(args, ", ")))
         IRTools.return!(ir, error_result)
         return ir
     end
 end
 
 
+
 export track
 
-
 IRTools.@dynamo function track(F, args...)
-    println("handling $F with args $args")
+    # println("handling $F with args $args")
     ir = IRTools.IR(F, args...)
 
     if isnothing(ir)
@@ -170,7 +192,7 @@ IRTools.@dynamo function track(F, args...)
     else
         new_ir = track_ir(ir)
         # @show ir
-        @show new_ir
+        # @show new_ir
         return new_ir
     end
     

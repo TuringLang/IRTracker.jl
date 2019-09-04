@@ -26,16 +26,17 @@ function test2(x)
 end
 
 function test3(x)
-    y = zero(x)
+    y = 0 #zero(x)
     while x > 0
         y += 1
+        x -= 1
     end
 
     return y
 end
 
 # @show @code_ir test2(0.3)
-result, graph = track(test2, 2)
+result, graph = track(test3, 2)
 @show graph
 # track(weird, 2)
 # @show track(typeof, 1)
