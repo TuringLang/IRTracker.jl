@@ -57,14 +57,25 @@ record_substitution!(vm::VariableMap, x, y) = push!(vm.map, x => y)
 
 const JumpTargets = Dict{Int, Vector{Int}}
 
+function pushtarget!(jt::JumpTargets, from, to)
+    t = get!(jt, to, Int[])
+    push!(t, from)
+end
+
 function jumptargets(ir::IRTools.IR)
     targets = JumpTargets()
     
     for block in IRTools.blocks(ir)
-        for branch in IRTools.branches(block)
+        branches = IRTools.branches(block)
+        
+        for (i, branch) in enumerate(branches)
             if !IRTools.isreturn(branch)
-                t = get!(targets, branch.block, Int[])
-                push!(t, block.id)
+                pushtarget!(targets, block.id, branch.block)
+
+                if IRTools.isconditional(branch) && i == length(branches)
+                    # conditional branch with fallthrough (last of all)
+                    pushtarget!(targets, block.id, block.id + 1)
+                end
             end
         end
     end

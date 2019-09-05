@@ -117,7 +117,6 @@ function track_first_block!(new_block::IRTools.Block, vm::VariableMap, jt::JumpT
     end
 
     tape = push!(new_block, DCGCall.GraphTape())
-    # record phi node here
     
     for argument in IRTools.arguments(old_block)
         track_argument!(new_block, vm, tape, argument)
@@ -210,7 +209,7 @@ IRTools.@dynamo function track(F, args...)
     else
         new_ir = track_ir(ir)
         # @show ir
-        # @show new_ir
+        @show new_ir
         return new_ir
     end
     
