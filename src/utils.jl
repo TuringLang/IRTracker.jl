@@ -54,3 +54,21 @@ substitute(vm::VariableMap) = x -> substitute(p, x)
 
 record_substitution!(vm::VariableMap, x, y) = push!(vm.map, x => y)
 
+
+const JumpTargets = Dict{Int, Vector{Int}}
+
+function jumptargets(ir::IRTools.IR)
+    targets = JumpTargets()
+    
+    for block in IRTools.blocks(ir)
+        for branch in IRTools.branches(block)
+            if !IRTools.isreturn(branch)
+                t = get!(targets, branch.block, Int[])
+                push!(t, block.id)
+            end
+        end
+    end
+
+    return targets
+end
+

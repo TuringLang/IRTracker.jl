@@ -1,7 +1,7 @@
 using IRTools
 
 
-record!(tape::GraphTape, value::Union{Argument, Constant, Return, SpecialStatement}) =
+record!(tape::GraphTape, value::Node) =
     push!(tape, value)
 
 @generated function record!(tape::GraphTape, index::StmtIndex, expr, f::F, args...) where F
@@ -31,24 +31,28 @@ end
 function track_branches!(block::IRTools.Block, vm::VariableMap, branches, tape)
     # called only from within a non-primitive call
     for (position, branch) in enumerate(branches)
+        index = DCGCall.BranchIndex(block.id, position)
+        arguments = [substitute(vm, arg) for arg in branch.args]
+        reified_arguments = map(reify_quote, branch.args)
+        
         if IRTools.isreturn(branch)
-            return_arg = substitute(vm, branch.args[1])
-            reified_return_arg = reify_quote(branch.args[1])
-            
-            index = DCGCall.BranchIndex(block.id, position)
-            return_record = DCGCall.record!(tape, DCGCall.Return(reified_return_arg,
-                                                                 return_arg,
+            @assert length(arguments) == 1
+            return_record = DCGCall.record!(tape, DCGCall.Return(reified_arguments[1],
+                                                                 arguments[1],
                                                                  index))
             push!(block, return_record)
             
-            return_expr = IRTools.xcall(:tuple, return_arg, tape)
+            return_expr = IRTools.xcall(:tuple, arguments..., tape)
             return_value = push!(block, return_expr)
             IRTools.return!(block, return_value)
+
         else
-            # TODO record this properly
-            args = [substitute(vm, arg) for arg in branch.args if !isnothing(arg)]
+            # TODO record better information here
+            arg_vector = IRTools.xcall(:vect, arguments...)
+            jump_record = DCGCall.Branch(branch.block, arg_vector, index)
             condition = substitute(vm, branch.condition)
-            IRTools.branch!(block, branch.block, args...; unless = condition)
+            target_info = push!(block, jump_record)
+            IRTools.branch!(block, branch.block, arguments..., target_info; unless = condition)
         end
     end
 
@@ -66,7 +70,7 @@ function track_statement!(block::IRTools.Block, vm::VariableMap, tape, variable,
         r = push!(block, stmt_record)
         record_substitution!(vm, variable, r)
     elseif statement.expr isa Expr
-        # other special things, like `:boundscheck` or `foreigncall`
+        # other special things, like `:boundscheck` or `:foreigncall`
         # TODO: handle some things specially? esp. foreigncall?
         index = push!(block, DCGCall.StmtIndex(variable.id))
         reified_call = reify_quote(statement.expr)
@@ -106,13 +110,14 @@ function track_argument!(block::IRTools.Block, vm::VariableMap, tape, argument)
 end
 
 
-function track_first_block!(new_block::IRTools.Block, vm::VariableMap, old_block)
+function track_first_block!(new_block::IRTools.Block, vm::VariableMap, jt::JumpTargets, old_block)
     # we should insert new argument slots for block before adding the tape
     for argument in IRTools.arguments(old_block)
         copy_argument!(new_block, vm, argument)
     end
 
     tape = push!(new_block, DCGCall.GraphTape())
+    # record phi node here
     
     for argument in IRTools.arguments(old_block)
         track_argument!(new_block, vm, tape, argument)
@@ -128,10 +133,22 @@ function track_first_block!(new_block::IRTools.Block, vm::VariableMap, old_block
 end
 
 
-function track_block!(new_block::IRTools.Block, vm::VariableMap, tape, old_block)
+function track_jump!(new_block::IRTools.Block, tape, branch_argument)
+    jump_record = DCGCall.record!(tape, branch_argument)
+    push!(new_block, jump_record)
+end
+
+
+function track_block!(new_block::IRTools.Block, vm::VariableMap, jt::JumpTargets, tape, old_block)
     for argument in IRTools.arguments(old_block)
         copy_argument!(new_block, vm, argument)
         track_argument!(new_block, vm, tape, argument)
+    end
+
+    # record phi node here
+    if haskey(jt, old_block.id)
+        branch_argument = IRTools.argument!(new_block, insert = false)
+        track_jump!(new_block, tape, branch_argument)
     end
     
     for (v, stmt) in old_block
@@ -145,14 +162,15 @@ end
 function track_ir(old_ir::IRTools.IR)
     new_ir = IRTools.empty(old_ir)
     vm = VariableMap()
+    jt = jumptargets(old_ir)
 
     old_first_block = IRTools.block(old_ir, 1)
     new_first_block = IRTools.block(new_ir, 1)
-    tape = track_first_block!(new_first_block, vm, old_first_block)
+    tape = track_first_block!(new_first_block, vm, jt, old_first_block)
     
     for old_block in Iterators.drop(IRTools.blocks(old_ir), 1)
         new_block = IRTools.block!(new_ir)
-        track_block!(new_block, vm, tape, old_block)
+        track_block!(new_block, vm, jt, tape, old_block)
     end
 
     return new_ir

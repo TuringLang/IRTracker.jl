@@ -36,6 +36,11 @@ end
 
 function show(io::IO, node::Branch, level = 0)
     print(io, "br ", node.target)
+    if length(node.args) > 0
+        print(io, " (")
+        join(io, node.args, ", ")
+        print(io, ")")
+    end
 end
 
 show(io::IO, index::StmtIndex) = print(io, "%", index.varid)

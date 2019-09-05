@@ -19,8 +19,6 @@ show(io::IO, si::StatementInfo) =
 
 
 
-
-
 export Argument,
     # ConditionalBranch,
     Branch,
@@ -102,7 +100,7 @@ end
 
 Return(expr, value, index) = Return(expr, value, index, StatementInfo())
 
-struct Branch
+struct Branch <: Node
     target::Int
     args::Vector{Int}
     index::BranchIndex
