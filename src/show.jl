@@ -36,10 +36,18 @@ end
 
 function show(io::IO, node::Branch, level = 0)
     print(io, "br ", node.target)
-    if length(node.args) > 0
+
+    if length(node.arg_exprs) > 0
+        arguments = map(node.arg_exprs, node.arg_values) do e, v
+            (e isa IRTools.Variable) ?  "$e = $v" : string(v)
+        end
         print(io, " (")
-        join(io, node.args, ", ")
+        join(io, arguments, ", ")
         print(io, ")")
+    end
+
+    if !isnothing(node.condition_expr)
+        print(io, " since ", node.condition_expr)
     end
 end
 

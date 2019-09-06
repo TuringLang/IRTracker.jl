@@ -102,12 +102,15 @@ Return(expr, value, index) = Return(expr, value, index, StatementInfo())
 
 struct Branch <: Node
     target::Int
-    args::Vector{Int}
+    arg_exprs::Vector{Any}
+    arg_values::Vector{Any}
+    condition_expr::Any
     index::BranchIndex
     info::StatementInfo
 end
 
-Branch(target, args, index) = Branch(target, args, index, StatementInfo())
+Branch(target, arg_exprs, arg_values, condition_expr, index) =
+    Branch(target, arg_exprs, arg_values, condition_expr, index, StatementInfo())
 
 # struct UnconditionalBranch
 #     target::Int

@@ -48,8 +48,10 @@ function track_branches!(block::IRTools.Block, vm::VariableMap, branches, tape)
 
         else
             # TODO record better information here
-            arg_vector = IRTools.xcall(:vect, arguments...)
-            jump_record = DCGCall.Branch(branch.block, arg_vector, index)
+            arg_exprs = IRTools.xcall(:vect, reified_arguments...)
+            arg_values = IRTools.xcall(:vect, arguments...)
+            condition_expr = reify_quote(branch.condition)
+            jump_record = DCGCall.Branch(branch.block, arg_exprs, arg_values, condition_expr, index)
             condition = substitute(vm, branch.condition)
             target_info = push!(block, jump_record)
             IRTools.branch!(block, branch.block, arguments..., target_info; unless = condition)
