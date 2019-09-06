@@ -112,23 +112,28 @@ function track_argument!(block::IRTools.Block, vm::VariableMap, tape, argument)
 end
 
 
+function track_jump!(new_block::IRTools.Block, tape, branch_argument)
+    jump_record = DCGCall.record!(tape, branch_argument)
+    push!(new_block, jump_record)
+end
+
+
 function track_block!(new_block::IRTools.Block, vm::VariableMap, jt::JumpTargets, tape, old_block;
                       first = false)
     @assert first || !isnothing(tape)
 
-    # add block arguments as necessary
+    # add arguments to block as necessary
     for argument in IRTools.arguments(old_block)
         copy_argument!(new_block, vm, argument)
     end
 
+    # for the first block, set up the tape
     first && (tape = push!(new_block, DCGCall.GraphTape()))
 
     # record branches to here, if there are any
     if haskey(jt, old_block.id)
         branch_argument = IRTools.argument!(new_block, insert = false)
-        # track_jump!(new_block, tape, branch_argument)
-        jump_record = DCGCall.record!(tape, branch_argument)
-        push!(new_block, jump_record)
+        track_jump!(new_block, tape, branch_argument)
     end
 
     # record rest of arguments
@@ -146,6 +151,7 @@ function track_block!(new_block::IRTools.Block, vm::VariableMap, jt::JumpTargets
 end
 
 
+# tracking the first block is special, because only there the tape is set up
 track_first_block!(new_block::IRTools.Block, vm::VariableMap, jt::JumpTargets, old_block) =
     track_block!(new_block, vm, jt, nothing, old_block, first = true)
 
