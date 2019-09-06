@@ -45,9 +45,7 @@ function track_branches!(block::IRTools.Block, vm::VariableMap, branches, tape)
             return_expr = IRTools.xcall(:tuple, arguments..., tape)
             return_value = push!(block, return_expr)
             IRTools.return!(block, return_value)
-
         else
-            # TODO record better information here
             arg_exprs = IRTools.xcall(:vect, reified_arguments...)
             arg_values = IRTools.xcall(:vect, arguments...)
             condition_expr = reify_quote(branch.condition)
@@ -55,6 +53,15 @@ function track_branches!(block::IRTools.Block, vm::VariableMap, branches, tape)
             condition = substitute(vm, branch.condition)
             target_info = push!(block, jump_record)
             IRTools.branch!(block, branch.block, arguments..., target_info; unless = condition)
+
+            # if position == length(branches) && IRTools.isconditional(branch)
+            #     # record implicit fallthrough to next block, by inserting explicit branch
+            #     empty_vector_expr = IRTools.xcall(:vect)
+            #     implicit_jump_record = DCGCall.Branch(branch.block, empty_vector_expr,
+            #                                           empty_vector_expr, :nothing, index)
+            #     target_info = push!(block, implicit_jump_record)
+            #     IRTools.branch!(block, block.id + 1, target_info)
+            # end
         end
     end
 
@@ -157,6 +164,7 @@ track_first_block!(new_block::IRTools.Block, vm::VariableMap, jt::JumpTargets, o
 
 
 function track_ir(old_ir::IRTools.IR)
+    IRTools.explicitbranch!(old_ir)
     new_ir = IRTools.empty(old_ir)
     vm = VariableMap()
     jt = jumptargets(old_ir)
@@ -206,7 +214,7 @@ IRTools.@dynamo function track(F, args...)
         return error_ir(F, args...)
     else
         new_ir = track_ir(ir)
-        # @show ir
+        @show ir
         @show new_ir
         return new_ir
     end
