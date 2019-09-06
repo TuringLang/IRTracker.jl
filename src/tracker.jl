@@ -112,14 +112,26 @@ function track_argument!(block::IRTools.Block, vm::VariableMap, tape, argument)
 end
 
 
-function track_first_block!(new_block::IRTools.Block, vm::VariableMap, jt::JumpTargets, old_block)
-    # we should insert new argument slots for block before adding the tape
+function track_block!(new_block::IRTools.Block, vm::VariableMap, jt::JumpTargets, tape, old_block;
+                      first = false)
+    @assert first || !isnothing(tape)
+
+    # add block arguments as necessary
     for argument in IRTools.arguments(old_block)
         copy_argument!(new_block, vm, argument)
     end
 
-    tape = push!(new_block, DCGCall.GraphTape())
-    
+    first && (tape = push!(new_block, DCGCall.GraphTape()))
+
+    # record branches to here, if there are any
+    if haskey(jt, old_block.id)
+        branch_argument = IRTools.argument!(new_block, insert = false)
+        # track_jump!(new_block, tape, branch_argument)
+        jump_record = DCGCall.record!(tape, branch_argument)
+        push!(new_block, jump_record)
+    end
+
+    # record rest of arguments
     for argument in IRTools.arguments(old_block)
         track_argument!(new_block, vm, tape, argument)
     end
@@ -134,30 +146,8 @@ function track_first_block!(new_block::IRTools.Block, vm::VariableMap, jt::JumpT
 end
 
 
-function track_jump!(new_block::IRTools.Block, tape, branch_argument)
-    jump_record = DCGCall.record!(tape, branch_argument)
-    push!(new_block, jump_record)
-end
-
-
-function track_block!(new_block::IRTools.Block, vm::VariableMap, jt::JumpTargets, tape, old_block)
-    for argument in IRTools.arguments(old_block)
-        copy_argument!(new_block, vm, argument)
-        track_argument!(new_block, vm, tape, argument)
-    end
-
-    # record phi node here
-    if haskey(jt, old_block.id)
-        branch_argument = IRTools.argument!(new_block, insert = false)
-        track_jump!(new_block, tape, branch_argument)
-    end
-    
-    for (v, stmt) in old_block
-        track_statement!(new_block, vm, tape, v, stmt)
-    end
-    
-    track_branches!(new_block, vm, IRTools.branches(old_block), tape)
-end
+track_first_block!(new_block::IRTools.Block, vm::VariableMap, jt::JumpTargets, old_block) =
+    track_block!(new_block, vm, jt, nothing, old_block, first = true)
 
 
 function track_ir(old_ir::IRTools.IR)
