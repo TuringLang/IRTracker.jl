@@ -30,6 +30,9 @@ export Argument,
     # UnconditionalBranch
 
 abstract type Node end
+abstract type StatementNode <: Node end
+abstract type BranchNode <: Node end
+
 
 """Record of data and control flow of evaluating IR."""
 struct GraphTape
@@ -37,10 +40,10 @@ struct GraphTape
 end
 
 GraphTape() = GraphTape(Node[])
-push!(tape::GraphTape, node::Node) = push!(tape.nodes, node)
+push!(tape::GraphTape, node::Node) = (push!(tape.nodes, node); tape)
 
 
-struct Constant <: Node
+struct Constant <: StatementNode
     value::Any
     index::StmtIndex
     info::StatementInfo
@@ -49,7 +52,7 @@ end
 Constant(value, index) = Constant(value, index, StatementInfo())
 
 
-struct PrimitiveCall <: Node
+struct PrimitiveCall <: StatementNode
     expr::Any
     value::Any
     index::StmtIndex
@@ -59,7 +62,7 @@ end
 PrimitiveCall(expr, value, index) = PrimitiveCall(expr, value, index, StatementInfo())
 
 
-struct NestedCall <: Node
+struct NestedCall <: StatementNode
     expr::Any
     value::Any
     index::StmtIndex
@@ -72,7 +75,7 @@ NestedCall(expr, value, index, subtape = GraphTape()) =
 push!(node::NestedCall, child::Node) = (push!(node.subtape, child); node)
 
 
-struct SpecialStatement <: Node
+struct SpecialStatement <: StatementNode
     expr::Any
     value::Any
     index::StmtIndex
@@ -82,7 +85,7 @@ end
 SpecialStatement(expr, value, index) = SpecialStatement(expr, value, index, StatementInfo())
 
 
-struct Argument <: Node
+struct Argument <: StatementNode
     value::Any
     index::StmtIndex
     info::StatementInfo
@@ -91,7 +94,7 @@ end
 Argument(value, index) = Argument(value, index, StatementInfo())
 
 
-struct Return <: Node
+struct Return <: BranchNode
     expr::Any
     value::Any
     index::BranchIndex
@@ -100,7 +103,7 @@ end
 
 Return(expr, value, index) = Return(expr, value, index, StatementInfo())
 
-struct Branch <: Node
+struct Branch <: BranchNode
     target::Int
     arg_exprs::Vector{Any}
     arg_values::Vector{Any}
@@ -112,24 +115,7 @@ end
 Branch(target, arg_exprs, arg_values, condition_expr, index) =
     Branch(target, arg_exprs, arg_values, condition_expr, index, StatementInfo())
 
-# struct UnconditionalBranch
-#     target::Int
-#     args::Vector{Int}
-#     info::StatementInfo
-# end
-
-# struct ConditionalBranch
-#     target::Int
-#     args::Vector{<:IndexValue}
-#     condition::IndexValue
-#     info::StatementInfo
-# end
 
 
-
-
-# v = Node[]
-# push!(v, Argument(2, "hi", StatementInfo()))
-# push!(v, PrimitiveCall(:rand, [], 0.4534, StatementInfo()))
-# push!(v, PrimitiveCall(:Foo, [IndexRef(2)], "sdf", StatementInfo()))
-
+value(node::StatementNode) = node.value
+value(node::BranchNode) = nothing

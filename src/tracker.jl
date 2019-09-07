@@ -1,8 +1,8 @@
 using IRTools
 
 
-record!(tape::GraphTape, value::Node) =
-    push!(tape, value)
+record!(tape::GraphTape, node::Node) =
+    (push!(tape, node); value(node))
 
 @generated function record!(tape::GraphTape, index::StmtIndex, expr, f::F, args...) where F
     # from Cassette.canrecurse
