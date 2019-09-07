@@ -18,7 +18,7 @@ function test1(x)
 end
 
 function test2(x)
-    if x < 0.5
+    if x < 0
         return x + 1
     else
         return sum([x, x])
@@ -35,9 +35,12 @@ function test3(x)
     return y
 end
 
+test4(x...) = [x, x]
+
 # @show @code_ir test2(0.3)
-result, graph = track(test3, 2)
+result, graph = track(test3, 1)
 @show graph
+@show result
 # track(weird, 2)
 # @show track(typeof, 1)
 
