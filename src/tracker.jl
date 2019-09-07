@@ -53,15 +53,6 @@ function track_branches!(block::IRTools.Block, vm::VariableMap, branches, tape)
             condition = substitute(vm, branch.condition)
             target_info = push!(block, jump_record)
             IRTools.branch!(block, branch.block, arguments..., target_info; unless = condition)
-
-            # if position == length(branches) && IRTools.isconditional(branch)
-            #     # record implicit fallthrough to next block, by inserting explicit branch
-            #     empty_vector_expr = IRTools.xcall(:vect)
-            #     implicit_jump_record = DCGCall.Branch(branch.block, empty_vector_expr,
-            #                                           empty_vector_expr, :nothing, index)
-            #     target_info = push!(block, implicit_jump_record)
-            #     IRTools.branch!(block, block.id + 1, target_info)
-            # end
         end
     end
 
@@ -70,27 +61,27 @@ end
 
 
 function track_statement!(block::IRTools.Block, vm::VariableMap, tape, variable, statement)
-    if Meta.isexpr(statement.expr, :call)
-        index = push!(block, DCGCall.StmtIndex(variable.id))
-        reified_call = reify_quote(statement.expr)
-        args = [substitute(vm, arg) for arg in statement.expr.args]
-        stmt_record = IRTools.stmt(DCGCall.record!(tape, index, reified_call, args...),
+    expr = statement.expr
+    reified_expr = reify_quote(expr)
+    index = push!(block, DCGCall.StmtIndex(variable.id))
+    
+    if Meta.isexpr(expr, :call)
+        args = [substitute(vm, arg) for arg in expr.args]
+        stmt_record = IRTools.stmt(DCGCall.record!(tape, index, reified_expr, args...),
                                    line = statement.line)
         r = push!(block, stmt_record)
         record_substitution!(vm, variable, r)
-    elseif statement.expr isa Expr
+    elseif expr isa Expr
         # other special things, like `:boundscheck` or `:foreigncall`
         # TODO: handle some things specially? esp. foreigncall?
-        index = push!(block, DCGCall.StmtIndex(variable.id))
-        reified_call = reify_quote(statement.expr)
-        special_expr = DCGCall.SpecialStatement(reified_call, variable, index)
-        special_record = DCGCall.record!(tape, special_expr)
+        special_expr = DCGCall.SpecialStatement(reified_expr, variable, index)
+        special_record = IRTools.stmt(DCGCall.record!(tape, special_expr),
+                                      line = statement.line)
         r = push!(block, special_record)
         record_substitution!(vm, variable, r)
-    elseif statement.expr isa QuoteNode
+    elseif expr isa QuoteNode
         # for statements that are just constants (like type literals)
-        index = push!(block, DCGCall.StmtIndex(variable.id))
-        constant_expr = DCGCall.Constant(variable, index)
+        constant_expr = DCGCall.Constant(expr, index)
         constant_record = IRTools.stmt(DCGCall.record!(tape, constant_expr),
                                        line = statement.line)
         r = push!(block, constant_record)
@@ -98,6 +89,7 @@ function track_statement!(block::IRTools.Block, vm::VariableMap, tape, variable,
     else
         # currently unhandled and simply kept
         # TODO: issue a warning here?
+        @warn "Unknown statement type type $statement found!"
     end
     
     return nothing
