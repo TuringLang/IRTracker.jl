@@ -60,6 +60,15 @@ There are two existing sketches of forward and backward AD using Cassette's tagg
 
 - https://gist.github.com/willtebbutt/39205ab845b22e6452a42705eac8d254
 
+## Message Passing
+
+- T. Minka, “From automatic differentiation to message passing,” Microsoft Research, 07-Jun-2019. https://www.microsoft.com/en-us/research/video/from-automatic-differentiation-to-message-passing/.
+
+Generalized message passing on computation graphs, of which AD is a special case.  [Slides](https://tminka.github.io/papers/acmll2019/minka-acmll2019-slides.pdf)
+
+J. Winn, “Model-Based Machine Learning.” [Online]. Available: http://mbmlbook.com/index.html. [Accessed: 03-Sep-2019].
+
+Introduction to machine learing, which focuses early on using message passing in probabilistic models.
 
 ## Related approaches/ideas
 
