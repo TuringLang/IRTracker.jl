@@ -135,7 +135,10 @@ function track_block!(new_block::IRTools.Block, vm::VariableMap, jt::JumpTargets
     end
 
     # if this is the first block, set up the tape
-    first && (tape = push!(new_block, DCGCall.GraphTape()))
+    if first
+        original_ir = old_block.ir
+        tape = push!(new_block, DCGCall.GraphTape(copy(original_ir)))
+    end
 
     # record branches to here, if there are any, by adding a new argument
     if haskey(jt, old_block.id)
@@ -211,7 +214,7 @@ end
 export track
 
 IRTools.@dynamo function track(F, args...)
-    # println("handling $F with args $args")
+    println("handling $F with args $args")
     ir = IRTools.IR(F, args...)
 
     if isnothing(ir)

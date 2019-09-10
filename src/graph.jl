@@ -37,9 +37,10 @@ abstract type BranchNode <: Node end
 """Record of data and control flow of evaluating IR."""
 struct GraphTape
     nodes::Vector{<:Node}
+    ir::IRTools.IR
 end
 
-GraphTape() = GraphTape(Node[])
+GraphTape(ir::IRTools.IR) = GraphTape(Node[], ir)
 push!(tape::GraphTape, node::Node) = (push!(tape.nodes, node); tape)
 
 
