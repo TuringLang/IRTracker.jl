@@ -46,7 +46,7 @@ push!(tape::GraphTape, node::Node) = (push!(tape.nodes, node); tape)
 
 struct Constant <: StatementNode
     value::Any
-    index::StmtIndex
+    index::VarIndex
     info::StatementInfo
 end
 
@@ -56,7 +56,7 @@ Constant(value, index) = Constant(value, index, StatementInfo())
 struct PrimitiveCall <: StatementNode
     expr::Any
     value::Any
-    index::StmtIndex
+    index::VarIndex
     info::StatementInfo
 end
 
@@ -66,7 +66,7 @@ PrimitiveCall(expr, value, index) = PrimitiveCall(expr, value, index, StatementI
 struct NestedCall <: StatementNode
     expr::Any
     value::Any
-    index::StmtIndex
+    index::VarIndex
     subtape::GraphTape
     info::StatementInfo
 end
@@ -79,7 +79,7 @@ push!(node::NestedCall, child::Node) = (push!(node.subtape, child); node)
 struct SpecialStatement <: StatementNode
     expr::Any
     value::Any
-    index::StmtIndex
+    index::VarIndex
     info::StatementInfo
 end
 
@@ -88,7 +88,7 @@ SpecialStatement(expr, value, index) = SpecialStatement(expr, value, index, Stat
 
 struct Argument <: StatementNode
     value::Any
-    index::StmtIndex
+    index::VarIndex
     info::StatementInfo
 end
 

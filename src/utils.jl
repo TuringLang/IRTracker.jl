@@ -12,16 +12,17 @@ getproperty(::_DCGCall, name::Symbol) =
 
 abstract type IRIndex end
 
-struct StmtIndex <: IRIndex
-    varid::Int
+struct VarIndex <: IRIndex
+    block::Int
+    id::Int
 end
 
 struct BranchIndex <: IRIndex
     block::Int
-    position::Int
+    id::Int
 end
 
-getindex(ir::IRTools.IR, ix::StmtIndex) = ir[IRTools.var(ix.varid)]
+getindex(ir::IRTools.IR, ix::VarIndex) = ir[IRTools.var(ix.id)]
 getindex(ir::IRTools.IR, ix::BranchIndex) = IRTools.branches(ir, ix.block)[ix.position]
 
 

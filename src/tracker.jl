@@ -3,7 +3,7 @@ using IRTools
 
 record!(tape::GraphTape, node::Node) = (push!(tape, node); value(node))
 
-@generated function record!(tape::GraphTape, index::StmtIndex, expr, f::F, args...) where F
+@generated function record!(tape::GraphTape, index::VarIndex, expr, f::F, args...) where F
     # TODO: check this out:
     # @nospecialize args
     
@@ -71,7 +71,7 @@ end
 
 
 function track_statement!(block::IRTools.Block, vm::VariableMap, tape, variable, statement)
-    index = DCGCall.StmtIndex(variable.id)
+    index = DCGCall.VarIndex(block.id, variable.id)
     expr = statement.expr
     reified_expr = reify_quote(statement.expr)
     
@@ -112,7 +112,7 @@ end
 
 
 function track_argument!(block::IRTools.Block, vm::VariableMap, tape, argument)
-    index = DCGCall.StmtIndex(argument.id)
+    index = DCGCall.VarIndex(block.id, argument.id)
     new_argument = substitute(vm, argument)
     argument_record = DCGCall.record!(tape, DCGCall.Argument(new_argument, index))
     push!(block, argument_record)
