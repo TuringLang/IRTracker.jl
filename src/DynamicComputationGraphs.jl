@@ -38,10 +38,12 @@ end
 test4(x...) = [x, x]
 
 # @show @code_ir test2(0.3)
-result, graph = track(test3, 1)
-@show graph
-@show result
+result, graph = track(test3, 2)
+# track(geom, 2, 0.5)
+# @show graph
 # track(weird, 2)
 # @show track(typeof, 1)
+
+
 
 end # module

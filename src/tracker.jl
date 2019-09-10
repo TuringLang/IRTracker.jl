@@ -214,15 +214,15 @@ end
 export track
 
 IRTools.@dynamo function track(F, args...)
-    println("handling $F with args $args")
+    # println("handling $F with args $args")
     ir = IRTools.IR(F, args...)
 
     if isnothing(ir)
         return error_ir(F, args...)
     else
         new_ir = track_ir(ir)
-        @show ir
-        @show new_ir
+        # @show ir
+        # @show new_ir
         return new_ir
     end
     
