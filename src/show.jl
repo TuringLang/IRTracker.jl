@@ -37,7 +37,7 @@ end
 
 function show(io::IO, node::Branch, level = 0)
     print(io, "[", node.index, "] ")
-    print(io, "br ", node.target)
+    print(io, "goto §", node.target)
 
     if length(node.arg_exprs) > 0
         arguments = map(node.arg_exprs, node.arg_values) do e, v
