@@ -138,6 +138,8 @@ tapeify_vars(visited_vars::VisitedVars, node::StatementNode) =
                node.subtape, node.info)
 tapeify_vars(visited_vars::VisitedVars, node::SpecialStatement) =
     SpecialStatement(tapeify_vars(visited_vars, node.expr), node.value, node.index, node.info)
+tapeify_vars(visited_vars::VisitedVars, node::Argument) = node
+tapeify_vars(visited_vars::VisitedVars, node::Constant) = node
 tapeify_vars(visited_vars::VisitedVars, node::Return) =
     Return(tapeify_vars(visited_vars, node.expr), node.value, node.index, node.info)
 function tapeify_vars(visited_vars::VisitedVars, node::Branch)
@@ -148,18 +150,7 @@ function tapeify_vars(visited_vars::VisitedVars, node::Branch)
 end
 
 
-
-function push!(tape::GraphTape, node::Union{Argument, Constant})
-    push!(tape.nodes, node)
-    
-    # record this node as a new tape index
-    last_index = length(tape.nodes)
-    push!(tape.visited_vars, IRTools.var(node.index.id) => TapeIndex(last_index))
-    
-    return tape
-end
-
-function push!(tape::GraphTape, node::Union{PrimitiveCall, NestedCall, SpecialStatement})
+function push!(tape::GraphTape, node::StatementNode)
     # push node with vars converted to tape indices
     tapeified_node = tapeify_vars(tape.visited_vars, node)
     push!(tape.nodes, tapeified_node)
@@ -170,9 +161,10 @@ function push!(tape::GraphTape, node::Union{PrimitiveCall, NestedCall, SpecialSt
     return tape
 end
 
-function push!(tape::GraphTape, node::Union{Return, Branch})
+function push!(tape::GraphTape, node::BranchNode)
     # push node with vars converted to tape indices
     tapeified_node = tapeify_vars(tape.visited_vars, node)
     push!(tape.nodes, tapeified_node)
     return tape
+    # branches don't need to be recorded, of course
 end
