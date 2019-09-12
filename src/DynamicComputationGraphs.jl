@@ -39,6 +39,7 @@ test4(x...) = [x, x]
 
 # @show @code_ir test2(0.3)
 result, graph = track(test3, 2)
+printlevels(graph, -2)
 # track(geom, 2, 0.5)
 # @show graph
 # track(weird, 2)
