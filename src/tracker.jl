@@ -92,8 +92,8 @@ function track_statement!(block::IRTools.Block, vm::VariableMap, tape, variable,
                                       line = statement.line)
         r = push!(block, special_record)
         record_substitution!(vm, variable, r)
-    elseif expr isa QuoteNode
-        # for statements that are just constants (like type literals)
+    elseif expr isa QuoteNode || expr isa GlobalRef
+        # for statements that are just constants (like type literals), or global values
         constant_expr = DCGCall.Constant(expr, index)
         # TODO: make constant_expr itself a constant :)
         constant_record = IRTools.stmt(DCGCall.record!(tape, constant_expr),
@@ -101,8 +101,8 @@ function track_statement!(block::IRTools.Block, vm::VariableMap, tape, variable,
         r = push!(block, constant_record)
         record_substitution!(vm, variable, r)
     else
-        # currently unhandled and simply kept
-        @warn "Unknown statement type type $statement found!"
+        # currently unhandled
+        error("Found statement of unknown type: ", statement)
     end
     
     return nothing
@@ -220,7 +220,7 @@ end
 export track
 
 IRTools.@dynamo function track(F, args...)
-    println("handling $F with args $args")
+    # println("handling $F with args $args")
     ir = IRTools.IR(F, args...)
 
     if isnothing(ir)
@@ -228,7 +228,7 @@ IRTools.@dynamo function track(F, args...)
     else
         new_ir = track_ir(ir)
         # @show ir
-        @show new_ir
+        # @show new_ir
         return new_ir
     end
     
