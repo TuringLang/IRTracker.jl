@@ -12,6 +12,7 @@ record!(tape::GraphTape, node::Node) = (push!(tape, node); value(node))
     mod = Base.typename(F).module
     is_builtin = ((F <: Core.Builtin) && !(mod === Core.Compiler)) || F <: Core.IntrinsicFunction
 
+    
     if is_builtin 
         quote
             result = f(args...)
@@ -82,8 +83,11 @@ function track_statement!(block::IRTools.Block, vm::VariableMap, tape, variable,
         r = push!(block, stmt_record)
         record_substitution!(vm, variable, r)
     elseif expr isa Expr
-        # other special things, like `:boundscheck` or `:foreigncall`
-        special_expr = DCGCall.SpecialStatement(reified_expr, variable, index)
+        # other special things, like `:new`, `:boundscheck`, or `:foreigncall`
+        args = map(substitute(vm), expr.args)
+        special_evaluation = Expr(expr.head, args...)
+        special_value = push!(block, special_evaluation)
+        special_expr = DCGCall.SpecialStatement(reified_expr, special_value, index)
         special_record = IRTools.stmt(DCGCall.record!(tape, special_expr),
                                       line = statement.line)
         r = push!(block, special_record)
@@ -91,6 +95,7 @@ function track_statement!(block::IRTools.Block, vm::VariableMap, tape, variable,
     elseif expr isa QuoteNode
         # for statements that are just constants (like type literals)
         constant_expr = DCGCall.Constant(expr, index)
+        # TODO: make constant_expr itself a constant :)
         constant_record = IRTools.stmt(DCGCall.record!(tape, constant_expr),
                                        line = statement.line)
         r = push!(block, constant_record)
@@ -179,7 +184,8 @@ function track_ir(old_ir::IRTools.IR)
     old_first_block = IRTools.block(old_ir, 1)
     new_first_block = IRTools.block(new_ir, 1)
     tape = track_first_block!(new_first_block, vm, jt, old_first_block)
-    
+
+    # the rest of the blocks needs to be created newly, and can use `tape`.
     for old_block in Iterators.drop(IRTools.blocks(old_ir), 1)
         new_block = IRTools.block!(new_ir)
         track_block!(new_block, vm, jt, tape, old_block)
@@ -214,7 +220,7 @@ end
 export track
 
 IRTools.@dynamo function track(F, args...)
-    # println("handling $F with args $args")
+    println("handling $F with args $args")
     ir = IRTools.IR(F, args...)
 
     if isnothing(ir)
@@ -222,7 +228,7 @@ IRTools.@dynamo function track(F, args...)
     else
         new_ir = track_ir(ir)
         # @show ir
-        # @show new_ir
+        @show new_ir
         return new_ir
     end
     

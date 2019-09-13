@@ -35,11 +35,11 @@ function test3(x)
     return y
 end
 
-test4(x...) = [x, x]
+test4(x) = [x, x]
 
 # @show @code_ir test2(0.3)
-result, graph = track(test3, 2)
-printlevels(graph, -2)
+result, graph = track(test4, 2)
+printlevels(graph, 1)
 # track(geom, 2, 0.5)
 # @show graph
 # track(weird, 2)
