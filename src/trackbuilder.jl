@@ -1,5 +1,6 @@
 using IRTools: Block, IR, Statement, Variable
-import IRTools: block!
+using IRTools: argument!, branch!, xcall
+import IRTools: block!, return!
 
 mutable struct TrackBuilder
     original_ir::IR
@@ -25,6 +26,8 @@ block!(builder::TrackBuilder) = block!(builder.new_ir)
 block!(builder::TrackBuilder, i) =
     (i == 1) ? IRTools.block(builder.new_ir, 1) : block!(builder.new_ir)
 
+return!(builder, block, argument, record) = IRTools.branch!(block, builder.return_block, argument, record)
+    
 substitute_variable(builder::TrackBuilder, x) = get(builder.variable_map, x, x)
 substitute_variable(builder::TrackBuilder) = x -> substitute_variable(builder, x)
 
@@ -64,8 +67,6 @@ end
 
 
 function track_branches!(builder::TrackBuilder, block::Block, branches)
-    pseudo_return!(block, args...) = IRTools.branch!(block, builder.return_block, args...)
-    
     # called only from within a non-primitive call
     for (position, branch) in enumerate(branches)
         index = DCGCall.BranchIndex(block.id, position)
@@ -73,24 +74,20 @@ function track_branches!(builder::TrackBuilder, block::Block, branches)
         reified_args = map(reify_quote, branch.args)
         
         if IRTools.isreturn(branch)
-            @assert length(branch.args) == 1
-            
-            # record return statement
             return_record = push!(block, DCGCall.Return(reified_args[1], args[1], index))
-            pseudo_return!(block, args[1], return_record)
+            return!(builder, block, args[1], return_record)
         else
             condition = substitute_variable(builder, branch.condition)
             reified_condition = reify_quote(branch.condition)
             
             # remember from where and why we branched in target_info
-            arg_exprs = IRTools.xcall(:vect, reified_args...)
-            arg_values = IRTools.xcall(:vect, args...)
-            jump_record = DCGCall.Branch(branch.block, arg_exprs, arg_values,
-                                         reified_condition, index)
-            target_info = push!(block, jump_record)
+            arg_exprs = xcall(:vect, reified_args...)
+            arg_values = xcall(:vect, args...)
+            branch_record = push!(block, DCGCall.Branch(branch.block, arg_exprs, arg_values,
+                                         reified_condition, index))
 
             # extend branch args by target_info
-            IRTools.branch!(block, branch.block, args..., target_info; unless = condition)
+            branch!(block, branch.block, args..., branch_record; unless = condition)
         end
     end
 
@@ -133,7 +130,7 @@ function track_arguments!(builder::TrackBuilder, new_block::Block, old_block::Bl
     # copy over arguments from old block
     for argument in IRTools.arguments(old_block)
         # without `insert = false`, `nothing` gets added to branches pointing here
-        new_argument = IRTools.argument!(new_block, insert = false)
+        new_argument = argument!(new_block, insert = false)
         record_new_variable!(builder, argument, new_argument)
     end
 
@@ -145,7 +142,7 @@ function track_arguments!(builder::TrackBuilder, new_block::Block, old_block::Bl
 
     # record jumps to here, if there are any, by adding a new argument and recording it
     if hasjumpto(builder, old_block)
-        branch_argument = IRTools.argument!(new_block, insert = false)
+        branch_argument = argument!(new_block, insert = false)
         pushrecord!(builder, new_block, branch_argument)
     end
 
@@ -159,7 +156,7 @@ end
 
 
 function track_block!(builder::TrackBuilder, new_block::Block, old_block::Block; isfirst = false)
-    @assert isfirst || !isnothing(builder.tape)
+    @assert isfirst || isdefined(builder, :tape)
 
     track_arguments!(builder, new_block, old_block, isfirst = isfirst)
 
@@ -179,9 +176,9 @@ function insert_return_block!(builder::TrackBuilder)
     return_block = block!(builder)
     @assert return_block.id == builder.return_block
     
-    return_value = IRTools.argument!(return_block, insert = false)
-    pushrecord!(builder, return_block, IRTools.argument!(return_block, insert = false))
-    IRTools.return!(return_block, IRTools.xcall(:tuple, return_value, builder.tape))
+    return_value = argument!(return_block, insert = false)
+    pushrecord!(builder, return_block, argument!(return_block, insert = false))
+    IRTools.return!(return_block, xcall(:tuple, return_value, builder.tape))
     return return_block
 end
 
@@ -190,7 +187,7 @@ end
 function build_tracks!(builder::TrackBuilder)
     for (i, old_block) in enumerate(IRTools.blocks(builder.original_ir))
         new_block = block!(builder, i)
-        track_block!(builder, new_block, old_block; isfirst = i == 1)
+        track_block!(builder, new_block, old_block, isfirst = i == 1)
     end
     
     # now we set up a block at the last position, to which all return statements redirect.
