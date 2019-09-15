@@ -18,7 +18,6 @@ show(io::IO, si::StatementInfo) =
     print(io, "StatementInfo(", si === nothing ? "" : si.metadata,")")
 
 
-
 export Argument,
     # ConditionalBranch,
     Branch,
@@ -34,7 +33,13 @@ abstract type StatementNode <: Node end
 abstract type BranchNode <: Node end
 
 
+struct TapeIndex
+    id::Int
+end
+
+
 const VisitedVars = Dict{IRTools.Variable, TapeIndex}
+
 
 """Record of data and control flow of evaluating IR."""
 struct GraphTape
@@ -45,6 +50,24 @@ end
 
 GraphTape(ir::IRTools.IR) = GraphTape(ir, Node[], VisitedVars())
 
+function push!(tape::GraphTape, node::StatementNode)
+    # push node with vars converted to tape indices
+    tapeified_node = tapeify_vars(tape.visited_vars, node)
+    push!(tape.nodes, tapeified_node)
+
+    # record this node as a new tape index
+    last_index = length(tape.nodes)
+    push!(tape.visited_vars, IRTools.var(node.index.id) => TapeIndex(last_index))
+    return tape
+end
+
+function push!(tape::GraphTape, node::BranchNode)
+    # push node with vars converted to tape indices
+    tapeified_node = tapeify_vars(tape.visited_vars, node)
+    push!(tape.nodes, tapeified_node)
+    return tape
+    # branches don't need to be recorded, of course
+end
 
 
 struct Argument <: StatementNode
@@ -126,7 +149,6 @@ value(node::BranchNode) = nothing
 
 
 
-
 tapeify_vars(visited_vars::VisitedVars) = expr -> tapeify_vars(visited_vars, expr)
 tapeify_vars(visited_vars::VisitedVars, expr::Expr) =
     Expr(expr.head, map(tapeify_vars(visited_vars), expr.args)...)
@@ -149,22 +171,3 @@ function tapeify_vars(visited_vars::VisitedVars, node::Branch)
            tapeify_vars(visited_vars, node.condition_expr), node.index, node.info)
 end
 
-
-function push!(tape::GraphTape, node::StatementNode)
-    # push node with vars converted to tape indices
-    tapeified_node = tapeify_vars(tape.visited_vars, node)
-    push!(tape.nodes, tapeified_node)
-
-    # record this node as a new tape index
-    last_index = length(tape.nodes)
-    push!(tape.visited_vars, IRTools.var(node.index.id) => TapeIndex(last_index))
-    return tape
-end
-
-function push!(tape::GraphTape, node::BranchNode)
-    # push node with vars converted to tape indices
-    tapeified_node = tapeify_vars(tape.visited_vars, node)
-    push!(tape.nodes, tapeified_node)
-    return tape
-    # branches don't need to be recorded, of course
-end
