@@ -45,12 +45,14 @@ end
 function show(io::IO, node::Branch, level = 0; maxlevel = typemax(level))
     print(io, "[", node.index, "] ")
     print(io, "goto §", node.target)
+    L = length(node.arg_exprs) 
 
-    if length(node.arg_exprs) > 0
+    if L > 0
         print(io, " (")
-        for (expr, value) in zip(node.arg_exprs, node.arg_values) 
-           (expr isa IRTools.Variable) && print(io, expr, " = ")
+        for (expr, value, i) in zip(node.arg_exprs, node.arg_values, 1:L)
+            (expr isa TapeIndex) && print(io, expr, " = ")
             print(io, repr(value))
+            i != L && print(io, ", ")
         end
         print(io, ")")
     end
