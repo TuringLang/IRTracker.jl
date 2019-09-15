@@ -19,10 +19,10 @@ function TrackBuilder(ir)
 end
 
 
-substitute(builder::TrackBuilder, x) = get(builder.variable_map, x, x)
-substitute(builder::TrackBuilder) = x -> substitute(builder, x)
+substitute_variable(builder::TrackBuilder, x) = get(builder.variable_map, x, x)
+substitute_variable(builder::TrackBuilder) = x -> substitute_variable(builder, x)
 
-record_substitution!(builder::TrackBuilder, x, y) = (push!(builder.variable_map, x => y); builder)
+record_new_variable!(builder::TrackBuilder, x, y) = (push!(builder.variable_map, x => y); builder)
 
 function jumptargets(ir::IRTools.IR)
     targets = Dict{Int, Vector{Int}}()
@@ -46,6 +46,15 @@ function jumptargets(ir::IRTools.IR)
     return targets
 end
 
+hasjumpto(builder, block) = haskey(builder.jump_targets, block.id)
+
+function pushrecord!(block, builder, args...; substituting = nothing, line = 0)
+    record = IRTools.stmt(DCGCall.record!(builder.tape, args...), line = line)
+    r = push!(block, record)
+    !isnothing(substituting) && record_new_variable!(builder, substituting, r)
+    return r
+end
+
 
 
 
@@ -55,7 +64,7 @@ function track_branches!(block::IRTools.Block, builder::TrackBuilder, branches)
     # called only from within a non-primitive call
     for (position, branch) in enumerate(branches)
         index = DCGCall.BranchIndex(block.id, position)
-        args = map(substitute(builder), branch.args)
+        args = map(substitute_variable(builder), branch.args)
         reified_args = map(reify_quote, branch.args)
         
         if IRTools.isreturn(branch)
@@ -65,7 +74,7 @@ function track_branches!(block::IRTools.Block, builder::TrackBuilder, branches)
             return_record = push!(block, DCGCall.Return(reified_args[1], args[1], index))
             pseudo_return!(block, args[1], return_record)
         else
-            condition = substitute(builder, branch.condition)
+            condition = substitute_variable(builder, branch.condition)
             reified_condition = reify_quote(branch.condition)
             
             # remember from where and why we branched in target_info
@@ -90,29 +99,21 @@ function track_statement!(block::IRTools.Block, builder::TrackBuilder, variable,
     reified_expr = reify_quote(statement.expr)
     
     if Meta.isexpr(expr, :call)
-        args = map(substitute(builder), expr.args)
-        stmt_record = IRTools.stmt(DCGCall.record!(builder.tape, index, reified_expr, args...),
-                                   line = statement.line)
-        r = push!(block, stmt_record)
-        record_substitution!(builder, variable, r)
+        args = map(substitute_variable(builder), expr.args)
+        pushrecord!(block, builder, index, reified_expr, args...,
+                    line = statement.line, substituting = variable)
     elseif expr isa Expr
         # other special things, like `:new`, `:boundscheck`, or `:foreigncall`
-        args = map(substitute(builder), expr.args)
+        args = map(substitute_variable(builder), expr.args)
         special_evaluation = Expr(expr.head, args...)
         special_value = push!(block, special_evaluation)
         special_expr = DCGCall.SpecialStatement(reified_expr, special_value, index)
-        special_record = IRTools.stmt(DCGCall.record!(builder.tape, special_expr),
-                                      line = statement.line)
-        r = push!(block, special_record)
-        record_substitution!(builder, variable, r)
+        pushrecord!(block, builder, special_expr, line = statement.line, substituting = variable)
     elseif expr isa QuoteNode || expr isa GlobalRef
         # for statements that are just constants (like type literals), or global values
         constant_expr = DCGCall.Constant(expr, index)
         # TODO: make constant_expr itself a constant :)
-        constant_record = IRTools.stmt(DCGCall.record!(builder.tape, constant_expr),
-                                       line = statement.line)
-        r = push!(block, constant_record)
-        record_substitution!(builder, variable, r)
+        pushrecord!(block, builder, constant_expr, line = statement.line, substituting = variable)
     else
         # currently unhandled
         error("Found statement of unknown type: ", statement)
@@ -125,21 +126,25 @@ end
 function copy_argument!(block::IRTools.Block, builder::TrackBuilder, argument)
     # without `insert = false`, `nothing` gets added to branches pointing here
     new_argument = IRTools.argument!(block, insert = false)
-    record_substitution!(builder, argument, new_argument)
+    record_new_variable!(builder, argument, new_argument)
 end
 
 
 function track_argument!(block::IRTools.Block, builder::TrackBuilder, argument)
     index = DCGCall.VarIndex(block.id, argument.id)
-    new_argument = substitute(builder, argument)
-    argument_record = DCGCall.record!(builder.tape, DCGCall.Argument(new_argument, index))
-    push!(block, argument_record)
+    new_argument = substitute_variable(builder, argument)
+    pushrecord!(block, builder, DCGCall.Argument(new_argument, index))
 end
 
 
 function track_jump!(new_block::IRTools.Block, builder::TrackBuilder, branch_argument)
-    jump_record = DCGCall.record!(builder.tape, branch_argument)
-    push!(new_block, jump_record)
+    pushrecord!(new_block, builder, branch_argument)
+end
+
+
+function setup_tape!(builder::TrackBuilder)
+    first_block = IRTools.block(builder.new_ir, 1)
+    return builder.tape = push!(first_block, DCGCall.GraphTape(copy(builder.original_ir)))
 end
 
 
@@ -152,10 +157,10 @@ function track_block!(new_block::IRTools.Block, builder::TrackBuilder, old_block
     end
 
     # if this is the first block, set up the tape
-    first && (builder.tape = push!(new_block, DCGCall.GraphTape(copy(builder.original_ir))))
+    first && setup_tape!(builder)
 
     # record branches to here, if there are any, by adding a new argument
-    if haskey(builder.jump_targets, old_block.id)
+    if hasjumpto(builder, old_block)
         branch_argument = IRTools.argument!(new_block, insert = false)
         track_jump!(new_block, builder, branch_argument)
     end
@@ -187,7 +192,7 @@ function setup_return_block!(builder::TrackBuilder)
     @assert return_block.id == builder.return_block
     
     return_value = IRTools.argument!(return_block, insert = false)
-    push!(return_block, DCGCall.record!(builder.tape, IRTools.argument!(return_block, insert = false)))
+    pushrecord!(return_block, builder, IRTools.argument!(return_block, insert = false))
     IRTools.return!(return_block, IRTools.xcall(:tuple, return_value, builder.tape))
     return return_block
 end
@@ -212,7 +217,7 @@ function build_tracks!(builder::TrackBuilder)
     end
     
     # now we set up a block at the last position, to which all return statements redirect.
-    setup_return_block!(builder).id == return_block
+    setup_return_block!(builder)
 
     return builder.new_ir
 end
