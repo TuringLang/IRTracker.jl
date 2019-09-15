@@ -70,11 +70,8 @@ function push!(tape::GraphTape, node::BranchNode)
 end
 
 
+
 include("nodes.jl")
-
-
-value(node::StatementNode) = node.value
-value(node::BranchNode) = nothing
 
 
 
