@@ -3,7 +3,7 @@ module DynamicComputationGraphs
 include("utils.jl")
 include("graph.jl")
 include("show.jl")
-include("irbuilder.jl")
+include("trackbuilder.jl")
 include("tracker.jl")
 
 

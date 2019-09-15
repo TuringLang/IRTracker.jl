@@ -43,7 +43,7 @@ const VisitedVars = Dict{IRTools.Variable, TapeIndex}
 
 """Record of data and control flow of evaluating IR."""
 struct GraphTape
-    ir::IRTools.IR
+    original_ir::IRTools.IR
     nodes::Vector{<:Node}
     visited_vars::VisitedVars
 end
@@ -70,78 +70,7 @@ function push!(tape::GraphTape, node::BranchNode)
 end
 
 
-struct Argument <: StatementNode
-    value::Any
-    index::VarIndex
-    info::StatementInfo
-end
-
-Argument(value, index) = Argument(value, index, StatementInfo())
-
-
-struct Constant <: StatementNode
-    value::Any
-    index::VarIndex
-    info::StatementInfo
-end
-
-Constant(value, index) = Constant(value, index, StatementInfo())
-
-
-struct PrimitiveCall <: StatementNode
-    expr::Any
-    value::Any
-    index::VarIndex
-    info::StatementInfo
-end
-
-PrimitiveCall(expr, value, index) = PrimitiveCall(expr, value, index, StatementInfo())
-
-
-struct NestedCall <: StatementNode
-    expr::Any
-    value::Any
-    index::VarIndex
-    subtape::GraphTape
-    info::StatementInfo
-end
-
-NestedCall(expr, value, index, subtape = GraphTape()) =
-    NestedCall(expr, value, index, subtape, StatementInfo())
-
-push!(node::NestedCall, child::Node) = (push!(node.subtape, child); node)
-
-
-struct SpecialStatement <: StatementNode
-    expr::Any
-    value::Any
-    index::VarIndex
-    info::StatementInfo
-end
-
-SpecialStatement(expr, value, index) = SpecialStatement(expr, value, index, StatementInfo())
-
-
-struct Return <: BranchNode
-    expr::Any
-    value::Any
-    index::BranchIndex
-    info::StatementInfo
-end
-
-Return(expr, value, index) = Return(expr, value, index, StatementInfo())
-
-struct Branch <: BranchNode
-    target::Int
-    arg_exprs::Vector{Any}
-    arg_values::Vector{Any}
-    condition_expr::Any
-    index::BranchIndex
-    info::StatementInfo
-end
-
-Branch(target, arg_exprs, arg_values, condition_expr, index) =
-    Branch(target, arg_exprs, arg_values, condition_expr, index, StatementInfo())
+include("nodes.jl")
 
 
 value(node::StatementNode) = node.value
@@ -169,5 +98,35 @@ function tapeify_vars(visited_vars::VisitedVars, node::Branch)
         isnothing(node.arg_exprs) ? nothing : map(tapeify_vars(visited_vars), node.arg_exprs)
     Branch(node.target, tapeified_arg_exprs, node.arg_values,
            tapeify_vars(visited_vars, node.condition_expr), node.index, node.info)
+end
+
+
+
+record!(tape::GraphTape, node::Node) = (push!(tape, node); value(node))
+
+@generated function record!(tape::GraphTape, index::VarIndex, expr, f::F, args...) where F
+    # TODO: check this out:
+    # @nospecialize args
+    
+    # from Cassette.canrecurse
+    # (https://github.com/jrevels/Cassette.jl/blob/79eabe829a16b6612e0eba491d9f43dc9c11ff02/src/context.jl#L457-L473)
+    mod = Base.typename(F).module
+    is_builtin = ((F <: Core.Builtin) && !(mod === Core.Compiler)) || F <: Core.IntrinsicFunction
+    
+    if is_builtin 
+        quote
+            result = f(args...)
+            call = PrimitiveCall(expr, result, index)
+            push!(tape, call)
+            return result
+        end
+    else
+        quote
+            result, graph = track(f, args...)
+            call = NestedCall(expr, result, index, graph)
+            push!(tape, call)
+            return result
+        end
+    end
 end
 
