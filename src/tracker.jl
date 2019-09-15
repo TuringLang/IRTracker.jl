@@ -11,7 +11,6 @@ record!(tape::GraphTape, node::Node) = (push!(tape, node); value(node))
     # (https://github.com/jrevels/Cassette.jl/blob/79eabe829a16b6612e0eba491d9f43dc9c11ff02/src/context.jl#L457-L473)
     mod = Base.typename(F).module
     is_builtin = ((F <: Core.Builtin) && !(mod === Core.Compiler)) || F <: Core.IntrinsicFunction
-
     
     if is_builtin 
         quote
@@ -31,7 +30,9 @@ record!(tape::GraphTape, node::Node) = (push!(tape, node); value(node))
 end
 
 
-function track_branches!(block::IRTools.Block, vm::VariableMap, branches, tape)
+function track_branches!(block::IRTools.Block, vm::VariableMap, return_block, tape, branches)
+    pseudo_return!(block, args...) = IRTools.branch!(block, return_block, args...)
+    
     # called only from within a non-primitive call
     for (position, branch) in enumerate(branches)
         index = DCGCall.BranchIndex(block.id, position)
@@ -42,15 +43,8 @@ function track_branches!(block::IRTools.Block, vm::VariableMap, branches, tape)
             @assert length(branch.args) == 1
             
             # record return statement
-            return_record = DCGCall.record!(tape, DCGCall.Return(reified_args[1],
-                                                                 args[1],
-                                                                 index))
-            push!(block, return_record)
-
-            # modify return branch to include tape
-            return_expr = IRTools.xcall(:tuple, args..., tape)
-            return_value = push!(block, return_expr)
-            IRTools.return!(block, return_value)
+            return_record = push!(block, DCGCall.Return(reified_args[1], args[1], index))
+            pseudo_return!(block, args[1], return_record)
         else
             condition = substitute(vm, branch.condition)
             reified_condition = reify_quote(branch.condition)
@@ -130,8 +124,8 @@ function track_jump!(new_block::IRTools.Block, tape, branch_argument)
 end
 
 
-function track_block!(new_block::IRTools.Block, vm::VariableMap, jt::JumpTargets, tape, old_block;
-                      first = false)
+function track_block!(new_block::IRTools.Block, vm::VariableMap, jt::JumpTargets, return_block,
+                      tape, old_block; first = false)
     @assert first || !isnothing(tape)
 
     # copy over arguments from old block
@@ -162,15 +156,24 @@ function track_block!(new_block::IRTools.Block, vm::VariableMap, jt::JumpTargets
     end
 
     # set up branch tracking and returning the tape
-    track_branches!(new_block, vm, IRTools.branches(old_block), tape)
+    track_branches!(new_block, vm, return_block, tape, IRTools.branches(old_block))
 
     return tape
 end
 
 
 # tracking the first block is special, because only there the tape is set up
-track_first_block!(new_block::IRTools.Block, vm::VariableMap, jt::JumpTargets, old_block) =
-    track_block!(new_block, vm, jt, nothing, old_block, first = true)
+track_first_block!(new_block::IRTools.Block, vm::VariableMap, jt::JumpTargets, return_block, old_block) =
+    track_block!(new_block, vm, jt, return_block, nothing, old_block, first = true)
+
+
+function setup_return_block!(new_ir::IRTools.IR, tape)
+    return_block = IRTools.block!(new_ir)
+    return_value = IRTools.argument!(return_block, insert = false)
+    push!(return_block, DCGCall.record!(tape, IRTools.argument!(return_block, insert = false)))
+    IRTools.return!(return_block, IRTools.xcall(:tuple, return_value, tape))
+    return return_block
+end
 
 
 function track_ir(old_ir::IRTools.IR)
@@ -183,14 +186,21 @@ function track_ir(old_ir::IRTools.IR)
     # so we just use it and set up the tape there
     old_first_block = IRTools.block(old_ir, 1)
     new_first_block = IRTools.block(new_ir, 1)
-    tape = track_first_block!(new_first_block, vm, jt, old_first_block)
+    return_block = length(old_ir.blocks) + 1
+
+    tape = track_first_block!(new_first_block, vm, jt, return_block, old_first_block)
 
     # the rest of the blocks needs to be created newly, and can use `tape`.
-    for old_block in Iterators.drop(IRTools.blocks(old_ir), 1)
-        new_block = IRTools.block!(new_ir)
-        track_block!(new_block, vm, jt, tape, old_block)
+    for (i, old_block) in enumerate(IRTools.blocks(old_ir))
+        i == 1 && continue
+        
+        new_block = IRTools.block!(new_ir, i)
+        track_block!(new_block, vm, jt, return_block, tape, old_block)
     end
-
+    
+    # now we set up a block at the last position, to which all return statements redirect.
+    @assert setup_return_block!(new_ir, tape).id == return_block
+    
     return new_ir
 end
 
@@ -228,9 +238,11 @@ IRTools.@dynamo function track(F, args...)
     else
         new_ir = track_ir(ir)
         # @show ir
-        # @show new_ir
+        @show new_ir
         return new_ir
     end
     
 end
+
+
 
