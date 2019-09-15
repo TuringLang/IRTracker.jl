@@ -1,4 +1,5 @@
-using IRTools: Block, IR, Variable
+using IRTools: Block, IR, Statement, Variable
+import IRTools: block!
 
 mutable struct TrackBuilder
     original_ir::IR
@@ -11,7 +12,7 @@ mutable struct TrackBuilder
     TrackBuilder(o, n, v, j, r) = new(o, n, v, j, r)
 end
 
-function TrackBuilder(ir)
+function TrackBuilder(ir::IR)
     new_ir = empty(ir)
     variable_map = Dict{Any, Any}()
     jump_targets = jumptargets(ir)
@@ -20,6 +21,9 @@ function TrackBuilder(ir)
     TrackBuilder(ir, new_ir, variable_map, jump_targets, return_block)
 end
 
+block!(builder::TrackBuilder) = block!(builder.new_ir)
+block!(builder::TrackBuilder, i) =
+    (i == 1) ? IRTools.block(builder.new_ir, 1) : block!(builder.new_ir)
 
 substitute_variable(builder::TrackBuilder, x) = get(builder.variable_map, x, x)
 substitute_variable(builder::TrackBuilder) = x -> substitute_variable(builder, x)
@@ -59,7 +63,6 @@ function pushrecord!(builder::TrackBuilder, block::Block, args...;
 end
 
 
-
 function track_branches!(builder::TrackBuilder, block::Block, branches)
     pseudo_return!(block, args...) = IRTools.branch!(block, builder.return_block, args...)
     
@@ -95,7 +98,8 @@ function track_branches!(builder::TrackBuilder, block::Block, branches)
 end
 
 
-function track_statement!(builder::TrackBuilder, block::Block, variable, statement)
+function track_statement!(builder::TrackBuilder, block::Block,
+                          variable::Variable, statement::Statement)
     index = DCGCall.VarIndex(block.id, variable.id)
     expr = statement.expr
     reified_expr = reify_quote(statement.expr)
@@ -125,52 +129,39 @@ function track_statement!(builder::TrackBuilder, block::Block, variable, stateme
 end
 
 
-function copy_argument!(builder::TrackBuilder, block::Block, argument)
-    # without `insert = false`, `nothing` gets added to branches pointing here
-    new_argument = IRTools.argument!(block, insert = false)
-    record_new_variable!(builder, argument, new_argument)
-end
-
-
-function track_argument!(builder::TrackBuilder, block::Block, argument)
-    index = DCGCall.VarIndex(block.id, argument.id)
-    new_argument = substitute_variable(builder, argument)
-    pushrecord!(builder, block, DCGCall.Argument(new_argument, index))
-end
-
-
-function track_jump!(builder::TrackBuilder, new_block::IRTools.Block, branch_argument)
-    pushrecord!(builder, new_block, branch_argument)
-end
-
-
-function setup_tape!(builder::TrackBuilder)
-    first_block = IRTools.block(builder.new_ir, 1)
-    return builder.tape = push!(first_block, DCGCall.GraphTape(copy(builder.original_ir)))
-end
-
-
-function track_block!(builder::TrackBuilder, new_block::Block, old_block; first = false)
-    @assert first || !isnothing(builder.tape)
-
+function track_arguments!(builder::TrackBuilder, new_block::Block, old_block::Block; isfirst = false)
     # copy over arguments from old block
     for argument in IRTools.arguments(old_block)
-        copy_argument!(builder, new_block, argument)
+        # without `insert = false`, `nothing` gets added to branches pointing here
+        new_argument = IRTools.argument!(new_block, insert = false)
+        record_new_variable!(builder, argument, new_argument)
     end
 
     # if this is the first block, set up the tape
-    first && setup_tape!(builder)
+    if isfirst
+        first_block = IRTools.block(builder.new_ir, 1)
+        builder.tape = push!(first_block, DCGCall.GraphTape(copy(builder.original_ir)))
+    end
 
-    # record branches to here, if there are any, by adding a new argument
+    # record jumps to here, if there are any, by adding a new argument and recording it
     if hasjumpto(builder, old_block)
         branch_argument = IRTools.argument!(new_block, insert = false)
-        track_jump!(builder, new_block, branch_argument)
+        pushrecord!(builder, new_block, branch_argument)
     end
 
     # track rest of the arguments from the old block
     for argument in IRTools.arguments(old_block)
-        track_argument!(builder, new_block, argument)
+        index = DCGCall.VarIndex(new_block.id, argument.id)
+        new_argument = substitute_variable(builder, argument)
+        pushrecord!(builder, new_block, DCGCall.Argument(new_argument, index))
     end
+end
+
+
+function track_block!(builder::TrackBuilder, new_block::Block, old_block::Block; isfirst = false)
+    @assert isfirst || !isnothing(builder.tape)
+
+    track_arguments!(builder, new_block, old_block, isfirst = isfirst)
 
     # handle statement recording (nested vs. primitive is handled in `record!`)
     for (v, stmt) in old_block
@@ -184,13 +175,8 @@ function track_block!(builder::TrackBuilder, new_block::Block, old_block; first 
 end
 
 
-# tracking the first block is special, because only there the tape is set up
-track_first_block!(builder::TrackBuilder, new_block::Block, old_block) =
-    track_block!(builder, new_block, old_block, first = true)
-
-
-function setup_return_block!(builder::TrackBuilder)
-    return_block = IRTools.block!(builder.new_ir)
+function insert_return_block!(builder::TrackBuilder)
+    return_block = block!(builder)
     @assert return_block.id == builder.return_block
     
     return_value = IRTools.argument!(return_block, insert = false)
@@ -202,24 +188,13 @@ end
 
 
 function build_tracks!(builder::TrackBuilder)
-    # in new_ir, the first block is already set up automatically, 
-    # so we just use it and set up the tape there
-    old_first_block = IRTools.block(builder.original_ir, 1)
-    new_first_block = IRTools.block(builder.new_ir, 1)
-    return_block = length(builder.original_ir.blocks) + 1
-
-    track_first_block!(builder, new_first_block, old_first_block)
-
-    # the rest of the blocks needs to be created newly, and can use `tape`.
     for (i, old_block) in enumerate(IRTools.blocks(builder.original_ir))
-        i == 1 && continue
-        
-        new_block = IRTools.block!(builder.new_ir, i)
-        track_block!(builder, new_block, old_block)
+        new_block = block!(builder, i)
+        track_block!(builder, new_block, old_block; isfirst = i == 1)
     end
     
     # now we set up a block at the last position, to which all return statements redirect.
-    setup_return_block!(builder)
+    insert_return_block!(builder)
 
     return builder.new_ir
 end
