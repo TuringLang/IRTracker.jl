@@ -1,7 +1,7 @@
 using IRTools
+using IRTools: IR, @dynamo
 
-
-function track_ir(old_ir::IRTools.IR)
+function track_ir(old_ir::IR)
     IRTools.explicitbranch!(old_ir) # make implicit jumps explicit
     builder = TrackBuilder(old_ir)
     return build_tracks!(builder)
@@ -11,7 +11,7 @@ end
 function error_ir(F, args...)
     # create empty IR which matches the (non-existing) signature given by f(args)
     dummy(args...) = nothing
-    ir = IRTools.empty(IRTools.IR(IRTools.meta(Tuple{Core.Typeof(dummy), Core.Typeof.(args)...})))
+    ir = IRTools.empty(IR(IRTools.meta(Tuple{Core.Typeof(dummy), Core.Typeof.(args)...})))
     
     self = IRTools.argument!(ir)
     arg_values = ntuple(_ -> IRTools.argument!(ir), length(args))
@@ -29,11 +29,9 @@ function error_ir(F, args...)
 end
 
 
-export track
-
-IRTools.@dynamo function track(F, args...)
+@dynamo function track(F, args...)
     # println("handling $F with args $args")
-    ir = IRTools.IR(F, args...)
+    ir = IR(F, args...)
 
     if isnothing(ir)
         return error_ir(F, args...)

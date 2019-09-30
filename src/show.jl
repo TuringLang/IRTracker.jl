@@ -1,7 +1,8 @@
-import Base: print, show
+import Base: show
 
 
 printlevels(tape::GraphTape, levels) = show(stdout, tape, maxlevel = levels - 1)
+
 
 function show(io::IO, tape::GraphTape, level = 0; maxlevel = typemax(level))
     level > maxlevel && return
@@ -66,14 +67,3 @@ show(io::IO, index::VarIndex) = print(io, "§", index.block, ":%", index.id, "")
 show(io::IO, index::BranchIndex) = print(io, "§", index.block, ":", index.id,)
 
 show(io::IO, index::TapeIndex) = print(io, "@", index.id)
-
-
-# function show(io::IO, node::UnconditionalBranch, level = 0)
-#     print(io, " " ^ 2level)
-#     print(io, "br ", node.target, " (", join(node.args, ", "), ")")
-# end
-
-# function show(io::IO, node::UnconditionalBranch, level = 0)
-#     print(io, " " ^ 2level)
-#     print(io, "br ", node.target, " (", join(node.args, ", "), ") unless ", node.condition)
-# end

@@ -1,4 +1,5 @@
 using IRTools
+using IRTools: IR
 import Base: getproperty, getindex
 
 struct _DCGCall end
@@ -22,8 +23,8 @@ struct BranchIndex <: IRIndex
     id::Int
 end
 
-getindex(ir::IRTools.IR, ix::VarIndex) = ir[IRTools.var(ix.id)]
-getindex(ir::IRTools.IR, ix::BranchIndex) = IRTools.branches(ir, ix.block)[ix.position]
+getindex(ir::IR, ix::VarIndex) = ir[IRTools.var(ix.id)]
+getindex(ir::IR, ix::BranchIndex) = IRTools.branches(ir, ix.block)[ix.position]
 
 
 

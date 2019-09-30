@@ -4,8 +4,6 @@ using Core.Compiler: LineInfoNode
 import Base: push!, show
 
 
-export StatementInfo
-
 """Extra data and metadata associated with an SSA statement"""
 struct StatementInfo
     # line::LineInfoNode
@@ -18,15 +16,6 @@ show(io::IO, si::StatementInfo) =
     print(io, "StatementInfo(", si === nothing ? "" : si.metadata,")")
 
 
-export Argument,
-    # ConditionalBranch,
-    Branch,
-    GraphTape,
-    NestedCall,
-    Node,
-    PrimitiveCall,
-    Return
-    # UnconditionalBranch
 
 abstract type Node end
 abstract type StatementNode <: Node end
@@ -41,7 +30,7 @@ end
 const VisitedVars = Dict{IRTools.Variable, TapeIndex}
 
 
-"""Record of data and control flow of evaluating IR."""
+"""Record of data and control flow of evaluated IR."""
 struct GraphTape
     original_ir::IRTools.IR
     nodes::Vector{<:Node}
@@ -99,6 +88,7 @@ end
 
 
 
+"""Record a node on a graph tape."""
 record!(tape::GraphTape, node::Node) = (push!(tape, node); value(node))
 
 @generated function record!(tape::GraphTape, index::VarIndex, expr, f::F, args...) where F
