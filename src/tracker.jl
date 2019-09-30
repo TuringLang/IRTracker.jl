@@ -29,6 +29,15 @@ function error_ir(F, args...)
 end
 
 
+@doc """
+    track(f, args...)
+
+Evaluate `f(args...)`, while keeping track of the IR evaluation sequence in a `GraphTape`.  
+Returns a tuple of the return value and the tape.
+
+Primitive functions cannot be tracked.
+""" track
+
 @dynamo function track(F, args...)
     # println("handling $F with args $args")
     ir = IR(F, args...)
@@ -41,7 +50,6 @@ end
         # @show new_ir
         return new_ir
     end
-    
 end
 
 

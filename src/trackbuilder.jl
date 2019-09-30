@@ -2,9 +2,15 @@ using IRTools: Block, IR, Statement, Variable
 using IRTools: arguments, argument!, block, blocks, branches, branch!, xcall
 import IRTools: block!, return!
 
+
+"""
+Context type used to build up new IR with tracking functionality from some original IR.
+Keeps track of necessary intermediate information.
+"""
 mutable struct TrackBuilder
     original_ir::IR
     new_ir::IR
+    """Map from SSA variable in the original IR to the respective variables in the new IR."""
     variable_map::Dict{Any, Any}
     jump_targets::Dict{Int, Vector{Int}}
     return_block::Int
@@ -27,12 +33,15 @@ block!(builder::TrackBuilder, i) =
     (i == 1) ? block(builder.new_ir, 1) : block!(builder.new_ir)
 
 return!(builder, block, argument, record) = branch!(block, builder.return_block, argument, record)
-    
+
+"""Substitute the variable `x` in original IR with its replacement in the newly built IR."""
 substitute_variable(builder::TrackBuilder, x) = get(builder.variable_map, x, x)
 substitute_variable(builder::TrackBuilder) = x -> substitute_variable(builder, x)
 
+"""Record variable `x` in original IR to be substituted by `y` in the new IR."""
 record_new_variable!(builder::TrackBuilder, x, y) = (push!(builder.variable_map, x => y); builder)
 
+"""Extract a dictionary mapping each block to the blocks to which you can jump from there."""
 function jumptargets(ir::IR)
     targets = Dict{Int, Vector{Int}}()
     pushtarget!(from, to) = push!(get!(targets, to, Int[]), from)
@@ -51,8 +60,11 @@ function jumptargets(ir::IR)
     return targets
 end
 
+"""Check whether there exists a jump to block `block`"""
 hasjumpto(builder, block) = haskey(builder.jump_targets, block.id)
 
+
+"""Push the `record!` call for a statement, an record the result a a new variable substitution."""
 function pushrecord!(builder::TrackBuilder, block::Block, args...;
                      substituting = nothing, line = 0)
     record = IRTools.stmt(DCGCall.record!(builder.tape, args...), line = line)
@@ -172,6 +184,12 @@ function track_block!(builder::TrackBuilder, new_block::Block, old_block::Block;
 end
 
 
+"""
+Set up the common return block in tracking IR.  All returns in the original IR are replaced by 
+explicit jumps to the common `builder.return_block`, to be able to record return statements.
+
+This needs to be done _after_ all blocks of the new IR have been created from the old blocks!
+"""
 function insert_return_block!(builder::TrackBuilder)
     return_block = block!(builder)
     @assert return_block.id == builder.return_block
@@ -183,6 +201,7 @@ function insert_return_block!(builder::TrackBuilder)
 end
 
 
+"""Create new IR with tracking code from original IR in the builder, and return it."""
 function build_tracks!(builder::TrackBuilder)
     for (i, old_block) in enumerate(blocks(builder.original_ir))
         new_block = block!(builder, i)

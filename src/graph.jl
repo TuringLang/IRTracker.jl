@@ -1,6 +1,4 @@
 using IRTools
-using Core.Compiler: LineInfoNode
-
 import Base: push!, show
 
 
@@ -22,6 +20,7 @@ abstract type StatementNode <: Node end
 abstract type BranchNode <: Node end
 
 
+"""Index to a node of a `GraphTape`s node list; like the indices of a Wengert list."""
 struct TapeIndex
     id::Int
 end
@@ -30,10 +29,19 @@ end
 const VisitedVars = Dict{IRTools.Variable, TapeIndex}
 
 
-"""Record of data and control flow of evaluated IR."""
+"""
+Record of data and control flow of evaluated IR.  Essentially, a list of 
+(potentially nested) `Node`s.
+"""
 struct GraphTape
+    """The methods original IR, to which the `IRIndex`es in `nodes` refer to."""
     original_ir::IRTools.IR
+    """Vector of recorded IR statements, as nodes in the computation graph (like in a Wengert list)"""
     nodes::Vector{<:Node}
+    """
+    The mapping from original SSA variables to `TapeIndex`es, used for substituting them
+    in the recorded expressions.
+    """
     visited_vars::VisitedVars
 end
 
@@ -55,7 +63,7 @@ function push!(tape::GraphTape, node::BranchNode)
     tapeified_node = tapeify_vars(tape.visited_vars, node)
     push!(tape.nodes, tapeified_node)
     return tape
-    # branches don't need to be recorded, of course
+    # branches' indices don't need to be recorded, of course
 end
 
 
@@ -63,6 +71,11 @@ end
 include("nodes.jl")
 
 
+@doc """
+    tapeify_vars(visited_vars, node)
+Convert SSA references in expressions in `node` to `TapeIndex`es, based on the tape positions
+of the current tape.
+""" tapefiy_vars
 
 tapeify_vars(visited_vars::VisitedVars) = expr -> tapeify_vars(visited_vars, expr)
 tapeify_vars(visited_vars::VisitedVars, expr::Expr) =
