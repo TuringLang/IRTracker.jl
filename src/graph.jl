@@ -99,35 +99,3 @@ function tapeify_vars(visited_vars::VisitedVars, node::Branch)
     Branch(node.target, tapeified_arg_exprs, node.arg_values,
            tapeify_vars(visited_vars, node.condition_expr), node.index, node.info)
 end
-
-
-
-"""Record a node on a graph tape."""
-record!(tape::GraphTape, node::Node) = (push!(tape, node); value(node))
-
-@generated function record!(tape::GraphTape, index::VarIndex, expr, f::F, args...) where F
-    # TODO: check this out:
-    # @nospecialize args
-    
-    # from Cassette.canrecurse
-    # (https://github.com/jrevels/Cassette.jl/blob/79eabe829a16b6612e0eba491d9f43dc9c11ff02/src/context.jl#L457-L473)
-    mod = Base.typename(F).module
-    is_builtin = ((F <: Core.Builtin) && !(mod === Core.Compiler)) || F <: Core.IntrinsicFunction
-    
-    if is_builtin 
-        quote
-            result = f(args...)
-            call = PrimitiveCall(expr, result, index)
-            push!(tape, call)
-            return result
-        end
-    else
-        quote
-            result, graph = track(f, args...)
-            call = NestedCall(expr, result, index, graph)
-            push!(tape, call)
-            return result
-        end
-    end
-end
-

@@ -14,7 +14,7 @@ mutable struct TrackBuilder
     variable_map::Dict{Any, Any}
     jump_targets::Dict{Int, Vector{Int}}
     return_block::Int
-    tape::Union{IRTools.Variable, Nothing}
+    tape::Union{Variable, Nothing}
 
     TrackBuilder(o, n, v, j, r) = new(o, n, v, j, r)
 end
