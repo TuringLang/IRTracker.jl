@@ -1,5 +1,7 @@
 using IRTools
 import Base: push!, show
+import Base: collect, eltype, iterate, length, size
+import Base: firstindex, getindex, lastindex
 
 
 """Extra data and metadata associated with an SSA statement"""
@@ -65,6 +67,18 @@ function push!(tape::GraphTape, node::BranchNode)
     return tape
     # branches' indices don't need to be recorded, of course
 end
+
+
+iterate(tape::GraphTape) = iterate(tape.nodes)
+iterate(tape::GraphTape, state) = iterate(tape.nodes, state)
+eltype(tape::GraphTape) = Node
+length(tape::GraphTape) = length(tape.nodes)
+size(tape::GraphTape) = size(tape.nodes)
+collect(tape::GraphTape) = collect(tape.nodes)
+
+getindex(tape::GraphTape, i) = tape.nodes[i]
+firstindex(tape::GraphTape) = firstindex(tape.nodes)
+lastindex(tape::GraphTape) = lastindex(tape.nodes)
 
 
 
