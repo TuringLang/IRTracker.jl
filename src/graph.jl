@@ -73,9 +73,10 @@ include("nodes.jl")
 
 @doc """
     tapeify_vars(visited_vars, node)
+
 Convert SSA references in expressions in `node` to `TapeIndex`es, based on the tape positions
 of the current tape.
-""" tapefiy_vars
+""" tapeify_vars
 
 tapeify_vars(visited_vars::VisitedVars) = expr -> tapeify_vars(visited_vars, expr)
 tapeify_vars(visited_vars::VisitedVars, expr::Expr) =
