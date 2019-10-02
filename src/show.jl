@@ -3,6 +3,8 @@ import Base: show
 
 printlevels(tape::GraphTape, levels) = show(stdout, tape, maxlevel = levels - 1)
 
+printvalue(io, value) = print(IOContext(io, :limit => true), value)
+printvalue(io, n::Nothing) = print(io, repr(n))
 
 function show(io::IO, tape::GraphTape, level = 0; maxlevel = typemax(level))
     level > maxlevel && return
@@ -14,33 +16,39 @@ function show(io::IO, tape::GraphTape, level = 0; maxlevel = typemax(level))
 end
 
 function show(io::IO, node::Constant, level = 0; maxlevel = typemax(level))
-    print(io, "[Constant ", node.index, "] = ", repr(node.value))
+    print(io, "[Constant ", node.index, "] = ")
+    printvalue(io, node.value)
 end
 
 function show(io::IO, node::PrimitiveCall, level = 0; maxlevel = typemax(level))
     print(io, "[", node.index, "] ")
-    print(io, node.expr, " = ", repr(node.value))
+    print(io, node.expr, " = ")
+    printvalue(io, node.value)
 end
 
 function show(io::IO, node::NestedCall, level = 0; maxlevel = typemax(level))
     print(io, "[", node.index, "] ")
-    print(io, node.expr, " = ", repr(node.value))
+    print(io, node.expr, " = ")
+    printvalue(io, node.value)
     level < maxlevel && print(io, "\n") # prevent double newlines in limited printing
     show(io, node.subtape, level + 1; maxlevel = maxlevel)
 end
 
 function show(io::IO, node::SpecialStatement, level = 0; maxlevel = typemax(level))
     print(io, "[", node.index, "] ")
-    print(io, node.expr, " = ", repr(node.value))
+    print(io, node.expr, " = ")
+    printvalue(io, node.value)
 end
 
 function show(io::IO, node::Argument, level = 0; maxlevel = typemax(level))
-    print(io, "[Argument ", node.index, "] = ", repr(node.value))
+    print(io, "[Argument ", node.index, "] = ")
+    printvalue(io, node.value)
 end
 
 function show(io::IO, node::Return, level = 0; maxlevel = typemax(level))
     print(io, "[", node.index, "] ")
-    print(io, "return ", node.expr, " = ", repr(node.value))
+    print(io, "return ", node.expr, " = ")
+    printvalue(io, node.value)
 end
 
 function show(io::IO, node::Branch, level = 0; maxlevel = typemax(level))
@@ -52,7 +60,7 @@ function show(io::IO, node::Branch, level = 0; maxlevel = typemax(level))
         print(io, " (")
         for (expr, value, i) in zip(node.arg_exprs, node.arg_values, 1:L)
             (expr isa TapeIndex) && print(io, expr, " = ")
-            print(io, repr(value))
+            printvalue(io, value)
             i != L && print(io, ", ")
         end
         print(io, ")")
