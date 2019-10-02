@@ -20,6 +20,8 @@ export BranchNode,
     StatementNode,
     TapeIndex
 
+export backward, children, parents
+
 # show.jl
 export printlevels
 

@@ -43,8 +43,10 @@ track(test4, 42)
 # check visible result
 result, graph = track(geom, 3, 0.6)
 printlevels(graph, 2)
-println()
+println("\n")
 
+
+println(IOContext(stdout, :maxlevel => 1), parents(graph, graph[end]))
 
 # @show @code_ir test2(0.3)
 # println(@code_ir test2(3))
