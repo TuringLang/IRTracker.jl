@@ -46,7 +46,7 @@ printlevels(graph, 2)
 println("\n")
 
 
-println(IOContext(stdout, :maxlevel => 1), parents(graph, graph[end]))
+println(IOContext(stdout, :maxlevel => 1), parents(graph[end]))
 
 # @show @code_ir test2(0.3)
 # println(@code_ir test2(3))

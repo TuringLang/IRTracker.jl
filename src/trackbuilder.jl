@@ -14,7 +14,7 @@ mutable struct TrackBuilder
     variable_map::Dict{Any, Any}
     jump_targets::Dict{Int, Vector{Int}}
     return_block::Int
-    tape::Union{Variable, Nothing}
+    recorder::Union{Variable, Nothing}
 
     TrackBuilder(o, n, v, j, r) = new(o, n, v, j, r)
 end
@@ -64,12 +64,12 @@ end
 hasjumpto(builder, block) = haskey(builder.jump_targets, block.id)
 
 
-"""Push the `record!` call for a statement, an record the result a a new variable substitution."""
+"""Push the `record!` call for a statement to `block`, remembering substitution of original SSA variables."""
 function pushrecord!(builder::TrackBuilder, block::Block, args...;
                      substituting = nothing, line = 0)
-    record = IRTools.stmt(DCGCall.record!(builder.tape, args...), line = line)
+    record = IRTools.stmt(DCGCall.record!(builder.recorder, args...), line = line)
     r = push!(block, record)
-    !isnothing(substituting) && record_new_variable!(builder, substituting, r)
+    isnothing(substituting) || record_new_variable!(builder, substituting, r)
     return r
 end
 
@@ -147,8 +147,8 @@ function track_arguments!(builder::TrackBuilder, new_block::Block, old_block::Bl
     end
 
     if isfirst
-        # this is the first block, here we set up the tape
-        builder.tape = push!(new_block, DCGCall.GraphTape(copy(builder.original_ir)))
+        # this is the first block, here we set up the recorder
+        builder.recorder = push!(new_block, DCGCall.GraphRecorder(copy(builder.original_ir)))
     end
 
     if hasjumpto(builder, old_block)
@@ -169,7 +169,7 @@ end
 
 
 function track_block!(builder::TrackBuilder, new_block::Block, old_block::Block; isfirst = false)
-    @assert isfirst || isdefined(builder, :tape)
+    @assert isfirst || isdefined(builder, :recorder)
 
     track_arguments!(builder, new_block, old_block, isfirst = isfirst)
 
@@ -196,7 +196,8 @@ function insert_return_block!(builder::TrackBuilder)
     
     return_value = argument!(return_block, insert = false)
     pushrecord!(builder, return_block, argument!(return_block, insert = false))
-    return!(return_block, xcall(:tuple, return_value, builder.tape))
+    tape_expr = xcall(:getfield, builder.recorder, :tape)
+    return!(return_block, xcall(:tuple, return_value, tape_expr))
     return return_block
 end
 

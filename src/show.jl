@@ -63,7 +63,7 @@ function show(io::IO, node::Branch, level = 0)
     if L > 0
         print(io, " (")
         for (expr, value, i) in zip(node.arg_exprs, node.arg_values, 1:L)
-            (expr isa TapeIndex) && print(io, expr, " = ")
+            (expr isa TapeReference) && print(io, expr, " = ")
             printvalue(io, value)
             i != L && print(io, ", ")
         end
@@ -78,4 +78,7 @@ end
 show(io::IO, index::VarIndex) = print(io, "§", index.block, ":%", index.id, "")
 show(io::IO, index::BranchIndex) = print(io, "§", index.block, ":", index.id,)
 
-show(io::IO, index::TapeIndex) = print(io, "@", index.id)
+show(io::IO, ref::TapeReference) = print(io, "@", ref.index)
+
+show(io::IO, info::StatementInfo)= 
+    print(io, "StatementInfo(", something(info.metadata, ""), ")")

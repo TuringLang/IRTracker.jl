@@ -1,7 +1,7 @@
-"""Record a node on a graph tape."""
-record!(tape::GraphTape, node::Node) = (push!(tape, node); value(node))
+"""Record a node on a graph recorder."""
+record!(recorder::GraphRecorder, node::Node) = (push!(recorder, node); value(node))
 
-@generated function record!(tape::GraphTape, index::VarIndex, expr, f::F, args...) where F
+@generated function record!(recorder::GraphRecorder, index::VarIndex, expr, f::F, args...) where F
     # TODO: check this out:
     # @nospecialize args
     
@@ -14,14 +14,14 @@ record!(tape::GraphTape, node::Node) = (push!(tape, node); value(node))
         quote
             result = f(args...)
             call = PrimitiveCall(expr, result, index)
-            push!(tape, call)
+            push!(recorder, call)
             return result
         end
     else
         quote
             result, graph = track(f, args...)
             call = NestedCall(expr, result, index, graph)
-            push!(tape, call)
+            push!(recorder, call)
             return result
         end
     end

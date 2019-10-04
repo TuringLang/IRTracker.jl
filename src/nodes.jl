@@ -1,12 +1,15 @@
+"""Extra data and metadata associated with an SSA statement"""
+struct StatementInfo
+    # line::LineInfoNode
+    metadata::Any
+end
+
+StatementInfo() = StatementInfo(nothing)
+
+
+
 value(node::StatementNode) = node.value
 value(node::BranchNode) = nothing
-
-# assumes `expr` is flat, i.e., not containing sub-expressions
-parentindices(expr::Expr) = TapeIndex[e for e in expr.args if e isa TapeIndex]
-parentindices(expr::TapeIndex) = [expr]
-parentindices(expr) = TapeIndex[]
-
-
 
 struct Argument <: StatementNode
     value::Any
@@ -16,7 +19,7 @@ end
 
 Argument(value, index) = Argument(value, index, StatementInfo())
 
-parents(tape::GraphTape, ::Argument) = Node[]
+parents(::Argument) = Node[]
 children(::Argument) = Node[]
 
 
@@ -28,12 +31,12 @@ end
 
 Constant(value, index) = Constant(value, index, StatementInfo())
 
-parents(tape::GraphTape, ::Constant) = Node[]
+parents(::Constant) = Node[]
 children(::Constant) = Node[]
 
 
 struct PrimitiveCall <: StatementNode
-    expr::Any
+    expr::TapeExpr
     value::Any
     index::VarIndex
     info::StatementInfo
@@ -41,12 +44,12 @@ end
 
 PrimitiveCall(expr, value, index) = PrimitiveCall(expr, value, index, StatementInfo())
 
-parents(tape::GraphTape, node::PrimitiveCall) = [tape[ix] for ix in parentindices(node.expr)]
+parents(node::PrimitiveCall) = getindex.(references(node.expr))
 children(::PrimitiveCall) = Node[]
 
 
 struct NestedCall <: StatementNode
-    expr::Any
+    expr::TapeExpr
     value::Any
     index::VarIndex
     subtape::GraphTape
@@ -57,12 +60,12 @@ NestedCall(expr, value, index, subtape = GraphTape()) =
     NestedCall(expr, value, index, subtape, StatementInfo())
 
 push!(node::NestedCall, child::Node) = (push!(node.subtape, child); node)
-parents(tape::GraphTape, node::NestedCall) = [tape[ix] for ix in parentindices(node.expr)]
+parents(node::NestedCall) = getindex.(references(node.expr))
 children(node::NestedCall) = node.subtape.nodes
 
 
 struct SpecialStatement <: StatementNode
-    expr::Any
+    expr::TapeExpr
     value::Any
     index::VarIndex
     info::StatementInfo
@@ -70,12 +73,12 @@ end
 
 SpecialStatement(expr, value, index) = SpecialStatement(expr, value, index, StatementInfo())
 
-parents(tape::GraphTape, node::SpecialStatement) = [tape[ix] for ix in parentindices(node.expr)]
+parents(node::SpecialStatement) = getindex.(references(node.expr))
 children(::SpecialStatement) = Node[]
 
 
 struct Return <: BranchNode
-    expr::Any
+    expr::TapeExpr
     value::Any
     index::BranchIndex
     info::StatementInfo
@@ -83,15 +86,15 @@ end
 
 Return(expr, value, index) = Return(expr, value, index, StatementInfo())
 
-parents(tape::GraphTape, node::Return) = [tape[ix] for ix in parentindices(node.expr)]
+parents(node::Return) = getindex.(references(node.expr))
 children(::Return) = Node[]
 
 
 struct Branch <: BranchNode
     target::Int
-    arg_exprs::Vector{Any}
+    arg_exprs::Vector{TapeExpr}
     arg_values::Vector{Any}
-    condition_expr::Any
+    condition_expr::TapeExpr
     index::BranchIndex
     info::StatementInfo
 end
@@ -99,7 +102,6 @@ end
 Branch(target, arg_exprs, arg_values, condition_expr, index) =
     Branch(target, arg_exprs, arg_values, condition_expr, index, StatementInfo())
 
-parents(tape::GraphTape, node::Branch) = getindex.(Ref(tape),
-                                                   reduce(vcat, parentindices.(node.arg_exprs),
-                                                          init = parentindices(node.condition_expr)))
+parents(node::Branch) = getindex.(reduce(vcat, references.(node.arg_exprs),
+                                         init = references(node.condition_expr)))
 children(::Branch) = Node[]
