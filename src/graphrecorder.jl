@@ -24,7 +24,7 @@ function push!(recorder::GraphRecorder, node::StatementNode)
     # record this node as a new tape index
     last_index = length(recorder.tape)
     push!(recorder.visited_vars,
-          IRTools.var(node.index.id) => TapeReference(recorder.tape, last_index))
+          IRTools.var(node.index.line) => TapeReference(recorder.tape, last_index))
     return recorder
 end
 

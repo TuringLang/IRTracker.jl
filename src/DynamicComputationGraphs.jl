@@ -10,10 +10,8 @@ include("tracker.jl")
 include("runtime_functions.jl")
 
 
-# utils.jl
-export BranchIndex, IRIndex, VarIndex
-
 # graph.jl
+export BranchIndex, IRIndex, VarIndex
 export BranchNode,
     GraphTape,
     Node,

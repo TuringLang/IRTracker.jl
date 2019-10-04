@@ -75,8 +75,8 @@ function show(io::IO, node::Branch, level = 0)
     end
 end
 
-show(io::IO, index::VarIndex) = print(io, "§", index.block, ":%", index.id, "")
-show(io::IO, index::BranchIndex) = print(io, "§", index.block, ":", index.id,)
+show(io::IO, index::VarIndex) = print(io, "§", index.block, ":%", index.line, "")
+show(io::IO, index::BranchIndex) = print(io, "§", index.block, ":", index.line,)
 
 show(io::IO, ref::TapeReference) = print(io, "@", ref.index)
 

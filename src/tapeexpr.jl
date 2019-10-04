@@ -8,6 +8,7 @@ end
 
 getindex(ref::TapeReference) = ref.tape[ref.index]
 
+
 const TapeExpr = Any
 
 # assumes `expr` is flat, i.e., not containing sub-expressions
