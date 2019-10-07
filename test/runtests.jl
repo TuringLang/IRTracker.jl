@@ -1,5 +1,7 @@
 using Test
 using DynamicComputationGraphs
+using IRTools: @code_ir
+
 
 ########### Basic sanity checks #################
 # f(x) = x + 1
@@ -42,6 +44,7 @@ track(test4, 42)
 
 # check visible result
 result, graph = track(geom, 3, 0.6)
+@show @code_ir geom(3, 0.6)
 printlevels(graph, 2)
 println("\n")
 
