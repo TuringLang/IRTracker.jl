@@ -7,9 +7,9 @@ end
 StatementInfo() = StatementInfo(nothing)
 
 
-
 value(node::StatementNode) = node.value
 value(node::BranchNode) = nothing
+
 
 struct Argument <: StatementNode
     value::Any

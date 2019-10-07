@@ -28,11 +28,10 @@ function TrackBuilder(ir::IR)
     TrackBuilder(ir, new_ir, variable_map, jump_targets, return_block)
 end
 
+
 block!(builder::TrackBuilder) = block!(builder.new_ir)
 block!(builder::TrackBuilder, i) =
     (i == 1) ? block(builder.new_ir, 1) : block!(builder.new_ir)
-
-return!(builder, block, argument, record) = branch!(block, builder.return_block, argument, record)
 
 """Substitute the variable `x` in original IR with its replacement in the newly built IR."""
 substitute_variable(builder::TrackBuilder, x) = get(builder.variable_map, x, x)
@@ -40,6 +39,10 @@ substitute_variable(builder::TrackBuilder) = x -> substitute_variable(builder, x
 
 """Record variable `x` in original IR to be substituted by `y` in the new IR."""
 record_new_variable!(builder::TrackBuilder, x, y) = (push!(builder.variable_map, x => y); builder)
+
+"""Check whether there exists a jump to block `block`"""
+hasjumpto(builder::TrackBuilder, block) = haskey(builder.jump_targets, block.id)
+
 
 """Extract a dictionary mapping each block to the blocks to which you can jump from there."""
 function jumptargets(ir::IR)
@@ -60,15 +63,49 @@ function jumptargets(ir::IR)
     return targets
 end
 
-"""Check whether there exists a jump to block `block`"""
-hasjumpto(builder, block) = haskey(builder.jump_targets, block.id)
+
+function returnrecord(builder::TrackBuilder, index, branch)
+    substituted_args = map(substitute_variable(builder), branch.args)
+    reified_args = map(reify_quote, branch.args)
+    return DCGCall.Return(reified_args[1], substituted_args[1], index)
+end
+
+function branchrecord(builder::TrackBuilder, index, branch)
+    reified_condition = reify_quote(branch.condition)
+    substituted_args = map(reify_quote, branch.args)
+    reified_args = map(reify_quote, branch.args)
+    arg_exprs = xcall(:vect, reified_args...)
+    arg_values = xcall(:vect, substituted_args...)
+    return DCGCall.Branch(branch.block, arg_exprs, arg_values, reified_condition, index)
+end
+
+function callrecord(builder::TrackBuilder, index, expr)
+    substituted_args = map(substitute_variable(builder), expr.args)
+    reified_expr = reify_quote(expr)
+    return DCGCall.dispatchcall(index, reified_expr, substituted_args...)
+end
+
+function specialrecord(builder::TrackBuilder, index, expr)
+    reified_expr = reify_quote(expr)
+    substituted_args = map(substitute_variable(builder), expr.args)
+    special_value = Expr(expr.head, substituted_args...)
+    return DCGCall.SpecialStatement(reified_expr, special_value, index)
+end
+
+function constantrecord(builder::TrackBuilder, index, expr::Union{QuoteNode, GlobalRef})
+    # TODO: make this itself a constant :)
+   return DCGCall.Constant(expr, index)
+end
+
+function argumentrecord(builder::TrackBuilder, index, expr)
+    substituted_argument = substitute_variable(builder, expr)
+    return DCGCall.Argument(substituted_argument, index)
+end
 
 
-"""Push the `record!` call for a statement to `block`, remembering substitution of original SSA variables."""
-function pushrecord!(builder::TrackBuilder, block::Block, args...;
+function pushrecord!(builder::TrackBuilder, block::Block, record;
                      substituting = nothing, line = 0)
-    record = IRTools.stmt(DCGCall.record!(builder.recorder, args...), line = line)
-    r = push!(block, record)
+    r = push!(block, IRTools.stmt(DCGCall.record!(builder.recorder, record), line = line))
     isnothing(substituting) || record_new_variable!(builder, substituting, r)
     return r
 end
@@ -78,26 +115,18 @@ function track_branches!(builder::TrackBuilder, new_block::Block, branches)
     # called only from within a non-primitive call
     for (position, branch) in enumerate(branches)
         index = DCGCall.BranchIndex(new_block.id, position)
-        args = map(substitute_variable(builder), branch.args)
-        reified_args = map(reify_quote, branch.args)
+        substituted_args = map(substitute_variable(builder), branch.args)
         
         if IRTools.isreturn(branch)
-            return_record = push!(new_block, DCGCall.Return(reified_args[1], args[1], index))
-            # the return is converted to a branch, redirecting to a new last block, where it
-            # gets recorded
-            return!(builder, new_block, args[1], return_record)
+            # the return is converted to a branch, redirecting to a new last block,
+            # where it gets recorded
+            return_record = push!(new_block, returnrecord(builder, index, branch))
+            branch!(new_block, builder.return_block, substituted_args..., return_record)
         else
-            condition = substitute_variable(builder, branch.condition)
-            reified_condition = reify_quote(branch.condition)
-            
-            # remember from where and why we branched in target_info
-            arg_exprs = xcall(:vect, reified_args...)
-            arg_values = xcall(:vect, args...)
-            branch_record = push!(new_block, DCGCall.Branch(branch.block, arg_exprs, arg_values,
-                                                            reified_condition, index))
-
-            # extend branch args by target_info
-            branch!(new_block, branch.block, args..., branch_record; unless = condition)
+            # remember from where and why we branched, and extend branch arguments
+            branch_record = push!(new_block, branchrecord(builder, index, branch))
+            branch!(new_block, branch.block, substituted_args..., branch_record;
+                    unless = substitute_variable(builder, branch.condition))
         end
     end
 
@@ -109,31 +138,22 @@ function track_statement!(builder::TrackBuilder, new_block::Block,
                           variable::Variable, statement::Statement)
     index = DCGCall.VarIndex(new_block.id, variable.id)
     expr = statement.expr
-    reified_expr = reify_quote(statement.expr)
-    
+
     if Meta.isexpr(expr, :call)
         # normal call expression; nested vs. primitive is handled in `record!`
-        args = map(substitute_variable(builder), expr.args)
-        pushrecord!(builder, new_block, index, reified_expr, args...,
-                    substituting = variable, line = statement.line)
+        record = callrecord(builder, index, expr)
     elseif expr isa Expr
         # other special things, like `:new`, `:boundscheck`, or `:foreigncall`
-        args = map(substitute_variable(builder), expr.args)
-        special_value = push!(new_block, Expr(expr.head, args...))
-        special_expr = DCGCall.SpecialStatement(reified_expr, special_value, index)
-        pushrecord!(builder, new_block, special_expr,
-                    substituting = variable, line = statement.line)
+        record = specialrecord(builder, index, expr)
     elseif expr isa QuoteNode || expr isa GlobalRef
         # for statements that are just constants (like type literals), or global values
-        constant_expr = DCGCall.Constant(expr, index)
-        # TODO: make constant_expr itself a constant :)
-        pushrecord!(builder, new_block, constant_expr,
-                    substituting = variable, line = statement.line)
+        record = constantrecord(builder, index, expr)
     else
         # currently unhandled
         error("Found statement of unknown type: ", statement)
     end
 
+    pushrecord!(builder, new_block, record, line = statement.line, substituting = variable)
     return new_block
 end
 
@@ -160,8 +180,8 @@ function track_arguments!(builder::TrackBuilder, new_block::Block, old_block::Bl
     # track rest of the arguments from the old block
     for argument in arguments(old_block)
         index = DCGCall.VarIndex(new_block.id, argument.id)
-        new_argument = substitute_variable(builder, argument)
-        pushrecord!(builder, new_block, DCGCall.Argument(new_argument, index))
+        record = argumentrecord(builder, index, argument)
+        pushrecord!(builder, new_block, record)
     end
 
     return new_block

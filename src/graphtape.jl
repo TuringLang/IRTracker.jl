@@ -5,8 +5,8 @@ import Base: push!
 
 
 """
-Record of data and control flow of evaluated IR.  Essentially, a list of 
-(potentially nested) `Node`s.
+Tape of data and control flow of evaluated IR.  Essentially, a list of 
+(potentially nested) `Node`s, like a recursive Wengert list
 """
 struct GraphTape
     """The methods original IR, to which the `IRIndex`es in `nodes` refer to."""

@@ -2,8 +2,8 @@ using Test
 using DynamicComputationGraphs
 
 ########### Basic sanity checks #################
-f(x) = x + 1
-track(f, 42)
+# f(x) = x + 1
+# track(f, 42)
 
 weird(n) = rand() < 1/(n + 1) ? n : weird(n + 1)
 track(weird, 3)
@@ -45,12 +45,14 @@ result, graph = track(geom, 3, 0.6)
 printlevels(graph, 2)
 println("\n")
 
-
-println(IOContext(stdout, :maxlevel => 1), parents(graph[end-1]))
-
 # @show @code_ir test2(0.3)
 # println(@code_ir test2(3))
 # track(geom, 2, 0.5)
 # @show graph
 # track(weird, 2)
 # @show track(typeof, 1)
+
+
+
+########### Graph API #################
+# println(IOContext(stdout, :maxlevel => 1), parents(graph[end-1]))

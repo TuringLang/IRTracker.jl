@@ -1,7 +1,7 @@
-"""Record a node on a graph recorder."""
-record!(recorder::GraphRecorder, node::Node) = (push!(recorder, node); value(node))
+# """Record a node on a graph recorder."""
+# record!(recorder::GraphRecorder, node::Node) = (push!(recorder, node); value(node))
 
-@generated function record!(recorder::GraphRecorder, index::VarIndex, expr, f::F, args...) where F
+@generated function dispatchcall(index, expr, f::F, args...) where F
     # TODO: check this out:
     # @nospecialize args
     
@@ -13,21 +13,15 @@ record!(recorder::GraphRecorder, node::Node) = (push!(recorder, node); value(nod
     if is_builtin 
         quote
             result = f(args...)
-            call = PrimitiveCall(expr, result, index)
-            push!(recorder, call)
-            return result
+            return PrimitiveCall(expr, result, index)
         end
     else
         quote
             result, graph = track(f, args...)
-            call = NestedCall(expr, result, index, graph)
-            push!(recorder, call)
-            return result
+            return NestedCall(expr, result, index, graph)
         end
     end
 end
-
-
 
 """
 Special handling to get the name of the intrinsic function `f` and print an error message that it 
