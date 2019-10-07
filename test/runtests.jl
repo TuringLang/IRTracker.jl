@@ -4,8 +4,8 @@ using IRTools: @code_ir
 
 
 ########### Basic sanity checks #################
-# f(x) = x + 1
-# track(f, 42)
+f(x) = x + 1
+track(f, 42)
 
 weird(n) = rand() < 1/(n + 1) ? n : weird(n + 1)
 track(weird, 3)

@@ -66,39 +66,39 @@ end
 
 function returnrecord(builder::TrackBuilder, index, branch)
     substituted_args = map(substitute_variable(builder), branch.args)
-    reified_args = map(reify_quote, branch.args)
+    reified_args = map(arg -> DCGCall.tapeify_expr(builder.recorder, reify_quote(arg)), branch.args)
     return DCGCall.Return(reified_args[1], substituted_args[1], index)
 end
 
 function branchrecord(builder::TrackBuilder, index, branch)
-    reified_condition = reify_quote(branch.condition)
-    substituted_args = map(reify_quote, branch.args)
-    reified_args = map(reify_quote, branch.args)
+    reified_condition = DCGCall.tapeify_expr(builder.recorder, reify_quote(branch.condition))
+    substituted_args = map(substitute_variable(builder), branch.args)
+    reified_args = map(arg -> DCGCall.tapeify_expr(builder.recorder, reify_quote(arg)), branch.args)
     arg_exprs = xcall(:vect, reified_args...)
     arg_values = xcall(:vect, substituted_args...)
     return DCGCall.Branch(branch.block, arg_exprs, arg_values, reified_condition, index)
 end
 
-function callrecord(builder::TrackBuilder, index, expr)
-    substituted_args = map(substitute_variable(builder), expr.args)
-    reified_expr = reify_quote(expr)
+function callrecord(builder::TrackBuilder, index, call_expr)
+    substituted_args = map(substitute_variable(builder), call_expr.args)
+    reified_expr = DCGCall.tapeify_expr(builder.recorder, reify_quote(call_expr))
     return DCGCall.dispatchcall(index, reified_expr, substituted_args...)
 end
 
-function specialrecord(builder::TrackBuilder, index, expr)
-    reified_expr = reify_quote(expr)
-    substituted_args = map(substitute_variable(builder), expr.args)
-    special_value = Expr(expr.head, substituted_args...)
+function specialrecord(builder::TrackBuilder, index, special_expr)
+    reified_expr = DCGCall.tapeify_expr(builder.recorder, reify_quote(special_expr))
+    substituted_args = map(substitute_variable(builder), special_expr.args)
+    special_value = Expr(special_expr.head, substituted_args...)
     return DCGCall.SpecialStatement(reified_expr, special_value, index)
 end
 
-function constantrecord(builder::TrackBuilder, index, expr::Union{QuoteNode, GlobalRef})
+function constantrecord(builder::TrackBuilder, index, constant_expr)
     # TODO: make this itself a constant :)
-   return DCGCall.Constant(expr, index)
+   return DCGCall.Constant(constant_expr, index)
 end
 
-function argumentrecord(builder::TrackBuilder, index, expr)
-    substituted_argument = substitute_variable(builder, expr)
+function argumentrecord(builder::TrackBuilder, index, argument_expr)
+    substituted_argument = substitute_variable(builder, argument_expr)
     return DCGCall.Argument(substituted_argument, index)
 end
 
