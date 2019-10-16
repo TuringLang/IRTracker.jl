@@ -251,15 +251,20 @@ in VLAD/Stalin∇.
 - Innes, M. Flux: Elegant machine learning with Julia. Journal of Open Source Software (2018)
   doi:10.21105/joss.00602.
   
-  (Flux.Tracker, with tapes)
+  Flux.Tracker uses OO with tapes to do backward-mode AD.
 - Looks, M., Herreshoff, M., Hutchins, D. & Norvig, P. Deep Learning with Dynamic Computation
   Graphs. arXiv:1702.02181 [cs, stat] (2017).
   
-  (TensorFlow Fold; static graphs with dynamic batching)
+  TensorFlow Fold; uses static graphs with dynamic batching.
 - Neubig, G. et al. DyNet: The Dynamic Neural Network Toolkit. arXiv:1701.03980 [cs, stat] (2017).
+
+  OO based dynamic compuation graph, with extra lightweight data structure and runtime
+  optimizations.
 - Tokui, S., Oono, K., Hido, S. & Clayton, J. Chainer: a Next-Generation Open Source Framework for
   Deep Learning. in Proceedings of workshop on machine learning systems (LearningSys) in the
   twenty-ninth annual conference on neural information processing systems (NIPS) (2015).
+  
+  OO based dynamic compuation graph (define-by-run), with some special runtime optimizations.
 - Yuret, D. Knet: beginning deep learning with 100 lines of Julia. in Machine learning systems
   workshop at NIPS (2016).
 
