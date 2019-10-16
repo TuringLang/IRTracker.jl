@@ -208,42 +208,58 @@ in VLAD/Stalin∇.
 - Orbanz, P. Lecture Notes on Bayesian Nonparametrics. 108 (2014).
 
 
-## PPL and ML Frameworks and Implementations
+## Frameworks and Implementations
+
+### Probabilistic Programming 
 
 - Bingham, E. et al. Pyro: Deep Universal Probabilistic Programming. arXiv:1810.09538 [cs, stat]
   (2018).
+  
+  Trace constructed by messages during runtime
 - Ge, H., Xu, K. & Ghahramani, Z. Turing: A Language for Flexible Probabilistic Inference. in
   International Conference on Artificial Intelligence and Statistics 1682–1690 (2018).
 - Goodman, N. D., Mansinghka, V., Roy, D. M., Bonawitz, K. & Tenenbaum, J. B. Church: a language for
   generative models. arXiv:1206.3255 [cs] (2012).
+  
+  LISP-based; computation trace, similar to a LISP/R environment structure.
 - Goodman, N. D. & Stuhlmüller, A. The Design and Implementation of Probabilistic Programming
   Languages. http://dippl.org (2014).
   
-  (WebPPL)
-- Innes, M. Flux: Elegant machine learning with Julia. Journal of Open Source Software (2018)
-  doi:10.21105/joss.00602.
+  WebPPL.  Implemented in JavaScript, using ideas from LISP, uses CPS transformations to intercept
+  code.
 - Kulkarni, T. D., Kohli, P., Tenenbaum, J. B. & Mansinghka, V. Picture: A Probabilistic Programming
   Language for Scene Perception. in 4390–4399 (2015).
-- Looks, M., Herreshoff, M., Hutchins, D. & Norvig, P. Deep Learning with Dynamic Computation
-  Graphs. arXiv:1702.02181 [cs, stat] (2017).
-  
-  (TensorFlow Fold)
 - Lunn, D. J., Thomas, A., Best, N. & Spiegelhalter, D. WinBUGS - A Bayesian modelling framework:
   Concepts, structure, and extensibility. Statistics and Computing 10, 325–337 (2000).
 - Mansinghka, V., Selsam, D. & Perov, Y. Venture: a higher-order probabilistic programming platform
   with programmable inference. arXiv:1404.0099 [cs, stat] (2014).
+  
+  Probabilistic execution traces, closest to DynamicComputationGraphs.jl.
 - Minka, T. et al. Infer.NET 0.3. http://dotnet.github.io/infer (2018).
-- Neubig, G. et al. DyNet: The Dynamic Neural Network Toolkit. arXiv:1701.03980 [cs, stat] (2017).
-- Plummer, M. JAGS: A Program for Analysis of Bayesian Graphical Models Using Gibbs Sampling. in
-  Proceedings of the 3rd International Workshop on Distributed Statistical Computing (DSC 2003)
-  (2003).
-- Tokui, S., Oono, K., Hido, S. & Clayton, J. Chainer: a Next-Generation Open Source Framework for
-  Deep Learning. in Proceedings of workshop on machine learning systems (LearningSys) in the
-  twenty-ninth annual conference on neural information processing systems (NIPS) (2015).
+
+  Defines static factor graphs, which are then compiled together with an inference engine.
 - Wood, F., van de Meent, J. W. & Mansinghka, V. A New Approach to Probabilistic Programming
   Inference. arXiv:1507.00996 [cs, stat] (2015).
   
-  (Venture)
+  Anglican; uses a CPS transformation in Clojure.
+- Plummer, M. JAGS: A Program for Analysis of Bayesian Graphical Models Using Gibbs Sampling. in
+  Proceedings of the 3rd International Workshop on Distributed Statistical Computing (DSC 2003)
+  (2003).
+  
+
+### General ML
+- Innes, M. Flux: Elegant machine learning with Julia. Journal of Open Source Software (2018)
+  doi:10.21105/joss.00602.
+  
+  (Flux.Tracker, with tapes)
+- Looks, M., Herreshoff, M., Hutchins, D. & Norvig, P. Deep Learning with Dynamic Computation
+  Graphs. arXiv:1702.02181 [cs, stat] (2017).
+  
+  (TensorFlow Fold; static graphs with dynamic batching)
+- Neubig, G. et al. DyNet: The Dynamic Neural Network Toolkit. arXiv:1701.03980 [cs, stat] (2017).
+- Tokui, S., Oono, K., Hido, S. & Clayton, J. Chainer: a Next-Generation Open Source Framework for
+  Deep Learning. in Proceedings of workshop on machine learning systems (LearningSys) in the
+  twenty-ninth annual conference on neural information processing systems (NIPS) (2015).
 - Yuret, D. Knet: beginning deep learning with 100 lines of Julia. in Machine learning systems
   workshop at NIPS (2016).
 
