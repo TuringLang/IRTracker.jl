@@ -80,9 +80,16 @@ function branchrecord(builder::TrackBuilder, index, branch)
 end
 
 function callrecord(builder::TrackBuilder, index, call_expr)
-    substituted_args = map(substitute_variable(builder), call_expr.args)
-    reified_expr = DCGCall.tapeify_expr(builder.recorder, reify_quote(call_expr))
-    return DCGCall.dispatchcall(index, reified_expr, substituted_args...)
+    f, args = call_expr.args[1], call_expr.args[2:end]
+    f_value = substitute_variable(builder, f)
+    f_expr = DCGCall.tapeify_expr(builder.recorder, reify_quote(f))
+    
+    substituted_args = map(substitute_variable(builder), args)
+    arg_values = xcall(:tuple, substituted_args...)
+    reified_args = map(arg -> DCGCall.tapeify_expr(builder.recorder, reify_quote(arg)), args)
+    arg_exprs = xcall(:tuple, reified_args...)
+    
+    return DCGCall.dispatchcall(f_value, f_expr, arg_values, arg_exprs, index)
 end
 
 function specialrecord(builder::TrackBuilder, index, special_expr)

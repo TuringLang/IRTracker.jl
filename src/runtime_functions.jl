@@ -1,7 +1,7 @@
 # """Record a node on a graph recorder."""
 # record!(recorder::GraphRecorder, node::Node) = (push!(recorder, node); value(node))
 
-@generated function dispatchcall(index, expr, f::F, args...) where F
+@generated function dispatchcall(f::F, f_expr, args, arg_exprs, index) where F
     # TODO: check this out:
     # @nospecialize args
     
@@ -9,16 +9,16 @@
     # (https://github.com/jrevels/Cassette.jl/blob/79eabe829a16b6612e0eba491d9f43dc9c11ff02/src/context.jl#L457-L473)
     mod = Base.typename(F).module
     is_builtin = ((F <: Core.Builtin) && !(mod === Core.Compiler)) || F <: Core.IntrinsicFunction
-    
+
     if is_builtin 
         quote
             result = f(args...)
-            return PrimitiveCall(expr, result, index)
+            return PrimitiveCall(TapeCall(f_expr, arg_exprs), result, index)
         end
     else
         quote
             result, graph = track(f, args...)
-            return NestedCall(expr, result, index, graph)
+            return NestedCall(TapeCall(f_expr, arg_exprs), result, index, graph)
         end
     end
 end
