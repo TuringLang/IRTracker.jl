@@ -152,12 +152,9 @@ function track_statement!(builder::TrackBuilder, new_block::Block,
     elseif expr isa Expr
         # other special things, like `:new`, `:boundscheck`, or `:foreigncall`
         record = specialrecord(builder, index, expr)
-    elseif expr isa QuoteNode || expr isa GlobalRef
-        # for statements that are just constants (like type literals), or global values
-        record = constantrecord(builder, index, expr)
     else
-        # currently unhandled
-        error("Found statement of unknown type: ", statement)
+        # everything else is a constant evaluating to itself
+        record = constantrecord(builder, index, expr)
     end
 
     pushrecord!(builder, new_block, record, line = statement.line, substituting = variable)
