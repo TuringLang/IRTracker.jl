@@ -7,43 +7,58 @@ using Distributions
     
     ########### Basic sanity checks #################
     @testset "sanity checks" begin
-        f(x) = x + 1
-        track(f, 42)
+        # f(x) = x + 1
+        # let (r, graph) = track(f, 42)
+        #     @test (r, graph) isa Tuple{Int, GraphTape}
+        #     @test r == 43
+        # end
 
-        weird(n) = rand() < 1/(n + 1) ? n : weird(n + 1)
-        track(weird, 3)
+        # weird(n) = rand() < 1/(n + 1) ? n : weird(n + 1)
+        # @test track(weird, 3) isa Tuple{Int, GraphTape}
 
-        geom(n, β) = rand() < β ? n : geom(n + 1, β)
-        track(geom, 3, 0.5)
+        # geom(n, β) = rand() < β ? n : geom(n + 1, β)
+        # @test track(geom, 3, 0.5) isa Tuple{Int, GraphTape}
 
-        function test1(x)
-            t = (x, x)
-            t[1] + 1
-        end
-        track(test1, 42)
+        # function test1(x)
+        #     t = (x, x)
+        #     t[1] + 1
+        # end
+        # let (r, graph) = track(test1, 42)
+        #     @test (r, graph) isa Tuple{Int, GraphTape}
+        #     @test r == 43
+        # end
 
-        function test2(x)
-            if x < 0
-                return x + 1
-            else
-                return x - 1 #sum([x, x])
-            end
-        end
-        track(test2, 42)
+        # function test2(x)
+        #     if x < 0
+        #         return x + 1
+        #     else
+        #         return x - 1 #sum([x, x])
+        #     end
+        # end
+        # let (r, graph) = track(test2, 42)
+        #     @test (r, graph) isa Tuple{Int, GraphTape}
+        #     @test r == 41
+        # end
 
-        function test3(x)
-            y = 0 #zero(x)
-            while x > 0
-                y += 1
-                x -= 1
-            end
+        # function test3(x)
+        #     y = zero(x)
+        #     while x > 0
+        #         y += 1
+        #         x -= 1
+        #     end
 
-            return y
-        end
-        track(test3, 42)
-
-        test4(x) = [x, x]
-        track(test4, 42)
+        #     return y
+        # end
+        # let (r, graph) = track(test3, 42)
+        #     @test (r, graph) isa Tuple{Int, GraphTape}
+        #     @test r == 42
+        # end
+        
+        # test4(x) = [x, x]
+        # let (r, graph) = track(test4, 42)
+        #     @test (r, graph) isa Tuple{Vector{Int}, GraphTape}
+        #     @test r = [42, 42]
+        # end
 
         function test5()
             p = rand(Beta(1, 1))
@@ -57,21 +72,21 @@ using Distributions
             m += 2
             return Normal(m, 1)
         end
-        track(test5)
+        let (r, graph) = track(test5)
+            @test (r, graph) isa Tuple{Float64, GraphTape}
+        end
 
 
         # check visible result
-        result, graph = track(geom, 3, 0.6)
-        @show @code_ir geom(3, 0.6)
-        printlevels(graph, 2)
-        println("\n")
+        # result, graph = track(geom, 3, 0.6)
+        # @show @code_ir geom(3, 0.6)
+        # printlevels(graph, 2)
+        # println("\n")
 
-        # @show @code_ir test2(0.3)
-        # println(@code_ir test2(3))
-        # track(geom, 2, 0.5)
-        # @show graph
-        # track(weird, 2)
-        # @show track(typeof, 1)
+        # result, graph = track(f, 10)
+        # @show @code_ir f(10)
+        # printlevels(graph, 2)
+        # println("\n")
         
     end
 
