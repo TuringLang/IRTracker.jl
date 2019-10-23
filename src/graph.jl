@@ -1,4 +1,5 @@
 using IRTools
+import Base: getindex
 
 """
 Unique index to a certain position in IR code; either to a variable, given by block and number,

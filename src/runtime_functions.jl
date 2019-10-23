@@ -1,7 +1,9 @@
-# """Record a node on a graph recorder."""
-# record!(recorder::GraphRecorder, node::Node) = (push!(recorder, node); value(node))
 
-@generated function dispatchcall(f::F, f_expr, args, arg_exprs, index) where F
+"""
+If `f` is primitive, call `f(args...)` and return a `PrimitiveCall` node with the result; otherwise,
+track the call of `f` with `args` and return a `NestedCall` containing the resulting `GraphTape`.
+"""
+@generated function dispatchcall(f::F, f_repr, args, args_repr, location) where F
     # TODO: check this out:
     # @nospecialize args
     
@@ -10,18 +12,21 @@
     mod = Base.typename(F).module
     is_builtin = ((F <: Core.Builtin) && !(mod === Core.Compiler)) || F <: Core.IntrinsicFunction
 
+    tapecall = :(TapeCall(result, f_repr, args_repr))
+
     if is_builtin 
         quote
             result = f(args...)
-            return PrimitiveCall(TapeCall(f_expr, arg_exprs), result, index)
+            return PrimitiveCall($tapecall, location)
         end
     else
         quote
             result, graph = track(f, args...)
-            return NestedCall(TapeCall(f_expr, arg_exprs), result, index, graph)
+            return NestedCall($tapecall, graph, location)
         end
     end
 end
+
 
 """
 Special handling to get the name of the intrinsic function `f` and print an error message that it 

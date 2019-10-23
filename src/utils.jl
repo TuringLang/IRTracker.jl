@@ -1,6 +1,5 @@
 using IRTools
-using IRTools: IR
-import Base: getproperty, getindex
+import Base: getproperty
 
 struct _DCGCall end
 getproperty(::_DCGCall, name::Symbol) =
@@ -11,8 +10,4 @@ getproperty(::_DCGCall, name::Symbol) =
 DynamicComputationGraphs.<bla>(args...).
 """
 const DCGCall = _DCGCall()
-
-
-"""Convert an expression into an expression that will evaluate to that expression, quoted literally."""
-reify_quote(expr) = Expr(:copyast, QuoteNode(expr))
 

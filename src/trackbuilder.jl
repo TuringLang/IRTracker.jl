@@ -1,6 +1,6 @@
 using IRTools: Block, IR, Statement, Variable
-using IRTools: arguments, argument!, block, blocks, branches, branch!, xcall
-import IRTools: block!, return!
+using IRTools: arguments, argument!, block, blocks, branches, branch!, return!, xcall
+import IRTools: block!
 
 
 """
@@ -64,49 +64,57 @@ function jumptargets(ir::IR)
 end
 
 
-function returnrecord(builder::TrackBuilder, index, branch)
-    substituted_args = map(substitute_variable(builder), branch.args)
-    reified_args = map(arg -> DCGCall.tapeify_expr(builder.recorder, reify_quote(arg)), branch.args)
-    return DCGCall.Return(reified_args[1], substituted_args[1], index)
+function tapevalue(builder::TrackBuilder, value::IRTools.Variable)
+    return DCGCall.tapeify(builder.recorder, QuoteNode(value))
 end
 
-function branchrecord(builder::TrackBuilder, index, branch)
-    reified_condition = DCGCall.tapeify_expr(builder.recorder, reify_quote(branch.condition))
-    substituted_args = map(substitute_variable(builder), branch.args)
-    reified_args = map(arg -> DCGCall.tapeify_expr(builder.recorder, reify_quote(arg)), branch.args)
-    arg_exprs = xcall(:vect, reified_args...)
-    arg_values = xcall(:vect, substituted_args...)
-    return DCGCall.Branch(branch.block, arg_exprs, arg_values, reified_condition, index)
+function tapevalue(builder::TrackBuilder, value::Any)
+    return DCGCall.TapeConstant(value)
 end
 
-function callrecord(builder::TrackBuilder, index, call_expr)
-    f, args = call_expr.args[1], call_expr.args[2:end]
-    f_value = substitute_variable(builder, f)
-    f_expr = DCGCall.tapeify_expr(builder.recorder, reify_quote(f))
-    
-    substituted_args = map(substitute_variable(builder), args)
-    arg_values = xcall(:tuple, substituted_args...)
-    reified_args = map(arg -> DCGCall.tapeify_expr(builder.recorder, reify_quote(arg)), args)
-    arg_exprs = xcall(:tuple, reified_args...)
-    
-    return DCGCall.dispatchcall(f_value, f_expr, arg_values, arg_exprs, index)
+function tapevalues(builder::TrackBuilder, values)
+    return xcall(:getindex, TapeValue, tapevalue.(Ref(builder), values)...)
 end
 
-function specialrecord(builder::TrackBuilder, index, special_expr)
-    reified_expr = DCGCall.tapeify_expr(builder.recorder, reify_quote(special_expr))
-    substituted_args = map(substitute_variable(builder), special_expr.args)
-    special_value = Expr(special_expr.head, substituted_args...)
-    return DCGCall.SpecialStatement(reified_expr, special_value, index)
+
+function returnrecord(builder::TrackBuilder, location, branch)
+    argument_repr = tapevalue(builder, branch.args[1])
+    return DCGCall.Return(argument_repr, location)
 end
 
-function constantrecord(builder::TrackBuilder, index, constant_expr)
+function branchrecord(builder::TrackBuilder, location, branch)
+    condition_repr = tapevalue(builder, branch.condition)
+    arguments_repr = tapevalues(builder, branch.args)
+    return DCGCall.Branch(branch.block, arguments_repr, condition_repr, location)
+end
+
+function callrecord(builder::TrackBuilder, location, call_expr)
+    f_expr, arguments_expr = call_expr.args[1], call_expr.args[2:end]
+    f = substitute_variable(builder, f_expr)
+    arguments = xcall(:vect, map(substitute_variable(builder), arguments_expr)...)
+    f_repr = tapevalue(builder, f_expr)
+    arguments_repr = tapevalues(builder, arguments_expr)
+    return DCGCall.dispatchcall(f, f_repr, arguments, arguments_repr, location)
+end
+
+function specialrecord(builder::TrackBuilder, location, form_expr)
+    head = form_expr.head
+    args = map(substitute_variable(builder), form_expr.args)
+    form = Expr(head, args...)
+    args_repr = tapevalues(builder, form_expr.args)
+    form_repr = DCGCall.TapeSpecialForm(form, QuoteNode(head), args_repr)
+    return DCGCall.SpecialStatement(form_repr, location)
+end
+
+function constantrecord(builder::TrackBuilder, location, constant_expr)
     # TODO: make this itself a constant :)
-   return DCGCall.Constant(constant_expr, index)
+    constant_repr = DCGCall.TapeConstant(constant_expr)
+    return DCGCall.Constant(constant_repr, location)
 end
 
-function argumentrecord(builder::TrackBuilder, index, argument_expr)
-    substituted_argument = substitute_variable(builder, argument_expr)
-    return DCGCall.Argument(substituted_argument, index)
+function argumentrecord(builder::TrackBuilder, location, argument_expr)
+    argument_repr = DCGCall.TapeConstant(argument_expr)
+    return DCGCall.Argument(argument_repr, location)
 end
 
 
@@ -120,18 +128,18 @@ end
 
 function track_branches!(builder::TrackBuilder, new_block::Block, branches)
     # called only from within a non-primitive call
-    for (position, branch) in enumerate(branches)
-        index = DCGCall.BranchIndex(new_block.id, position)
+    for (i, branch) in enumerate(branches)
+        location = DCGCall.BranchIndex(new_block.id, i)
         substituted_args = map(substitute_variable(builder), branch.args)
         
         if IRTools.isreturn(branch)
             # the return is converted to a branch, redirecting to a new last block,
             # where it gets recorded
-            return_record = push!(new_block, returnrecord(builder, index, branch))
+            return_record = push!(new_block, returnrecord(builder, location, branch))
             branch!(new_block, builder.return_block, substituted_args..., return_record)
         else
             # remember from where and why we branched, and extend branch arguments
-            branch_record = push!(new_block, branchrecord(builder, index, branch))
+            branch_record = push!(new_block, branchrecord(builder, location, branch))
             branch!(new_block, branch.block, substituted_args..., branch_record;
                     unless = substitute_variable(builder, branch.condition))
         end
@@ -143,18 +151,18 @@ end
 
 function track_statement!(builder::TrackBuilder, new_block::Block,
                           variable::Variable, statement::Statement)
-    index = DCGCall.VarIndex(new_block.id, variable.id)
+    location = DCGCall.VarIndex(new_block.id, variable.id)
     expr = statement.expr
 
     if Meta.isexpr(expr, :call)
         # normal call expression; nested vs. primitive is handled in `record!`
-        record = callrecord(builder, index, expr)
+        record = callrecord(builder, location, expr)
     elseif expr isa Expr
         # other special things, like `:new`, `:boundscheck`, or `:foreigncall`
-        record = specialrecord(builder, index, expr)
+        record = specialrecord(builder, location, expr)
     else
         # everything else is a constant evaluating to itself
-        record = constantrecord(builder, index, expr)
+        record = constantrecord(builder, location, expr)
     end
 
     pushrecord!(builder, new_block, record, line = statement.line, substituting = variable)
@@ -183,8 +191,8 @@ function track_arguments!(builder::TrackBuilder, new_block::Block, old_block::Bl
 
     # track rest of the arguments from the old block
     for argument in arguments(old_block)
-        index = DCGCall.VarIndex(new_block.id, argument.id)
-        record = argumentrecord(builder, index, argument)
+        location = DCGCall.VarIndex(new_block.id, argument.id)
+        record = argumentrecord(builder, location, argument)
         pushrecord!(builder, new_block, record)
     end
 

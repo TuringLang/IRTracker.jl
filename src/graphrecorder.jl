@@ -25,7 +25,7 @@ function push!(recorder::GraphRecorder, node::StatementNode)
     # remember mapping this nodes variable to the respective tape reference
     last_index = length(recorder.tape)
     push!(recorder.visited_vars,
-          IRTools.var(node.index.line) => TapeReference(recorder.tape, last_index))
+          IRTools.var(node.location.line) => TapeReference(recorder.tape, last_index))
     return recorder
 end
 
@@ -41,12 +41,8 @@ record!(recorder::GraphRecorder, node::Node) = (push!(recorder, node); value(nod
 
 
 @doc """
-    tapeify_expr(recorder, expr)
+    tapeify(recorder, var)
 
-Convert SSA references in `expr` to `TapeReference`es, based on the tape positions
-of the current tape.
-""" tapeify_expr
-
-tapeify_expr(recorder::GraphRecorder, expr::Expr) = 
-    Expr(expr.head, map(expr -> tapeify_expr(recorder, expr), expr.args)...)
-tapeify_expr(recorder::GraphRecorder, expr) = get(recorder.visited_vars, expr, expr)
+Convert SSA reference in `var` to the `TapeReference` where `var` has been used last.
+"""
+tapeify(recorder::GraphRecorder, var::IRTools.Variable) = recorder.visited_vars[var]

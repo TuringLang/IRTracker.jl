@@ -54,27 +54,27 @@ using Distributions
         #     @test r == 42
         # end
         
-        # test4(x) = [x, x]
-        # let (r, graph) = track(test4, 42)
-        #     @test (r, graph) isa Tuple{Vector{Int}, GraphTape}
-        #     @test r = [42, 42]
+        test4(x) = [x, x]
+        let (r, graph) = track(test4, 42)
+            @test (r, graph) isa Tuple{Vector{Int}, GraphTape}
+            @test r == [42, 42]
+        end
+
+        # function test5()
+        #     p = rand(Beta(1, 1))
+        #     conj = rand(Bernoulli(p))
+        #     if conj
+        #         m = rand(Normal(0, 1))
+        #     else
+        #         m = rand(Gamma(3, 2))
+        #     end
+
+        #     m += 2
+        #     return Normal(m, 1)
         # end
-
-        function test5()
-            p = rand(Beta(1, 1))
-            conj = rand(Bernoulli(p))
-            if conj
-                m = rand(Normal(0, 1))
-            else
-                m = rand(Gamma(3, 2))
-            end
-
-            m += 2
-            return Normal(m, 1)
-        end
-        let (r, graph) = track(test5)
-            @test (r, graph) isa Tuple{Float64, GraphTape}
-        end
+        # let (r, graph) = track(test5)
+        #     @test (r, graph) isa Tuple{Float64, GraphTape}
+        # end
 
 
         # check visible result

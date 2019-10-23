@@ -7,101 +7,97 @@ end
 StatementInfo() = StatementInfo(nothing)
 
 
-value(node::StatementNode) = node.value
-value(node::BranchNode) = nothing
-
-
 struct Argument <: StatementNode
-    value::Any
-    index::VarIndex
+    value::TapeConstant
+    location::VarIndex
     info::StatementInfo
 end
 
-Argument(value, index) = Argument(value, index, StatementInfo())
-
-parents(::Argument) = Node[]
-children(::Argument) = Node[]
+Argument(value, location) = Argument(value, location, StatementInfo())
 
 
 struct Constant <: StatementNode
-    value::Any
-    index::VarIndex
+    value::TapeConstant
+    location::VarIndex
     info::StatementInfo
 end
 
-Constant(value, index) = Constant(value, index, StatementInfo())
-
-parents(::Constant) = Node[]
-children(::Constant) = Node[]
+Constant(value, location) = Constant(value, location, StatementInfo())
 
 
 struct PrimitiveCall <: StatementNode
-    expr::TapeExpr
-    value::Any
-    index::VarIndex
+    call::TapeCall
+    location::VarIndex
     info::StatementInfo
 end
 
-PrimitiveCall(expr, value, index) = PrimitiveCall(expr, value, index, StatementInfo())
-
-parents(node::PrimitiveCall) = getindex.(references(node.expr))
-children(::PrimitiveCall) = Node[]
+PrimitiveCall(call, location) = PrimitiveCall(call, location, StatementInfo())
 
 
 struct NestedCall <: StatementNode
-    expr::TapeExpr
-    value::Any
-    index::VarIndex
+    call::TapeCall
     subtape::GraphTape
+    location::VarIndex
     info::StatementInfo
 end
 
-NestedCall(expr, value, index, subtape = GraphTape()) =
-    NestedCall(expr, value, index, subtape, StatementInfo())
-
-push!(node::NestedCall, child::Node) = (push!(node.subtape, child); node)
-parents(node::NestedCall) = getindex.(references(node.expr))
-children(node::NestedCall) = node.subtape.nodes
+NestedCall(call, subtape, location) = NestedCall(call, subtape, location, StatementInfo())
 
 
 struct SpecialStatement <: StatementNode
-    expr::TapeExpr
-    value::Any
-    index::VarIndex
+    form::TapeSpecialForm
+    location::VarIndex
     info::StatementInfo
 end
 
-SpecialStatement(expr, value, index) = SpecialStatement(expr, value, index, StatementInfo())
-
-parents(node::SpecialStatement) = getindex.(references(node.expr))
-children(::SpecialStatement) = Node[]
+SpecialStatement(form, location) = SpecialStatement(form, location, StatementInfo())
 
 
 struct Return <: BranchNode
-    expr::TapeExpr
-    value::Any
-    index::BranchIndex
+    argument::TapeValue
+    location::BranchIndex
     info::StatementInfo
 end
 
-Return(expr, value, index) = Return(expr, value, index, StatementInfo())
-
-parents(node::Return) = getindex.(references(node.expr))
-children(::Return) = Node[]
+Return(argument, location) = Return(argument, location, StatementInfo())
 
 
 struct Branch <: BranchNode
     target::Int
-    arg_exprs::Vector{TapeExpr}
-    arg_values::Vector{Any}
-    condition_expr::TapeExpr
-    index::BranchIndex
+    arguments::Vector{<:TapeValue}
+    condition::TapeValue
+    location::BranchIndex
     info::StatementInfo
 end
 
-Branch(target, arg_exprs, arg_values, condition_expr, index) =
-    Branch(target, arg_exprs, arg_values, condition_expr, index, StatementInfo())
+Branch(target, arguments, condition, location) =
+    Branch(target, arguments, condition, location, StatementInfo())
 
-parents(node::Branch) = getindex.(reduce(vcat, references.(node.arg_exprs),
-                                         init = references(node.condition_expr)))
+
+
+push!(node::NestedCall, child::Node) = (push!(node.subtape, child); node)
+
+parents(node::Branch) = getindex.(reduce(vcat, references.(node.arguments),
+                                         init = references(node.condition)))
+parents(node::Return) = getindex.(references(node.argument))
+parents(node::SpecialStatement) = getindex.(references(node.form))
+parents(node::NestedCall) = getindex.(references(node.call))
+parents(node::PrimitiveCall) = getindex.(references(node.call))
+parents(::Constant) = Node[]
+parents(::Argument) = Node[]
+
 children(::Branch) = Node[]
+children(::Return) = Node[]
+children(::SpecialStatement) = Node[]
+children(node::NestedCall) = node.subtape.nodes
+children(::PrimitiveCall) = Node[]
+children(::Constant) = Node[]
+children(::Argument) = Node[]
+
+value(::Branch) = nothing
+value(::Return) = nothing
+value(node::SpecialStatement) = value(node.form)
+value(node::NestedCall) = value(node.call)
+value(node::PrimitiveCall) = value(node.call)
+value(node::Constant) = value(node.value)
+value(node::Argument) = value(node.value)
