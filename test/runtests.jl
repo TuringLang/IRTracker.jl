@@ -12,7 +12,12 @@ using Distributions
             @test (r, graph) isa Tuple{Int, GraphTape}
             @test r == 43
         end
-
+        
+        result, graph = track(f, 10)
+        @show @code_ir f(10)
+        printlevels(graph, 2)
+        println("\n")
+        
         weird(n) = rand() < 1/(n + 1) ? n : weird(n + 1)
         @test track(weird, 3) isa Tuple{Int, GraphTape}
 
@@ -60,6 +65,7 @@ using Distributions
             @test r == [42, 42]
         end
 
+        # SEGFAULTS (SOMETIMES?)
         # function test5()
         #     p = rand(Beta(1, 1))
         #     conj = rand(Bernoulli(p))
@@ -70,24 +76,17 @@ using Distributions
         #     end
 
         #     m += 2
-        #     return Normal(m, 1)
+        #     return rand(Normal(m, 1))
         # end
         # let (r, graph) = track(test5)
         #     @test (r, graph) isa Tuple{Float64, GraphTape}
         # end
 
-
         # check visible result
-        # result, graph = track(geom, 3, 0.6)
-        # @show @code_ir geom(3, 0.6)
-        # printlevels(graph, 2)
-        # println("\n")
-
-        result, graph = track(f, 10)
-        @show @code_ir f(10)
+        result, graph = track(geom, 3, 0.6)
+        @show @code_ir geom(3, 0.6)
         printlevels(graph, 2)
         println("\n")
-        
     end
 
 
