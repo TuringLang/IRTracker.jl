@@ -69,6 +69,8 @@ function tapevalue(builder::TrackBuilder, value::IRTools.Variable)
 end
 
 function tapevalue(builder::TrackBuilder, value::Symbol)
+    # this is a case occoring in special calls, which uses symbols at expression-level to
+    # signify values (e.g., Expr(:boundscheck, :pop), Expr(:meta, :inline))
     return DCGCall.TapeConstant(QuoteNode(value))
 end
 
