@@ -68,6 +68,10 @@ function tapevalue(builder::TrackBuilder, value::IRTools.Variable)
     return DCGCall.tapeify(builder.recorder, QuoteNode(value))
 end
 
+function tapevalue(builder::TrackBuilder, value::Symbol)
+    return DCGCall.TapeConstant(QuoteNode(value))
+end
+
 function tapevalue(builder::TrackBuilder, value::Any)
     return DCGCall.TapeConstant(value)
 end
@@ -91,7 +95,7 @@ end
 function callrecord(builder::TrackBuilder, location, call_expr)
     f_expr, arguments_expr = call_expr.args[1], call_expr.args[2:end]
     f = substitute_variable(builder, f_expr)
-    arguments = xcall(:vect, map(substitute_variable(builder), arguments_expr)...)
+    arguments = xcall(:tuple, map(substitute_variable(builder), arguments_expr)...)
     f_repr = tapevalue(builder, f_expr)
     arguments_repr = tapevalues(builder, arguments_expr)
     return DCGCall.dispatchcall(f, f_repr, arguments, arguments_repr, location)
@@ -99,6 +103,7 @@ end
 
 function specialrecord(builder::TrackBuilder, location, form_expr)
     head = form_expr.head
+    
     args = map(substitute_variable(builder), form_expr.args)
     form = Expr(head, args...)
     args_repr = tapevalues(builder, form_expr.args)

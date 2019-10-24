@@ -21,11 +21,31 @@ track the call of `f` with `args` and return a `NestedCall` containing the resul
         end
     else
         quote
-            result, graph = track(f, args...)
-            return NestedCall($tapecall, graph, location)
+            # try
+                result, graph = track(f, args...)
+                return NestedCall($tapecall, graph, location)
+            # catch e
+                # println(track_ir(@code_ir f(args...)))
+                # throw(e)
+            # end
         end
     end
 end
+
+# function dispatchcall(f::typeof(ifelse), f_repr, args, args_repr, location)
+#     @show f, f_repr
+#     @show args, args_repr
+    
+#     try
+#         result, graph = track(f, args...)
+#         return NestedCall(TapeCall(result, f_repr, args_repr), graph, location)
+#     catch e
+#         if e isa TypeError
+#             println(e)
+#             throw(e)
+#         end
+#     end
+# end
 
 
 """

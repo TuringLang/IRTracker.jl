@@ -7,52 +7,52 @@ using Distributions
     
     ########### Basic sanity checks #################
     @testset "sanity checks" begin
-        # f(x) = x + 1
-        # let (r, graph) = track(f, 42)
-        #     @test (r, graph) isa Tuple{Int, GraphTape}
-        #     @test r == 43
-        # end
+        f(x) = x + 1
+        let (r, graph) = track(f, 42)
+            @test (r, graph) isa Tuple{Int, GraphTape}
+            @test r == 43
+        end
 
-        # weird(n) = rand() < 1/(n + 1) ? n : weird(n + 1)
-        # @test track(weird, 3) isa Tuple{Int, GraphTape}
+        weird(n) = rand() < 1/(n + 1) ? n : weird(n + 1)
+        @test track(weird, 3) isa Tuple{Int, GraphTape}
 
-        # geom(n, β) = rand() < β ? n : geom(n + 1, β)
-        # @test track(geom, 3, 0.5) isa Tuple{Int, GraphTape}
+        geom(n, β) = rand() < β ? n : geom(n + 1, β)
+        @test track(geom, 3, 0.5) isa Tuple{Int, GraphTape}
 
-        # function test1(x)
-        #     t = (x, x)
-        #     t[1] + 1
-        # end
-        # let (r, graph) = track(test1, 42)
-        #     @test (r, graph) isa Tuple{Int, GraphTape}
-        #     @test r == 43
-        # end
+        function test1(x)
+            t = (x, x)
+            t[1] + 1
+        end
+        let (r, graph) = track(test1, 42)
+            @test (r, graph) isa Tuple{Int, GraphTape}
+            @test r == 43
+        end
 
-        # function test2(x)
-        #     if x < 0
-        #         return x + 1
-        #     else
-        #         return x - 1 #sum([x, x])
-        #     end
-        # end
-        # let (r, graph) = track(test2, 42)
-        #     @test (r, graph) isa Tuple{Int, GraphTape}
-        #     @test r == 41
-        # end
+        function test2(x)
+            if x < 0
+                return x + 1
+            else
+                return x - 1 #sum([x, x])
+            end
+        end
+        let (r, graph) = track(test2, 42)
+            @test (r, graph) isa Tuple{Int, GraphTape}
+            @test r == 41
+        end
 
-        # function test3(x)
-        #     y = zero(x)
-        #     while x > 0
-        #         y += 1
-        #         x -= 1
-        #     end
+        function test3(x)
+            y = zero(x)
+            while x > 0
+                y += 1
+                x -= 1
+            end
 
-        #     return y
-        # end
-        # let (r, graph) = track(test3, 42)
-        #     @test (r, graph) isa Tuple{Int, GraphTape}
-        #     @test r == 42
-        # end
+            return y
+        end
+        let (r, graph) = track(test3, 42)
+            @test (r, graph) isa Tuple{Int, GraphTape}
+            @test r == 42
+        end
         
         test4(x) = [x, x]
         let (r, graph) = track(test4, 42)
@@ -83,10 +83,10 @@ using Distributions
         # printlevels(graph, 2)
         # println("\n")
 
-        # result, graph = track(f, 10)
-        # @show @code_ir f(10)
-        # printlevels(graph, 2)
-        # println("\n")
+        result, graph = track(f, 10)
+        @show @code_ir f(10)
+        printlevels(graph, 2)
+        println("\n")
         
     end
 
