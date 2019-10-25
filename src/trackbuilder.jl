@@ -85,13 +85,13 @@ end
 
 function returnrecord(builder::TrackBuilder, location, branch)
     argument_repr = tapevalue(builder, branch.args[1])
-    return DCGCall.Return(argument_repr, location)
+    return DCGCall.ReturnNode(argument_repr, location)
 end
 
-function branchrecord(builder::TrackBuilder, location, branch)
+function jumprecord(builder::TrackBuilder, location, branch)
     condition_repr = tapevalue(builder, branch.condition)
     arguments_repr = tapevalues(builder, branch.args)
-    return DCGCall.Branch(branch.block, arguments_repr, condition_repr, location)
+    return DCGCall.JumpNode(branch.block, arguments_repr, condition_repr, location)
 end
 
 function callrecord(builder::TrackBuilder, location, call_expr)
@@ -109,18 +109,18 @@ function specialrecord(builder::TrackBuilder, location, form_expr)
     form = Expr(head, args...)
     args_repr = tapevalues(builder, form_expr.args)
     form_repr = DCGCall.TapeSpecialForm(form, QuoteNode(head), args_repr)
-    return DCGCall.SpecialStatement(form_repr, location)
+    return DCGCall.SpecialCallNode(form_repr, location)
 end
 
 function constantrecord(builder::TrackBuilder, location, constant_expr)
     # TODO: make this itself a constant :)
     constant_repr = DCGCall.TapeConstant(constant_expr)
-    return DCGCall.Constant(constant_repr, location)
+    return DCGCall.ConstantNode(constant_repr, location)
 end
 
 function argumentrecord(builder::TrackBuilder, location, argument_expr)
     argument_repr = DCGCall.TapeConstant(argument_expr)
-    return DCGCall.Argument(argument_repr, location)
+    return DCGCall.ArgumentNode(argument_repr, location)
 end
 
 
@@ -145,7 +145,7 @@ function track_branches!(builder::TrackBuilder, new_block::Block, branches)
             branch!(new_block, builder.return_block, substituted_args..., return_record)
         else
             # remember from where and why we branched, and extend branch arguments
-            branch_record = push!(new_block, branchrecord(builder, location, branch))
+            branch_record = push!(new_block, jumprecord(builder, location, branch))
             branch!(new_block, branch.block, substituted_args..., branch_record;
                     unless = substitute_variable(builder, branch.condition))
         end

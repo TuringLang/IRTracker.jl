@@ -17,12 +17,12 @@ track the call of `f` with `args` and return a `NestedCall` containing the resul
     if is_builtin 
         quote
             result = f(args...)
-            return PrimitiveCall($tapecall, location)
+            return PrimitiveCallNode($tapecall, location)
         end
     else
         quote
             result, graph = track(f, args...)
-            return NestedCall($tapecall, graph, location)
+            return NestedCallNode($tapecall, graph, location)
         end
     end
 end

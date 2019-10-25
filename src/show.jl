@@ -30,18 +30,18 @@ function show(io::IO, tape::GraphTape, level = 0)
     end
 end
 
-function show(io::IO, node::Constant, level = 0)
+function show(io::IO, node::ConstantNode, level = 0)
     print(io, "[Constant ", node.location, "] = ")
     printlimited(io, value(node))
 end
 
-function show(io::IO, node::PrimitiveCall, level = 0)
+function show(io::IO, node::PrimitiveCallNode, level = 0)
     print(io, "[", node.location, "] ")
     print(io, node.call, " = ")
     printlimited(io, value(node))
 end
 
-function show(io::IO, node::NestedCall, level = 0)
+function show(io::IO, node::NestedCallNode, level = 0)
     maxlevel = get(io, :maxlevel, typemax(level))
     print(io, "[", node.location, "] ")
     print(io, node.call, " = ")
@@ -50,24 +50,24 @@ function show(io::IO, node::NestedCall, level = 0)
     show(io, node.subtape, level + 1)
 end
 
-function show(io::IO, node::SpecialStatement, level = 0)
+function show(io::IO, node::SpecialCallNode, level = 0)
     print(io, "[", node.location, "] ")
     print(io, node.form, " = ")
     printlimited(io, value(node))
 end
 
-function show(io::IO, node::Argument, level = 0)
+function show(io::IO, node::ArgumentNode, level = 0)
     print(io, "[Argument ", node.location, "] = ")
     printlimited(io, value(node))
 end
 
-function show(io::IO, node::Return, level = 0)
+function show(io::IO, node::ReturnNode, level = 0)
     print(io, "[", node.location, "] ")
     print(io, "return ", node.argument, " = ")
     printlimited(io, value(node.argument))
 end
 
-function show(io::IO, node::Branch, level = 0)
+function show(io::IO, node::JumpNode, level = 0)
     print(io, "[", node.location, "] ")
     print(io, "goto §", node.target)
     L = length(node.arguments)

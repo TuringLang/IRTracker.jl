@@ -7,62 +7,62 @@ end
 StatementInfo() = StatementInfo(nothing)
 
 
-struct Argument <: StatementNode
+struct ArgumentNode <: StatementNode
     value::TapeConstant
     location::VarIndex
     info::StatementInfo
 end
 
-Argument(value, location) = Argument(value, location, StatementInfo())
+ArgumentNode(value, location) = ArgumentNode(value, location, StatementInfo())
 
 
-struct Constant <: StatementNode
+struct ConstantNode <: StatementNode
     value::TapeConstant
     location::VarIndex
     info::StatementInfo
 end
 
-Constant(value, location) = Constant(value, location, StatementInfo())
+ConstantNode(value, location) = ConstantNode(value, location, StatementInfo())
 
 
-struct PrimitiveCall <: StatementNode
+struct PrimitiveCallNode <: StatementNode
     call::TapeCall
     location::VarIndex
     info::StatementInfo
 end
 
-PrimitiveCall(call, location) = PrimitiveCall(call, location, StatementInfo())
+PrimitiveCallNode(call, location) = PrimitiveCallNode(call, location, StatementInfo())
 
 
-struct NestedCall <: StatementNode
+struct NestedCallNode <: StatementNode
     call::TapeCall
     subtape::GraphTape
     location::VarIndex
     info::StatementInfo
 end
 
-NestedCall(call, subtape, location) = NestedCall(call, subtape, location, StatementInfo())
+NestedCallNode(call, subtape, location) = NestedCallNode(call, subtape, location, StatementInfo())
 
 
-struct SpecialStatement <: StatementNode
+struct SpecialCallNode <: StatementNode
     form::TapeSpecialForm
     location::VarIndex
     info::StatementInfo
 end
 
-SpecialStatement(form, location) = SpecialStatement(form, location, StatementInfo())
+SpecialCallNode(form, location) = SpecialCallNode(form, location, StatementInfo())
 
 
-struct Return <: BranchNode
+struct ReturnNode <: BranchNode
     argument::TapeValue
     location::BranchIndex
     info::StatementInfo
 end
 
-Return(argument, location) = Return(argument, location, StatementInfo())
+ReturnNode(argument, location) = ReturnNode(argument, location, StatementInfo())
 
 
-struct Branch <: BranchNode
+struct JumpNode <: BranchNode
     target::Int
     arguments::Vector{<:TapeValue}
     condition::TapeValue
@@ -70,34 +70,34 @@ struct Branch <: BranchNode
     info::StatementInfo
 end
 
-Branch(target, arguments, condition, location) =
-    Branch(target, arguments, condition, location, StatementInfo())
+JumpNode(target, arguments, condition, location) =
+    JumpNode(target, arguments, condition, location, StatementInfo())
 
 
 
-push!(node::NestedCall, child::Node) = (push!(node.subtape, child); node)
+push!(node::NestedCallNode, child::Node) = (push!(node.subtape, child); node)
 
-parents(node::Branch) = getindex.(reduce(vcat, references.(node.arguments),
+parents(node::JumpNode) = getindex.(reduce(vcat, references.(node.arguments),
                                          init = references(node.condition)))
-parents(node::Return) = getindex.(references(node.argument))
-parents(node::SpecialStatement) = getindex.(references(node.form))
-parents(node::NestedCall) = getindex.(references(node.call))
-parents(node::PrimitiveCall) = getindex.(references(node.call))
-parents(::Constant) = Node[]
-parents(::Argument) = Node[]
+parents(node::ReturnNode) = getindex.(references(node.argument))
+parents(node::SpecialCallNode) = getindex.(references(node.form))
+parents(node::NestedCallNode) = getindex.(references(node.call))
+parents(node::PrimitiveCallNode) = getindex.(references(node.call))
+parents(::ConstantNode) = Node[]
+parents(::ArgumentNode) = Node[]
 
-children(::Branch) = Node[]
-children(::Return) = Node[]
-children(::SpecialStatement) = Node[]
-children(node::NestedCall) = node.subtape.nodes
-children(::PrimitiveCall) = Node[]
-children(::Constant) = Node[]
-children(::Argument) = Node[]
+children(::JumpNode) = Node[]
+children(::ReturnNode) = Node[]
+children(::SpecialCallNode) = Node[]
+children(node::NestedCallNode) = node.subtape.nodes
+children(::PrimitiveCallNode) = Node[]
+children(::ConstantNode) = Node[]
+children(::ArgumentNode) = Node[]
 
-value(::Branch) = nothing
-value(::Return) = nothing
-value(node::SpecialStatement) = value(node.form)
-value(node::NestedCall) = value(node.call)
-value(node::PrimitiveCall) = value(node.call)
-value(node::Constant) = value(node.value)
-value(node::Argument) = value(node.value)
+value(::JumpNode) = nothing
+value(::ReturnNode) = nothing
+value(node::SpecialCallNode) = value(node.form)
+value(node::NestedCallNode) = value(node.call)
+value(node::PrimitiveCallNode) = value(node.call)
+value(node::ConstantNode) = value(node.value)
+value(node::ArgumentNode) = value(node.value)
