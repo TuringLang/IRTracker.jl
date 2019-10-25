@@ -39,15 +39,14 @@ Primitive functions cannot be tracked.
 """ track
 
 @dynamo function track(F, args...)
-    # println("handling $F with args $args")
+    # Core.println("handling $F with args $args")
     ir = IR(F, args...)
 
     if isnothing(ir)
         return error_ir(F, args...)
     else
         new_ir = track_ir(ir)
-        # @show ir
-        # @show new_ir
+        # @coreshow new_ir
         return new_ir
     end
 end
