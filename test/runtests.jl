@@ -12,18 +12,27 @@ using Random
         let (r, graph) = track(f, 42)
             @test (r, graph) isa Tuple{Int, GraphTape}
             @test r == 43
+            
+            println("Trace of `f(42)` for visual inspection:")
+            printlevels(graph, 2)
+            println("\n")
+            @show @code_ir f(42)
+            println("\n")
         end
         
-        # result, graph = track(f, 10)
-        # @show @code_ir f(10)
-        # printlevels(graph, 2)
-        # println("\n")
-        
+        geom(n, β) = rand() < β ? n : geom(n + 1, β)
+        let (r, graph) = track(geom, 3, 0.5)
+            @test (r, graph) isa Tuple{Int, GraphTape}
+
+            println("Trace of `geom(3, 0.6)` for visual inspection:")
+            printlevels(graph, 2)
+            println("\n")
+            @show @code_ir geom(3, 0.6)
+            println("\n")
+        end
+
         weird(n) = rand() < 1/(n + 1) ? n : weird(n + 1)
         @test track(weird, 3) isa Tuple{Int, GraphTape}
-
-        geom(n, β) = rand() < β ? n : geom(n + 1, β)
-        @test track(geom, 3, 0.5) isa Tuple{Int, GraphTape}
 
         function test1(x)
             t = (x, x)
@@ -93,14 +102,6 @@ using Random
         # let (r, graph) = track(test6)
         #     @test (r, graph) isa Tuple{Float64, GraphTape}
         # end
-
-
-        
-        # check visible result
-        # result, graph = track(geom, 3, 0.6)
-        # @show @code_ir geom(3, 0.6)
-        # printlevels(graph, 2)
-        # println("\n")
     end
 
 
