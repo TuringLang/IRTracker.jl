@@ -105,7 +105,6 @@ end
 
 function specialrecord(builder::TrackBuilder, location, form_expr)
     head = form_expr.head
-    
     args = map(substitute_variable(builder), form_expr.args)
     form = Expr(head, args...)
     args_repr = tapevalues(builder, form_expr.args)

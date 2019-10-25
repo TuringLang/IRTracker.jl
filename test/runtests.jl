@@ -2,6 +2,7 @@ using Test
 using DynamicComputationGraphs
 using IRTools: @code_ir
 using Distributions
+using Random
 
 @testset "DynamicComputationGraphs" begin
     
@@ -13,10 +14,10 @@ using Distributions
             @test r == 43
         end
         
-        result, graph = track(f, 10)
-        @show @code_ir f(10)
-        printlevels(graph, 2)
-        println("\n")
+        # result, graph = track(f, 10)
+        # @show @code_ir f(10)
+        # printlevels(graph, 2)
+        # println("\n")
         
         weird(n) = rand() < 1/(n + 1) ? n : weird(n + 1)
         @test track(weird, 3) isa Tuple{Int, GraphTape}
@@ -65,8 +66,19 @@ using Distributions
             @test r == [42, 42]
         end
 
+        test5() = ccall(:rand, Cint, ())
+        let (r, graph) = track(test5)
+            @test (r, graph) isa Tuple{Cint, GraphTape}
+        end
+        
+        # sampler = Distributions.GammaGDSampler(Gamma(2, 3))
+        # test6() = rand(Random.GLOBAL_RNG, sampler)
+        # let (r, graph) = track(test6)
+            # @test (r, graph) isa Tuple{Float64, GraphTape}
+        # end
+        
         # SEGFAULTS (SOMETIMES?)
-        # function test5()
+        # function test7()
         #     p = rand(Beta(1, 1))
         #     conj = rand(Bernoulli(p))
         #     if conj
@@ -78,15 +90,17 @@ using Distributions
         #     m += 2
         #     return rand(Normal(m, 1))
         # end
-        # let (r, graph) = track(test5)
+        # let (r, graph) = track(test6)
         #     @test (r, graph) isa Tuple{Float64, GraphTape}
         # end
 
+
+        
         # check visible result
-        result, graph = track(geom, 3, 0.6)
-        @show @code_ir geom(3, 0.6)
-        printlevels(graph, 2)
-        println("\n")
+        # result, graph = track(geom, 3, 0.6)
+        # @show @code_ir geom(3, 0.6)
+        # printlevels(graph, 2)
+        # println("\n")
     end
 
 
