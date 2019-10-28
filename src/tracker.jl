@@ -1,6 +1,7 @@
 using IRTools
 using IRTools: IR, @dynamo
 
+
 function track_ir(old_ir::IR)
     IRTools.explicitbranch!(old_ir) # make implicit jumps explicit
     builder = TrackBuilder(old_ir)
@@ -12,20 +13,11 @@ function error_ir(F, args...)
     # create empty IR which matches the (non-existing) signature given by f(args)
     dummy(args...) = nothing
     ir = IRTools.empty(IR(IRTools.meta(Tuple{Core.Typeof(dummy), Core.Typeof.(args)...})))
-    
     self = IRTools.argument!(ir)
     arg_values = ntuple(_ -> IRTools.argument!(ir), length(args))
-
-    if F <: Core.IntrinsicFunction
-        error_result = push!(ir, DCGCall.print_intrinsic_error(self, arg_values...))
-        IRTools.return!(ir, error_result)
-        return ir
-    else
-        error_result = push!(ir, IRTools.xcall(:error, "Can't track ", F,
-                                               " with args ", join(args, ", ")))
-        IRTools.return!(ir, error_result)
-        return ir
-    end
+    error_result = push!(ir, DCGCall.trackingerror(self, arg_values...))
+    IRTools.return!(ir, error_result)
+    return ir
 end
 
 

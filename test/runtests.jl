@@ -5,6 +5,14 @@ using Distributions
 using Random
 
 @testset "DynamicComputationGraphs" begin
+
+    ########### Errors ###############
+    @testset "errors" begin
+        @test_throws ErrorException track(Core.Intrinsics.add_int, 1, 2) # intrinsic
+        @test_throws ErrorException track(isodd)               # no method -- too few args
+        @test_throws ErrorException track(isodd, 2, 3)         # no method -- too many args
+    end
+    
     
     ########### Basic sanity checks #################
     @testset "sanity checks" begin
