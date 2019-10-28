@@ -103,11 +103,11 @@ function callrecord(builder::TrackBuilder, location, call_expr)
     return DCGCall.dispatchcall(f, f_repr, arguments, arguments_repr, location)
 end
 
-function specialrecord(builder::TrackBuilder, location, form_expr)
-    head = form_expr.head
-    args = map(substitute_variable(builder), form_expr.args)
+function specialrecord(builder::TrackBuilder, location, special_expr)
+    head = special_expr.head
+    args = map(substitute_variable(builder), special_expr.args)
     form = Expr(head, args...)
-    args_repr = tapevalues(builder, form_expr.args)
+    args_repr = tapevalues(builder, special_expr.args)
     form_repr = DCGCall.TapeSpecialForm(form, QuoteNode(head), args_repr)
     return DCGCall.SpecialCallNode(form_repr, location)
 end
@@ -119,7 +119,7 @@ function constantrecord(builder::TrackBuilder, location, constant_expr)
 end
 
 function argumentrecord(builder::TrackBuilder, location, argument_expr)
-    argument_repr = DCGCall.TapeConstant(argument_expr)
+    argument_repr = DCGCall.TapeConstant(substitute_variable(builder, argument_expr))
     return DCGCall.ArgumentNode(argument_repr, location)
 end
 

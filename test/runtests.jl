@@ -80,28 +80,27 @@ using Random
             @test (r, graph) isa Tuple{Cint, GraphTape}
         end
         
-        # sampler = Distributions.GammaGDSampler(Gamma(2, 3))
-        # test6() = rand(Random.GLOBAL_RNG, sampler)
-        # let (r, graph) = track(test6)
-            # @test (r, graph) isa Tuple{Float64, GraphTape}
-        # end
+        sampler = Distributions.GammaGDSampler(Gamma(2, 3))
+        test6() = rand(Random.GLOBAL_RNG, sampler)
+        let (r, graph) = track(test6)
+            @test (r, graph) isa Tuple{Float64, GraphTape}
+        end
         
-        # SEGFAULTS (SOMETIMES?)
-        # function test7()
-        #     p = rand(Beta(1, 1))
-        #     conj = rand(Bernoulli(p))
-        #     if conj
-        #         m = rand(Normal(0, 1))
-        #     else
-        #         m = rand(Gamma(3, 2))
-        #     end
+        function test7()
+            p = rand(Beta(1, 1))
+            conj = rand(Bernoulli(p))
+            if conj
+                m = rand(Normal(0, 1))
+            else
+                m = rand(Gamma(3, 2))
+            end
 
-        #     m += 2
-        #     return rand(Normal(m, 1))
-        # end
-        # let (r, graph) = track(test6)
-        #     @test (r, graph) isa Tuple{Float64, GraphTape}
-        # end
+            m += 2
+            return rand(Normal(m, 1))
+        end
+        let (r, graph) = track(test7)
+            @test (r, graph) isa Tuple{Float64, GraphTape}
+        end
     end
 
 

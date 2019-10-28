@@ -28,6 +28,8 @@ struct TapeSpecialForm <: TapeExpr
     value::Any
     head::Symbol
     arguments::Vector{<:TapeValue}
+
+    # TapeSpecialForm(value, head::Symbol, arguments::Vector{<:TapeValue}) = new{head}(value, head, arguments)
 end
 
 

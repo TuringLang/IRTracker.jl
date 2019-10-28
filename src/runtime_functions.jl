@@ -12,6 +12,7 @@ track the call of `f` with `args` and return a `NestedCall` containing the resul
     mod = Base.typename(F).module
     is_builtin = ((F <: Core.Builtin) && !(mod === Core.Compiler)) || F <: Core.IntrinsicFunction
 
+    
     tapecall = :(TapeCall(result, f_repr, args_repr))
 
     if is_builtin 
