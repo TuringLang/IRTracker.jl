@@ -10,10 +10,14 @@ Keeps track of necessary intermediate information.
 mutable struct TrackBuilder
     original_ir::IR
     new_ir::IR
+    
     """Map from SSA variable in the original IR to the respective variables in the new IR."""
     variable_map::Dict{Any, Any}
+    """Lables of the blocks from which there are jumps to every block (mapping target -> sources)."""
     jump_targets::Dict{Int, Vector{Int}}
+    """Number (label) of the unified return block to be added at the end."""
     return_block::Int
+    """SSA variable for the `GraphRecorder` used at runtime."""
     recorder::Union{Variable, Nothing}
 
     TrackBuilder(o, n, v, j, r) = new(o, n, v, j, r)
@@ -64,6 +68,16 @@ function jumptargets(ir::IR)
 end
 
 
+"""
+    tapevalue(builder, value)
+
+Transform a value (i.e., a SSA variable or a constant) occuring in an `Expr` or other part of a 
+SSA statement into a `TapeValue`.
+"""
+function tapevalue(builder::TrackBuilder, value::Any)
+    return DCGCall.TapeConstant(value)
+end
+
 function tapevalue(builder::TrackBuilder, value::IRTools.Variable)
     return DCGCall.tapeify(builder.recorder, QuoteNode(value))
 end
@@ -74,14 +88,21 @@ function tapevalue(builder::TrackBuilder, value::Symbol)
     return DCGCall.TapeConstant(QuoteNode(value))
 end
 
-function tapevalue(builder::TrackBuilder, value::Any)
-    return DCGCall.TapeConstant(value)
-end
 
+"""
+    tapevalues(builder, values)
+
+Construct an expression returning a vector of `TapeValues`, given by transforming `values` using
+`tapevalue`.
+"""
 function tapevalues(builder::TrackBuilder, values)
     return xcall(:getindex, TapeValue, tapevalue.(Ref(builder), values)...)
 end
 
+
+# The XYZrecord functions all record a complex `Expr` creating a node for tracking (at runtime)
+# the respective kind of SSA statement.  This `Expr` can then be pushed to the IR, followed by an
+# `Expr` calling `pushrecord!` on it, to actually track it on the `GraphRecorder`.
 
 function returnrecord(builder::TrackBuilder, location, branch)
     argument_repr = tapevalue(builder, branch.args[1])
@@ -124,6 +145,13 @@ function argumentrecord(builder::TrackBuilder, location, argument_expr)
 end
 
 
+"""
+    pushrecord!(builder, block, record; substituting = var)
+
+Add to `block`` the IR necessary to record `record`, which should be an expression returning a
+`Node`.  If `var` is given, it is recorded as being substituted by the new SSA variable in the
+transformed IR.
+"""
 function pushrecord!(builder::TrackBuilder, block::Block, record;
                      substituting = nothing, line = 0)
     r = push!(block, IRTools.stmt(DCGCall.record!(builder.recorder, record), line = line))

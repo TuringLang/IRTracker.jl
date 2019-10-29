@@ -1,7 +1,8 @@
 
 """
 If `f` is primitive, call `f(args...)` and return a `PrimitiveCall` node with the result; otherwise,
-track the call of `f` with `args` and return a `NestedCall` containing the resulting `GraphTape`.
+recursively track the call of `f` with `args` and return a `NestedCall` containing the resulting
+`GraphTape`.
 """
 @generated function dispatchcall(f::F, f_repr, args, args_repr, location) where F
     # TODO: check this out:
@@ -30,16 +31,18 @@ end
 
 
 """
-Special handling to get the name of the intrinsic function `f` and print an error message that it 
-can't be tracked.
+Print an error message that `f(args...)` can't be tracked (because the method does not exist, or `f`
+is intrinsic.)
 """
+function trackingerror(f::F, args...) where F
+    error("No method for call ", f, "(", join(args, ", "), ")")
+end
+
 function trackingerror(f::Core.IntrinsicFunction, args...)
-    # from https://github.com/JuliaLang/julia/blob/c6da87ff4bc7a855e217856757ad3413cf6d1f79/base/show.jl#L398
+    # Special handling is needed to get the name of an intrinsic function; see
+    # https://github.com/JuliaLang/julia/blob/c6da87ff4bc7a855e217856757ad3413cf6d1f79/base/show.jl#L398
     name = unsafe_string(ccall(:jl_intrinsic_name, Cstring, (Core.IntrinsicFunction,), f))
     error("Can't track intrinsic function ", name, " with arguments ",
           join(args, ", "))
 end
 
-function trackingerror(f::F, args...) where F
-    error("No method for call ", f, "(", join(args, ", "), ")")
-end

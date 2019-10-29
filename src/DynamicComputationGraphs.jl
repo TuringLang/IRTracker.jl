@@ -12,13 +12,10 @@ include("runtime_functions.jl")
 
 # graph.jl
 export BranchIndex, IRIndex, VarIndex
-export BranchNode,
-    GraphTape,
-    Node,
-    StatementInfo,
-    StatementNode,
-    TapeIndex
+export GraphTape, StatementInfo
+export TapeCall, TapeConstant, TapeExpr, TapeReference, TapeSpecialForm, TapeValue
 
+export references, value
 export backward, children, parents
 
 # show.jl

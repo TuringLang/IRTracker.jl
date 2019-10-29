@@ -22,8 +22,14 @@ getindex(ir::IRTools.IR, ix::BranchIndex) = IRTools.branches(ir, ix.block)[ix.li
 
 
 # we need this forward declaration here, because mutually recursive types are not possible (yet...)
+
+"""Node in a `GraphTape`.  Represents statements or branches in tracked IR."""
 abstract type Node end
+
+"""Representats a SSA statement in tracked IR in a `GraphTape`."""
 abstract type StatementNode <: Node end
+
+"""Representats a branch in tracked IR in a `GraphTape`."""
 abstract type BranchNode <: Node end
 
 
