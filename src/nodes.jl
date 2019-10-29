@@ -78,7 +78,7 @@ JumpNode(target, arguments, condition, location) =
 push!(node::NestedCallNode, child::Node) = (push!(node.subtape, child); node)
 
 parents(node::JumpNode) = getindex.(reduce(vcat, references.(node.arguments),
-                                         init = references(node.condition)))
+                                           init = references(node.condition)))
 parents(node::ReturnNode) = getindex.(references(node.argument))
 parents(node::SpecialCallNode) = getindex.(references(node.form))
 parents(node::NestedCallNode) = getindex.(references(node.call))
