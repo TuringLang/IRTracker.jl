@@ -1,9 +1,11 @@
 using IRTools
 using IRTools: IR, @dynamo
 
+untype(::Type{Type{T}}) where {T} = T
+
 
 """Construct the transformed IR with tracking statements from `old_ir`."""
-function transform_ir(old_ir::IR)
+function transform_ir(::Type{Ctx}, old_ir::IR) where {Ctx<:AbstractTrackingContext}
     IRTools.explicitbranch!(old_ir) # make implicit jumps explicit
     builder = TrackBuilder(old_ir)
     return build_tracks!(builder)
@@ -35,20 +37,22 @@ Returns a tuple of the return value and the tape.
 Intrinsic functions cannot be tracked.
 """ track
 
-@dynamo function track(ctx::Type{T}, F, args...) where {T<:TrackingContext}
+@dynamo function _track(Ctx, F, args...)
     # Core.println("handling $F with args $args")
     ir = IR(F, args...)
-
+    ctx = untype(Ctx)
+    
     if isnothing(ir)
         return error_ir(F, args...)
     else
-        new_ir = track_ir(ctx, ir)
+        new_ir = transform_ir(ctx, ir)
         # @coreshow new_ir
         return new_ir
     end
 end
 
-track(f, args...) = track(DefaultTrackingContext, f, args)
+track(f, args...) = _track(DefaultTrackingContext, f, args...)
+track(::Type{Ctx}, f, args...) where {Ctx<:AbstractTrackingContext} = _track(Ctx, f, args...)
 
 
 

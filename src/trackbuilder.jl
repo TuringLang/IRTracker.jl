@@ -205,6 +205,10 @@ end
 
 
 function track_arguments!(builder::TrackBuilder, new_block::Block, old_block::Block; isfirst = false)
+    if isfirst
+        tracking_context = argument!(new_block, insert = false)
+    end
+    
     # copy over arguments from old block
     for argument in arguments(old_block)
         # without `insert = false`, `nothing` gets added to branches pointing here
