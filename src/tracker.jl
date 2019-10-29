@@ -35,18 +35,20 @@ Returns a tuple of the return value and the tape.
 Intrinsic functions cannot be tracked.
 """ track
 
-@dynamo function track(F, args...)
+@dynamo function track(ctx::Type{T}, F, args...) where {T<:TrackingContext}
     # Core.println("handling $F with args $args")
     ir = IR(F, args...)
 
     if isnothing(ir)
         return error_ir(F, args...)
     else
-        new_ir = transform_ir(ir)
+        new_ir = track_ir(ctx, ir)
         # @coreshow new_ir
         return new_ir
     end
 end
+
+track(f, args...) = track(DefaultTrackingContext, f, args)
 
 
 

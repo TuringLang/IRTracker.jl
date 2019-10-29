@@ -4,6 +4,7 @@ module DynamicComputationGraphs
 include("utils.jl")
 include("graph.jl")
 include("show.jl")
+include("trackingcontext.jl")
 include("graphrecorder.jl")
 include("trackbuilder.jl")
 include("tracker.jl")
