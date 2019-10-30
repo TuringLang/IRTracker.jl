@@ -6,9 +6,11 @@ const VisitedVars = Dict{IRTools.Variable, TapeReference}
 
 
 """Helper type to keep the data used for recording a GraphTape at runtime."""
-struct GraphRecorder
+struct GraphRecorder{Ctx<:AbstractTrackingContext}
     """The partial `GraphTape` during construction."""
     tape::GraphTape
+    """`AbstractTrackingContext` used during tracking."""
+    context::Ctx
     """
     The mapping from original SSA variables to `TapeReference`es, used for substituting them
     in the recorded expressions.
@@ -16,7 +18,7 @@ struct GraphRecorder
     visited_vars::VisitedVars
 end
 
-GraphRecorder(ir::IRTools.IR) = GraphRecorder(GraphTape(ir), VisitedVars())
+GraphRecorder(ir::IRTools.IR, context) = GraphRecorder(GraphTape(ir), context, VisitedVars())
 
 
 """

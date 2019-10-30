@@ -1,11 +1,9 @@
 using IRTools
 using IRTools: IR, @dynamo
 
-untype(::Type{Type{T}}) where {T} = T
-
 
 """Construct the transformed IR with tracking statements from `old_ir`."""
-function transform_ir(::Type{Ctx}, old_ir::IR) where {Ctx<:AbstractTrackingContext}
+function transform_ir(old_ir::IR)
     IRTools.explicitbranch!(old_ir) # make implicit jumps explicit
     builder = TrackBuilder(old_ir)
     return build_tracks!(builder)
@@ -13,46 +11,61 @@ end
 
 
 """
-Construct IR with the same interface as `F(args...)`, returing an error that this method can't be
+Construct IR with the same interface as `f(args...)`, returing an error that this method can't be
 tracked.
 """
-function error_ir(F, args...)
+function error_ir(F, Args...)
     # create empty IR which matches the (non-existing) signature given by f(args)
-    dummy(args...) = nothing
-    ir = IRTools.empty(IR(IRTools.meta(Tuple{Core.Typeof(dummy), Core.Typeof.(args)...})))
+    dummy(Args...) = nothing
+    ir = IRTools.empty(IR(IRTools.meta(Tuple{Core.Typeof(dummy), Core.Typeof.(Args)...})))
     self = IRTools.argument!(ir)
-    arg_values = ntuple(_ -> IRTools.argument!(ir), length(args))
+    arg_values = ntuple(_ -> IRTools.argument!(ir), length(Args))
     error_result = push!(ir, DCGCall.trackingerror(self, arg_values...))
     IRTools.return!(ir, error_result)
     return ir
 end
 
 
-@doc """
-    track(f, args...) -> result, graph
-
-Evaluate `f(args...)`, while keeping track of the IR evaluation sequence in a `GraphTape`.  
-Returns a tuple of the return value and the tape.
-
-Intrinsic functions cannot be tracked.
-""" track
-
-@dynamo function _track(Ctx, F, args...)
-    # Core.println("handling $F with args $args")
-    ir = IR(F, args...)
-    ctx = untype(Ctx)
+@dynamo function _track(Ctx, F, Args...)
+    ir = IR(F, Args...)
     
     if isnothing(ir)
-        return error_ir(F, args...)
+        return error_ir(F, Args...)
     else
-        new_ir = transform_ir(ctx, ir)
-        # @coreshow new_ir
+        new_ir = transform_ir(ir)
+        @coreshow new_ir
         return new_ir
     end
 end
 
-track(f, args...) = _track(DefaultTrackingContext, f, args...)
-track(::Type{Ctx}, f, args...) where {Ctx<:AbstractTrackingContext} = _track(Ctx, f, args...)
+
+"""
+    track(f, args...)
+
+Evaluate `f(args...)`, while keeping track of the IR evaluation sequence in a `GraphTape`.  
+Returns a `Node`, depending on whether the call was primitive or nested.
+
+Intrinsic functions cannot be tracked.
+"""
+track(f, args...) = track(DEFAULT_CTX, f, args...)
+track(ctx::AbstractTrackingContext, f, args...) =
+    trackinternal(ctx, f, TapeConstant(nameof(f)), args, TapeConstant.(args), VarIndex(0, 0))
+
+function trackinternal(ctx::AbstractTrackingContext, f, f_repr, args, args_repr, location)
+    println("Tracking ", f, " with args ", args)
+    
+    if isprimitive(ctx, f, args...)
+        result = f(args...)
+        tapecall = TapeCall(result, f_repr, collect(args_repr))
+        return PrimitiveCallNode(tapecall, location)
+    else
+        result, subtape = _track(ctx, f, args...)
+        tapecall = TapeCall(result, f_repr, collect(args_repr))
+        return NestedCallNode(tapecall, subtape, location)
+    end
+end
+
+
 
 
 

@@ -1,33 +1,40 @@
 
-"""
-If `f` is primitive, call `f(args...)` and return a `PrimitiveCall` node with the result; otherwise,
-recursively track the call of `f` with `args` and return a `NestedCall` containing the resulting
-`GraphTape`.
-"""
-@generated function dispatchcall(f::F, f_repr, args, args_repr, location) where F
-    # TODO: check this out:
-    # @nospecialize args
-    
+function isprimitive(ctx::Ctx, f::F, args...) where {Ctx<:AbstractTrackingContext, F}
     # from Cassette.canrecurse
     # (https://github.com/jrevels/Cassette.jl/blob/79eabe829a16b6612e0eba491d9f43dc9c11ff02/src/context.jl#L457-L473)
     mod = Base.typename(F).module
-    is_builtin = ((F <: Core.Builtin) && !(mod === Core.Compiler)) || F <: Core.IntrinsicFunction
-
-    
-    tapecall = :(TapeCall(result, f_repr, args_repr))
-
-    if is_builtin 
-        quote
-            result = f(args...)
-            return PrimitiveCallNode($tapecall, location)
-        end
-    else
-        quote
-            result, graph = track(f, args...)
-            return NestedCallNode($tapecall, graph, location)
-        end
-    end
+    return ((F <: Core.Builtin) && !(mod === Core.Compiler)) || F <: Core.IntrinsicFunction
 end
+
+
+
+
+# """
+#     recurse(Ctx, f, f_repr, args, args_repr, location)
+
+# If `f` is primitive, call `f(args...)` and return a `PrimitiveCallNode` node with the result; otherwise,
+# recursively track the call of `f` with `args` and return a `NestedCallNode` containing the resulting
+# `GraphTape`.
+# """
+# @generated function recurse(Ctx::Type{<:AbstractTrackingContext},
+#                             f::F, f_repr, args, args_repr, location) where F
+#     # TODO: check this out:
+#     # @nospecialize args
+    
+#     tapecall = :(TapeCall(result, f_repr, args_repr))
+
+#     if isprimitive(Ctx, F)
+#         quote
+#             result = f(args...)
+#             return PrimitiveCallNode($tapecall, location)
+#         end
+#     else
+#         quote
+#             result, graph = track(f, args...)
+#             return NestedCallNode($tapecall, graph, location)
+#         end
+#     end
+# end
 
 
 """

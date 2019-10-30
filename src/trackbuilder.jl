@@ -121,7 +121,8 @@ function callrecord(builder::TrackBuilder, location, call_expr)
     arguments = xcall(:tuple, map(substitute_variable(builder), arguments_expr)...)
     f_repr = tapevalue(builder, f_expr)
     arguments_repr = tapevalues(builder, arguments_expr)
-    return DCGCall.dispatchcall(f, f_repr, arguments, arguments_repr, location)
+    ctx = xcall(:getfield, builder.recorder, :context)
+    return DCGCall.trackinternal(ctx, f, f_repr, arguments, arguments_repr, location)
 end
 
 function specialrecord(builder::TrackBuilder, location, special_expr)
@@ -130,7 +131,7 @@ function specialrecord(builder::TrackBuilder, location, special_expr)
     form = Expr(head, args...)
     args_repr = tapevalues(builder, special_expr.args)
     form_repr = DCGCall.TapeSpecialForm(form, QuoteNode(head), args_repr)
-    return DCGCall.SpecialCallNode(form_repr, location)
+    return DCGCall.SpecialCallNode(form_repr)
 end
 
 function constantrecord(builder::TrackBuilder, location, constant_expr)
@@ -205,10 +206,6 @@ end
 
 
 function track_arguments!(builder::TrackBuilder, new_block::Block, old_block::Block; isfirst = false)
-    if isfirst
-        tracking_context = argument!(new_block, insert = false)
-    end
-    
     # copy over arguments from old block
     for argument in arguments(old_block)
         # without `insert = false`, `nothing` gets added to branches pointing here
@@ -216,13 +213,15 @@ function track_arguments!(builder::TrackBuilder, new_block::Block, old_block::Bl
         record_new_variable!(builder, argument, new_argument)
     end
 
+    # this is the first block, here we set up the recorder and context argument
     if isfirst
-        # this is the first block, here we set up the recorder
-        builder.recorder = push!(new_block, DCGCall.GraphRecorder(copy(builder.original_ir)))
+        tracking_context = argument!(new_block, at = 1, insert = false)
+        builder.recorder = push!(new_block, DCGCall.GraphRecorder(copy(builder.original_ir),
+                                                                  tracking_context))
     end
-
+    
+    # record jumps to here, if there are any, by adding a new argument and recording it
     if hasjumpto(builder, old_block)
-        # record jumps to here, if there are any, by adding a new argument and recording it
         branch_argument = argument!(new_block, insert = false)
         pushrecord!(builder, new_block, branch_argument)
     end
