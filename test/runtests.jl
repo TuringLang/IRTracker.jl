@@ -3,6 +3,8 @@ using DynamicComputationGraphs
 using IRTools: @code_ir
 using Distributions
 using Random
+using ChainRules
+
 
 @testset "DynamicComputationGraphs" begin
 
@@ -132,6 +134,12 @@ using Random
             @test parents(graph[end]) == [graph[3]]
             @test length(children(graph[3])) == 1
         end
+    end
+
+
+    ########## Contexts #####################
+    @testset "contexts" begin
+
     end
 end
 

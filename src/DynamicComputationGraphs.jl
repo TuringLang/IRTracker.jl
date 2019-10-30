@@ -19,6 +19,9 @@ export TapeCall, TapeConstant, TapeExpr, TapeReference, TapeSpecialForm, TapeVal
 export references, value
 export backward, children, parents
 
+# trackingcontext.jl
+export AbstractTrackingContext, DefaultTrackingContext
+
 # show.jl
 export printlevels
 

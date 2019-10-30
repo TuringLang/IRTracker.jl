@@ -10,9 +10,10 @@ IRTools = "7869d1d1-7146-5819-86e3-90919afe41df"
 julia = "1.2"
 
 [extras]
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+ChainRules = "082447d4-558c-5d27-93f4-14fc19e9eca2"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "Distributions", "Random"]
+test = ["ChainRules", "Distributions", "Random", "Test"]
