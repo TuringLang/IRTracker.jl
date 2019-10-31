@@ -14,7 +14,7 @@ include("runtime_functions.jl")
 # graph.jl
 export BranchIndex, IRIndex, VarIndex
 export GraphTape, StatementInfo
-export BranchNode, Node, StatementNode
+export AbstractNode, BranchNode, StatementNode
 export ArgumentNode, ConstantNode, JumpNode, NestedCallNode, PrimitiveCallNode,
      ReturnNode, SpecialCallNode
 export TapeCall, TapeConstant, TapeExpr, TapeReference, TapeSpecialForm, TapeValue

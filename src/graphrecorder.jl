@@ -45,7 +45,7 @@ function push!(recorder::GraphRecorder, node::BranchNode)
 end
 
 
-record!(recorder::GraphRecorder, node::Node) = (push!(recorder, node); value(node))
+record!(recorder::GraphRecorder, node::AbstractNode) = (push!(recorder, node); value(node))
 
 
 @doc """

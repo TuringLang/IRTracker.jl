@@ -2,7 +2,7 @@ import Base: show
 
 
 printlevels(tape::GraphTape, levels) = show(IOContext(stdout, :maxlevel => levels - 1), tape)
-printlevels(node::Node, levels) = show(IOContext(stdout, :maxlevel => levels - 1), node)
+printlevels(node::AbstractNode, levels) = show(IOContext(stdout, :maxlevel => levels - 1), node)
 
 showvalue(io::IO, value) = show(IOContext(io, :limit => true), value)
 showvalue(io::IO, value::Nothing) = print(io, repr(value))

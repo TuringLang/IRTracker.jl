@@ -40,7 +40,7 @@ end
 
 
 """
-    track(f, args...)
+    track([ctx, ]f, args...)
 
 Evaluate `f(args...)`, while keeping track of the IR evaluation sequence in a `GraphTape`.  
 Returns a `Node`, depending on whether the call was primitive or nested.

@@ -75,7 +75,7 @@ JumpNode(target, arguments, condition, location) =
 
 
 
-push!(node::NestedCallNode, child::Node) = (push!(node.subtape, child); node)
+push!(node::NestedCallNode, child::AbstractNode) = (push!(node.subtape, child); node)
 
 parents(node::JumpNode) = getindex.(reduce(vcat, references.(node.arguments),
                                            init = references(node.condition)))
@@ -83,16 +83,16 @@ parents(node::ReturnNode) = getindex.(references(node.argument))
 parents(node::SpecialCallNode) = getindex.(references(node.form))
 parents(node::NestedCallNode) = getindex.(references(node.call))
 parents(node::PrimitiveCallNode) = getindex.(references(node.call))
-parents(::ConstantNode) = Node[]
-parents(::ArgumentNode) = Node[]
+parents(::ConstantNode) = AbstractNode[]
+parents(::ArgumentNode) = AbstractNode[]
 
-children(::JumpNode) = Node[]
-children(::ReturnNode) = Node[]
-children(::SpecialCallNode) = Node[]
+children(::JumpNode) = AbstractNode[]
+children(::ReturnNode) = AbstractNode[]
+children(::SpecialCallNode) = AbstractNode[]
 children(node::NestedCallNode) = node.subtape.nodes
-children(::PrimitiveCallNode) = Node[]
-children(::ConstantNode) = Node[]
-children(::ArgumentNode) = Node[]
+children(::PrimitiveCallNode) = AbstractNode[]
+children(::ConstantNode) = AbstractNode[]
+children(::ArgumentNode) = AbstractNode[]
 
 value(::JumpNode) = nothing
 value(::ReturnNode) = nothing

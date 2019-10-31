@@ -12,15 +12,15 @@ struct GraphTape
     """The methods original IR, to which the `IRIndex`es in `nodes` refer to."""
     original_ir::IRTools.IR
     """Vector of recorded IR statements, as nodes in the computation graph (like in a Wengert list)"""
-    nodes::Vector{<:Node}
+    nodes::Vector{<:AbstractNode}
 end
 
-GraphTape(ir::IRTools.IR) = GraphTape(ir, Node[])
+GraphTape(ir::IRTools.IR) = GraphTape(ir, AbstractNode[])
 
 
 iterate(tape::GraphTape) = iterate(tape.nodes)
 iterate(tape::GraphTape, state) = iterate(tape.nodes, state)
-eltype(tape::GraphTape) = Node
+eltype(tape::GraphTape) = AbstractNode
 length(tape::GraphTape) = length(tape.nodes)
 size(tape::GraphTape) = size(tape.nodes)
 collect(tape::GraphTape) = collect(tape.nodes)
@@ -31,7 +31,7 @@ getindex(tape::GraphTape, i) = tape.nodes[i]
 firstindex(tape::GraphTape) = firstindex(tape.nodes)
 lastindex(tape::GraphTape) = lastindex(tape.nodes)
 
-push!(tape::GraphTape, node::Node) = (push!(tape.nodes, node); tape)
+push!(tape::GraphTape, node::AbstractNode) = (push!(tape.nodes, node); tape)
 
 function backward(f!, tape::GraphTape)
     for node in Iterators.reverse(tape)
