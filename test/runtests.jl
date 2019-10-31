@@ -96,7 +96,9 @@ using ChainRules
             @test call isa NestedCallNode
             @test value(call) isa Cint
         end
-        
+
+        # this can fail due to https://github.com/MikeInnes/IRTools.jl/issues/30
+        # when it hits the ccall in expm1 in rand(::GammGDSampler)
         sampler = Distributions.GammaGDSampler(Gamma(2, 3))
         test6() = rand(Random.GLOBAL_RNG, sampler)
         let call = track(test6)
@@ -120,6 +122,8 @@ using ChainRules
             @test call isa NestedCallNode
             @test value(call) isa Float64
         end
+
+        @test_skip track(expm1, 1.0) isa NestedCallNode
     end
     
     
