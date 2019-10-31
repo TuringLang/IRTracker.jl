@@ -125,6 +125,7 @@ import DynamicComputationGraphs: isprimitive
             @test value(call) isa Float64
         end
 
+        # direct test of  https://github.com/MikeInnes/IRTools.jl/issues/30
         @test_skip track(expm1, 1.0) isa NestedCallNode
     end
     
