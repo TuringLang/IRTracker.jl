@@ -1,77 +1,55 @@
 """Extra data and metadata associated with an SSA statement"""
-struct StatementInfo
-    # line::LineInfoNode
-    metadata::Any
+Base.@kwdef struct NodeInfo
+    location::IRIndex = NO_INDEX
+    parent::Union{RecursiveNode, Nothing} = nothing
+    # slot::Core.Slot
+    metadata::Any = nothing
 end
-
-StatementInfo() = StatementInfo(nothing)
 
 
 struct ArgumentNode <: DataflowNode
     value::TapeConstant
-    location::VarIndex
-    info::StatementInfo
+    info::NodeInfo
 end
-
-ArgumentNode(value, location) = ArgumentNode(value, location, StatementInfo())
 
 
 struct ConstantNode <: DataflowNode
     value::TapeConstant
-    location::VarIndex
-    info::StatementInfo
+    info::NodeInfo
 end
-
-ConstantNode(value, location) = ConstantNode(value, location, StatementInfo())
 
 
 struct PrimitiveCallNode <: DataflowNode
     call::TapeCall
-    location::VarIndex
-    info::StatementInfo
+    info::NodeInfo
 end
-
-PrimitiveCallNode(call, location) = PrimitiveCallNode(call, location, StatementInfo())
 
 
 mutable struct NestedCallNode <: RecursiveNode
     call::TapeCall
     children::Vector{<:AbstractNode}
     original_ir::IRTools.IR
-    location::VarIndex
-    info::StatementInfo
+    info::NodeInfo
 
     NestedCallNode() = new()
 end
 
-NestedCallNode(call, children, location, ir) = NestedCallNode(call, children, location, StatementInfo())
-
 
 struct SpecialCallNode <: DataflowNode
     form::TapeSpecialForm
-    location::VarIndex
-    info::StatementInfo
+    info::NodeInfo
 end
-
-SpecialCallNode(form, location) = SpecialCallNode(form, location, StatementInfo())
 
 
 struct ReturnNode <: ControlflowNode
     argument::TapeValue
-    location::BranchIndex
-    info::StatementInfo
+    info::NodeInfo
 end
-
-ReturnNode(argument, location) = ReturnNode(argument, location, StatementInfo())
 
 
 struct JumpNode <: ControlflowNode
     target::Int
     arguments::Vector{<:TapeValue}
     condition::TapeValue
-    location::BranchIndex
-    info::StatementInfo
+    info::NodeInfo
 end
-
-JumpNode(target, arguments, condition, location) =
-    JumpNode(target, arguments, condition, location, StatementInfo())

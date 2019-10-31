@@ -1,7 +1,7 @@
 using IRTools
 import Base: collect, eltype, iterate, length, size
 import Base: firstindex, getindex, lastindex
-import Base: push!
+import Base: parent, push!
 
 
 
@@ -29,14 +29,16 @@ end
 
 
 # Graph API for general nodes
-parents(node::JumpNode) = getindex.(reduce(vcat, references.(node.arguments),
+ancestors(node::JumpNode) = getindex.(reduce(vcat, references.(node.arguments),
                                            init = references(node.condition)))
-parents(node::ReturnNode) = getindex.(references(node.argument))
-parents(node::SpecialCallNode) = getindex.(references(node.form))
-parents(node::NestedCallNode) = getindex.(references(node.call))
-parents(node::PrimitiveCallNode) = getindex.(references(node.call))
-parents(::ConstantNode) = AbstractNode[]
-parents(::ArgumentNode) = AbstractNode[]
+ancestors(node::ReturnNode) = getindex.(references(node.argument))
+ancestors(node::SpecialCallNode) = getindex.(references(node.form))
+ancestors(node::NestedCallNode) = getindex.(references(node.call))
+ancestors(node::PrimitiveCallNode) = getindex.(references(node.call))
+ancestors(::ConstantNode) = AbstractNode[]
+ancestors(::ArgumentNode) = AbstractNode[]
+
+#TODO: descendants
 
 children(::JumpNode) = AbstractNode[]
 children(::ReturnNode) = AbstractNode[]
@@ -53,3 +55,7 @@ value(node::NestedCallNode) = value(node.call)
 value(node::PrimitiveCallNode) = value(node.call)
 value(node::ConstantNode) = value(node.value)
 value(node::ArgumentNode) = value(node.value)
+
+parent(node::AbstractNode) = node.info.parent
+location(node::AbstractNode) = node.info.location
+metadata(node::AbstractNode) = node.info.metadata

@@ -26,11 +26,10 @@ function GraphRecorder(ir::IRTools.IR, context)
 end
 
 
-function finish_recording(recorder::GraphRecorder, result, f_repr, args_repr, location)
-    call_repr = 
+function finish_recording(recorder::GraphRecorder, result, f_repr, args_repr, info)
     complete_node = recorder.incomplete_node
     complete_node.call = TapeCall(result, f_repr, collect(args_repr))
-    complete_node.location = location
+    complete_node.info = info
     return complete_node
 end
 
@@ -46,7 +45,7 @@ function push!(recorder::GraphRecorder, node::DataflowNode)
     # remember mapping this nodes variable to the respective tape reference
     last_index = length(recorder.incomplete_node)
     push!(recorder.visited_vars,
-          IRTools.var(node.location.line) => TapeReference(recorder.incomplete_node, last_index))
+          IRTools.var(location(node).line) => TapeReference(recorder.incomplete_node, last_index))
     return recorder
 end
 

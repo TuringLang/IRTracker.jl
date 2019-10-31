@@ -49,18 +49,18 @@ Intrinsic functions cannot be tracked.
 """
 track(f, args...) = track(DEFAULT_CTX, f, args...)
 track(ctx::AbstractTrackingContext, f, args...) =
-    trackcall(ctx, f, TapeConstant(f), args, TapeConstant.(args), VarIndex(0, 0))
+    trackcall(ctx, f, TapeConstant(f), args, TapeConstant.(args), NodeInfo())
 
-function trackcall(ctx::AbstractTrackingContext, f, f_repr, args, args_repr, location)
+function trackcall(ctx::AbstractTrackingContext, f, f_repr, args, args_repr, info)
     # println("Tracking ", f, " with args ", args)
-    
+
     if isprimitive(ctx, f, args...)
         result = f(args...)
         tapecall = TapeCall(result, f_repr, collect(args_repr))
-        return PrimitiveCallNode(tapecall, location)
+        return PrimitiveCallNode(tapecall, info)
     else
         result, recorder = recordcall(ctx, f, args...)
-        return finish_recording(recorder, result, f_repr, args_repr, location)
+        return finish_recording(recorder, result, f_repr, args_repr, info)
     end
 end
 

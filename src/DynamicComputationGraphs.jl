@@ -12,15 +12,13 @@ include("runtime_functions.jl")
 
 
 # graph.jl
-export BranchIndex, IRIndex, VarIndex
-export StatementInfo
-export AbstractNode, BranchNode, StatementNode
+export BranchIndex, IRIndex, NoIndex, NO_INDEX, VarIndex
+export NodeInfo
+export AbstractNode, ControlflowNode, DataflowNode, RecursiveNode
 export ArgumentNode, ConstantNode, JumpNode, NestedCallNode, PrimitiveCallNode,
-     ReturnNode, SpecialCallNode
+    ReturnNode, SpecialCallNode
 export TapeCall, TapeConstant, TapeExpr, TapeReference, TapeSpecialForm, TapeValue
-
-export references, value
-export backward, children, parents
+export ancestors, backward, children, metadata, location, parent, references, value
 
 # trackingcontext.jl
 export AbstractTrackingContext, DefaultTrackingContext

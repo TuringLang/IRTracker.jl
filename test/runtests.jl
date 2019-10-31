@@ -1,6 +1,6 @@
 using Test
 using DynamicComputationGraphs
-using IRTools: @code_ir
+using IRTools: @code_ir, explicitbranch!
 using Distributions
 using Random
 using ChainRules
@@ -26,9 +26,9 @@ using ChainRules
             @test value(call) ≅ 43
             
             println("Trace of `f(42)` for visual inspection:")
-            printlevels(call, 2)
+            printlevels(call, 3)
             println("\n")
-            @show @code_ir f(42)
+            println(@code_ir f(42))
             println("\n")
         end
         
@@ -38,9 +38,9 @@ using ChainRules
             @test value(call) isa Int
             
             println("Trace of `geom(3, 0.6)` for visual inspection:")
-            printlevels(call, 2)
+            printlevels(call, 3)
             println("\n")
-            @show @code_ir geom(3, 0.6)
+            println(@code_ir geom(3, 0.6))
             println("\n")
         end
 
@@ -123,33 +123,33 @@ using ChainRules
     end
     
     
-    ########### Errors ###############
+    # ########### Errors ###############
     @testset "errors" begin
-        @test_throws ErrorException track(isodd)               # no method -- too few args
-        @test_throws ErrorException track(isodd, 2, 3)         # no method -- too many args
+        @test_throws ErrorException track(isodd)            # no method -- too few args
+        @test_throws ErrorException track(isodd, 2, 3)      # no method -- too many args
     end
     
     
     ########### Graph API #################
     @testset "graph api" begin
-        # f(x) = x + 1 
-        # # julia> track(f, 42)[2]
-        # # @1: [Argument §1:%1] = f
-        # # @2: [Argument §1:%2] = 42
-        # # @3: [§1:%3] +(@2, 1) = 43
-        # #     @1: [Argument §1:%1] = +
-        # #     @2: [Argument §1:%2] = 42
-        # #     @3: [Argument §1:%3] = 1
-        # #     @4: [§1:%4] add_int(@2, @3) = 43
-        # #     @5: [§1:1] return @4 = 43
-        # # @4: [§1:1] return @3 = 43
+        f(x) = x + 1 
+        # julia> track(f, 42)
+        # f(42) = 43
+        #   @1: [Argument §1:%1] = f
+        #   @2: [Argument §1:%2] = 42
+        #   @3: [§1:%3] +(@2, 1) = 43
+        #     @1: [Argument §1:%1] = +
+        #     @2: [Argument §1:%2] = 42
+        #     @3: [Argument §1:%3] = 1
+        #     @4: [§1:%4] add_int(@2, @3) = 43
+        #     @5: [§1:1] return @4 = 43
+        #   @4: [§1:1] return @3 = 43
 
-        # let call = track(f, 42)
-            
-        #     @test length(children(call)) = 4
-        #     @test parents(call[end]) == [call[3]]
-        #     @test length(children(call[3])) == 1
-        # end
+        let call = track(f, 42)
+            @test length(children(call)) == 4
+            @test parent(call[end]) === call
+            @test length(children(call[3])) == 5
+        end
     end
 
 

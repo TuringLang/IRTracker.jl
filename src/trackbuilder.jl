@@ -100,19 +100,30 @@ function tapevalues(builder::TrackBuilder, values)
 end
 
 
+nodeinfo(
+    ;location = GlobalRef(DynamicComputationGraphs, :NO_INDEX),
+    parent = :nothing,
+    meta = :nothing
+) = DCGCall.NodeInfo(location, parent, meta)
+
+currentnode(builder::TrackBuilder) = xcall(:getfield, builder.recorder, :incomplete_node)
+
+
 # The XYZrecord functions all record a complex `Expr` creating a node for tracking (at runtime)
 # the respective kind of SSA statement.  This `Expr` can then be pushed to the IR, followed by an
 # `Expr` calling `pushrecord!` on it, to actually track it on the `GraphRecorder`.
 
 function returnrecord(builder::TrackBuilder, location, branch)
     argument_repr = tapevalue(builder, branch.args[1])
-    return DCGCall.ReturnNode(argument_repr, location)
+    info = nodeinfo(location = location, parent = currentnode(builder))
+    return DCGCall.ReturnNode(argument_repr, info)
 end
 
 function jumprecord(builder::TrackBuilder, location, branch)
     condition_repr = tapevalue(builder, branch.condition)
     arguments_repr = tapevalues(builder, branch.args)
-    return DCGCall.JumpNode(branch.block, arguments_repr, condition_repr, location)
+    info = nodeinfo(location = location, parent = currentnode(builder))
+    return DCGCall.JumpNode(branch.block, arguments_repr, condition_repr, info)
 end
 
 function callrecord(builder::TrackBuilder, location, call_expr)
@@ -122,7 +133,8 @@ function callrecord(builder::TrackBuilder, location, call_expr)
     f_repr = tapevalue(builder, f_expr)
     arguments_repr = tapevalues(builder, arguments_expr)
     ctx = xcall(:getfield, builder.recorder, :context)
-    return DCGCall.trackcall(ctx, f, f_repr, arguments, arguments_repr, location)
+    info = nodeinfo(location = location, parent = currentnode(builder))
+    return DCGCall.trackcall(ctx, f, f_repr, arguments, arguments_repr, info)
 end
 
 function specialrecord(builder::TrackBuilder, location, special_expr)
@@ -131,18 +143,21 @@ function specialrecord(builder::TrackBuilder, location, special_expr)
     form = Expr(head, args...)
     args_repr = tapevalues(builder, special_expr.args)
     form_repr = DCGCall.TapeSpecialForm(form, QuoteNode(head), args_repr)
-    return DCGCall.SpecialCallNode(form_repr, location)
+    info = nodeinfo(location = location, parent = currentnode(builder))
+    return DCGCall.SpecialCallNode(form_repr, info)
 end
 
 function constantrecord(builder::TrackBuilder, location, constant_expr)
     # TODO: make this itself a constant :)
     constant_repr = DCGCall.TapeConstant(constant_expr)
-    return DCGCall.ConstantNode(constant_repr, location)
+    info = nodeinfo(location = location, parent = currentnode(builder))
+    return DCGCall.ConstantNode(constant_repr, info)
 end
 
 function argumentrecord(builder::TrackBuilder, location, argument_expr)
     argument_repr = DCGCall.TapeConstant(substitute_variable(builder, argument_expr))
-    return DCGCall.ArgumentNode(argument_repr, location)
+    info = nodeinfo(location = location, parent = currentnode(builder))
+    return DCGCall.ArgumentNode(argument_repr, info)
 end
 
 
