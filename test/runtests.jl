@@ -5,6 +5,8 @@ using Distributions
 using Random
 using ChainRules
 
+import DynamicComputationGraphs: isprimitive
+
 
 # typed equality comparison
 ≅(x::T, y::T) where {T} = x == y
@@ -150,16 +152,32 @@ using ChainRules
         #   @4: [§1:1] return @3 = 43
 
         let call = track(f, 42)
+            @test length(call) == 4
             @test length(children(call)) == 4
-            @test parent(call[end]) === call
+            @test length(call[3]) == 5
             @test length(children(call[3])) == 5
+            @test parent(call[end]) === call
         end
     end
 
 
     ########## Contexts #####################
     @testset "contexts" begin
+        struct FDiffContext <: AbstractTrackingContext end
+        isprimitive(::FDiffContext, f, args...) = !isnothing(frule(f, args...))
 
+        f(x) = x + 1
+        # julia> track(FDiffContext(), f, 1.0)
+        # f(1.0) = 2.0
+        #   @1: [Argument §1:%1] = f
+        #   @2: [Argument §1:%2] = 1.0
+        #   @3: [§1:%3] +(@2, 1) = 2.0
+        #   @4: [§1:1] return @3 = 2.0
+
+        let call = track(FDiffContext(), f, 42)
+            @test length(call) == 4
+            @test call[3] isa PrimitiveCallNode
+        end
     end
 end
 
