@@ -12,59 +12,51 @@ using ChainRules
 
 
 @testset "DynamicComputationGraphs" begin
-
-    ########### Errors ###############
-    @testset "errors" begin
-        @test_throws ErrorException track(isodd)               # no method -- too few args
-        @test_throws ErrorException track(isodd, 2, 3)         # no method -- too many args
-    end
-    
-    
     ########### Basic sanity checks #################
     @testset "sanity checks" begin
-        let graph = track(Core.Intrinsics.add_int, 1, 2)
-            @test graph isa PrimitiveCallNode
-            @test value(graph) ≅ 3
+        let call = track(Core.Intrinsics.add_int, 1, 2)
+            @test call isa PrimitiveCallNode
+            @test value(call) ≅ 3
         end
         
         f(x) = x + 1
-        let graph = track(f, 42)
+        let call = track(f, 42)
             # @test node.valu isa Tuple{Int, GraphTape}
-            @test graph isa NestedCallNode
-            @test value(graph) ≅ 43
+            @test call isa NestedCallNode
+            @test value(call) ≅ 43
             
             println("Trace of `f(42)` for visual inspection:")
-            printlevels(graph, 2)
+            printlevels(call, 2)
             println("\n")
             @show @code_ir f(42)
             println("\n")
         end
         
         geom(n, β) = rand() < β ? n : geom(n + 1, β)
-        let graph = track(geom, 3, 0.5)
-            @test graph isa NestedCallNode
-            @test value(graph) isa Int
+        let call = track(geom, 3, 0.5)
+            @test call isa NestedCallNode
+            @test value(call) isa Int
             
             println("Trace of `geom(3, 0.6)` for visual inspection:")
-            printlevels(graph, 2)
+            printlevels(call, 2)
             println("\n")
             @show @code_ir geom(3, 0.6)
             println("\n")
         end
 
         weird(n) = rand() < 1/(n + 1) ? n : weird(n + 1)
-        let graph = track(weird, 3)
-            @test graph isa NestedCallNode
-            @test value(graph) isa Int
+        let call = track(weird, 3)
+            @test call isa NestedCallNode
+            @test value(call) isa Int
         end
 
         function test1(x)
             t = (x, x)
             t[1] + 1
         end
-        let graph = track(test1, 42)
-            @test graph isa NestedCallNode
-            @test value(graph) ≅ 43
+        let call = track(test1, 42)
+            @test call isa NestedCallNode
+            @test value(call) ≅ 43
         end
 
         function test2(x)
@@ -74,9 +66,9 @@ using ChainRules
                 return x - 1 #sum([x, x])
             end
         end
-        let graph = track(test2, 42)
-            @test graph isa NestedCallNode
-            @test value(graph) ≅ 41
+        let call = track(test2, 42)
+            @test call isa NestedCallNode
+            @test value(call) ≅ 41
         end
 
         function test3(x)
@@ -88,28 +80,28 @@ using ChainRules
 
             return y
         end
-        let graph = track(test3, 42)
-            @test graph isa NestedCallNode
-            @test value(graph) ≅ 42
+        let call = track(test3, 42)
+            @test call isa NestedCallNode
+            @test value(call) ≅ 42
         end
         
         test4(x) = [x, x]
-        let graph = track(test4, 42)
-            @test graph isa NestedCallNode
-            @test value(graph) ≅ [42, 42]
+        let call = track(test4, 42)
+            @test call isa NestedCallNode
+            @test value(call) ≅ [42, 42]
         end
 
         test5() = ccall(:rand, Cint, ())
-        let graph = track(test5)
-            @test graph isa NestedCallNode
-            @test value(graph) isa Cint
+        let call = track(test5)
+            @test call isa NestedCallNode
+            @test value(call) isa Cint
         end
         
         sampler = Distributions.GammaGDSampler(Gamma(2, 3))
         test6() = rand(Random.GLOBAL_RNG, sampler)
-        let graph = track(test6)
-            @test graph isa NestedCallNode
-            @test value(graph) isa Float64
+        let call = track(test6)
+            @test call isa NestedCallNode
+            @test value(call) isa Float64
         end
         
         function test7()
@@ -124,34 +116,41 @@ using ChainRules
             m += 2
             return rand(Normal(m, 1))
         end
-        let graph = track(test7)
-            @test graph isa NestedCallNode
-            @test value(graph) isa Float64
+        let call = track(test7)
+            @test call isa NestedCallNode
+            @test value(call) isa Float64
         end
     end
-
-
-
+    
+    
+    ########### Errors ###############
+    @testset "errors" begin
+        @test_throws ErrorException track(isodd)               # no method -- too few args
+        @test_throws ErrorException track(isodd, 2, 3)         # no method -- too many args
+    end
+    
+    
     ########### Graph API #################
-    # @testset "graph api" begin
-    #     f(x) = x + 1 
-    #     # julia> track(f, 42)[2]
-    #     # @1: [Argument §1:%1] = f
-    #     # @2: [Argument §1:%2] = 42
-    #     # @3: [§1:%3] +(@2, 1) = 43
-    #     #     @1: [Argument §1:%1] = +
-    #     #     @2: [Argument §1:%2] = 42
-    #     #     @3: [Argument §1:%3] = 1
-    #     #     @4: [§1:%4] add_int(@2, @3) = 43
-    #     #     @5: [§1:1] return @4 = 43
-    #     # @4: [§1:1] return @3 = 43
+    @testset "graph api" begin
+        f(x) = x + 1 
+        # julia> track(f, 42)[2]
+        # @1: [Argument §1:%1] = f
+        # @2: [Argument §1:%2] = 42
+        # @3: [§1:%3] +(@2, 1) = 43
+        #     @1: [Argument §1:%1] = +
+        #     @2: [Argument §1:%2] = 42
+        #     @3: [Argument §1:%3] = 1
+        #     @4: [§1:%4] add_int(@2, @3) = 43
+        #     @5: [§1:1] return @4 = 43
+        # @4: [§1:1] return @3 = 43
 
-    #     let (r, graph) = track(f, 42)
-    #         @test length(graph) = 4
-    #         @test parents(graph[end]) == [graph[3]]
-    #         @test length(children(graph[3])) == 1
-    #     end
-    # end
+        let call = track(f, 42)
+            
+            @test length(children(call)) = 4
+            @test parents(call[end]) == [call[3]]
+            @test length(children(call[3])) == 1
+        end
+    end
 
 
     ########## Contexts #####################
