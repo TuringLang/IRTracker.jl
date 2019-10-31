@@ -1,22 +1,21 @@
 import Base: getindex
 
 """
-Representation of an expression in an IR statement when tracked on a `GraphTape`.  Contains a 
+Representation of an expression in an IR statement when tracked in a node.  Contains a 
 reified form of the original and the value obtained during execution (i.e., forward mode).
 """
 abstract type TapeExpr end
-
 
 abstract type TapeValue <: TapeExpr end
 abstract type TapeForm <: TapeExpr end
 
 
 """
-Representation of an SSA variable.  References a node of a `GraphTape`s node list; like the indices
+Representation of an SSA variable.  References a child node of a `NestedCallNode`; like the indices
 of a Wengert list.  Behaves like `Ref` (i.e., you can get the referenced node of `r` by `r[]`).
 """
 struct TapeReference <: TapeValue
-    tape::GraphTape
+    node::RecursiveNode
     index::Int
 end
 
@@ -46,7 +45,7 @@ end
 
 
 
-getindex(ref::TapeReference) = ref.tape[ref.index]
+getindex(ref::TapeReference) = ref.node[ref.index]
 
 
 """

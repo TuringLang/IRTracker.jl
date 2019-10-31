@@ -122,7 +122,7 @@ function callrecord(builder::TrackBuilder, location, call_expr)
     f_repr = tapevalue(builder, f_expr)
     arguments_repr = tapevalues(builder, arguments_expr)
     ctx = xcall(:getfield, builder.recorder, :context)
-    return DCGCall.trackinternal(ctx, f, f_repr, arguments, arguments_repr, location)
+    return DCGCall.trackcall(ctx, f, f_repr, arguments, arguments_repr, location)
 end
 
 function specialrecord(builder::TrackBuilder, location, special_expr)
@@ -265,8 +265,7 @@ function insert_return_block!(builder::TrackBuilder)
     
     return_value = argument!(return_block, insert = false)
     pushrecord!(builder, return_block, argument!(return_block, insert = false))
-    tape_expr = xcall(:getfield, builder.recorder, :tape)
-    return!(return_block, xcall(:tuple, return_value, tape_expr))
+    return!(return_block, xcall(:tuple, return_value, builder.recorder))
     return return_block
 end
 

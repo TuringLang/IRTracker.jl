@@ -8,35 +8,6 @@ end
 
 
 
-
-# """
-#     recurse(Ctx, f, f_repr, args, args_repr, location)
-
-# If `f` is primitive, call `f(args...)` and return a `PrimitiveCallNode` node with the result; otherwise,
-# recursively track the call of `f` with `args` and return a `NestedCallNode` containing the resulting
-# `GraphTape`.
-# """
-# @generated function recurse(Ctx::Type{<:AbstractTrackingContext},
-#                             f::F, f_repr, args, args_repr, location) where F
-#     # TODO: check this out:
-#     # @nospecialize args
-    
-#     tapecall = :(TapeCall(result, f_repr, args_repr))
-
-#     if isprimitive(Ctx, F)
-#         quote
-#             result = f(args...)
-#             return PrimitiveCallNode($tapecall, location)
-#         end
-#     else
-#         quote
-#             result, graph = track(f, args...)
-#             return NestedCallNode($tapecall, graph, location)
-#         end
-#     end
-# end
-
-
 """
 Print an error message that `f(args...)` can't be tracked (because the method does not exist, or `f`
 is intrinsic.)

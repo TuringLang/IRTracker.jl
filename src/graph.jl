@@ -27,14 +27,16 @@ getindex(ir::IRTools.IR, ix::BranchIndex) = IRTools.branches(ir, ix.block)[ix.li
 abstract type AbstractNode end
 
 """Representats a SSA statement in tracked IR in a `GraphTape`."""
-abstract type StatementNode <: AbstractNode end
+abstract type DataflowNode <: AbstractNode end
+
+abstract type RecursiveNode <: DataflowNode end
 
 """Representats a branch in tracked IR in a `GraphTape`."""
-abstract type BranchNode <: AbstractNode end
+abstract type ControlflowNode <: AbstractNode end
 
-
-include("graphtape.jl")
 
 include("tapeexpr.jl")
 
 include("nodes.jl")
+
+include("graphapi.jl")

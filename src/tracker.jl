@@ -26,7 +26,7 @@ function error_ir(F, Args...)
 end
 
 
-@dynamo function _track(Ctx, F, Args...)
+@dynamo function recordcall(Ctx, F, Args...)
     ir = IR(F, Args...)
     
     if isnothing(ir)
@@ -49,9 +49,9 @@ Intrinsic functions cannot be tracked.
 """
 track(f, args...) = track(DEFAULT_CTX, f, args...)
 track(ctx::AbstractTrackingContext, f, args...) =
-    trackinternal(ctx, f, TapeConstant(f), args, TapeConstant.(args), VarIndex(0, 0))
+    trackcall(ctx, f, TapeConstant(f), args, TapeConstant.(args), VarIndex(0, 0))
 
-function trackinternal(ctx::AbstractTrackingContext, f, f_repr, args, args_repr, location)
+function trackcall(ctx::AbstractTrackingContext, f, f_repr, args, args_repr, location)
     # println("Tracking ", f, " with args ", args)
     
     if isprimitive(ctx, f, args...)
@@ -59,9 +59,8 @@ function trackinternal(ctx::AbstractTrackingContext, f, f_repr, args, args_repr,
         tapecall = TapeCall(result, f_repr, collect(args_repr))
         return PrimitiveCallNode(tapecall, location)
     else
-        result, subtape = _track(ctx, f, args...)
-        tapecall = TapeCall(result, f_repr, collect(args_repr))
-        return NestedCallNode(tapecall, subtape, location)
+        result, recorder = recordcall(ctx, f, args...)
+        return finish_recording(recorder, result, f_repr, args_repr, location)
     end
 end
 

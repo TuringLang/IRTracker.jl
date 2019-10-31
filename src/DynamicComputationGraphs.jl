@@ -13,7 +13,7 @@ include("runtime_functions.jl")
 
 # graph.jl
 export BranchIndex, IRIndex, VarIndex
-export GraphTape, StatementInfo
+export StatementInfo
 export AbstractNode, BranchNode, StatementNode
 export ArgumentNode, ConstantNode, JumpNode, NestedCallNode, PrimitiveCallNode,
      ReturnNode, SpecialCallNode

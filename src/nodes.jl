@@ -7,7 +7,7 @@ end
 StatementInfo() = StatementInfo(nothing)
 
 
-struct ArgumentNode <: StatementNode
+struct ArgumentNode <: DataflowNode
     value::TapeConstant
     location::VarIndex
     info::StatementInfo
@@ -16,7 +16,7 @@ end
 ArgumentNode(value, location) = ArgumentNode(value, location, StatementInfo())
 
 
-struct ConstantNode <: StatementNode
+struct ConstantNode <: DataflowNode
     value::TapeConstant
     location::VarIndex
     info::StatementInfo
@@ -25,7 +25,7 @@ end
 ConstantNode(value, location) = ConstantNode(value, location, StatementInfo())
 
 
-struct PrimitiveCallNode <: StatementNode
+struct PrimitiveCallNode <: DataflowNode
     call::TapeCall
     location::VarIndex
     info::StatementInfo
@@ -34,17 +34,20 @@ end
 PrimitiveCallNode(call, location) = PrimitiveCallNode(call, location, StatementInfo())
 
 
-struct NestedCallNode <: StatementNode
+mutable struct NestedCallNode <: RecursiveNode
     call::TapeCall
-    subtape::GraphTape
+    children::Vector{<:AbstractNode}
+    original_ir::IRTools.IR
     location::VarIndex
     info::StatementInfo
+
+    NestedCallNode() = new()
 end
 
-NestedCallNode(call, subtape, location) = NestedCallNode(call, subtape, location, StatementInfo())
+NestedCallNode(call, children, location, ir) = NestedCallNode(call, children, location, StatementInfo())
 
 
-struct SpecialCallNode <: StatementNode
+struct SpecialCallNode <: DataflowNode
     form::TapeSpecialForm
     location::VarIndex
     info::StatementInfo
@@ -53,7 +56,7 @@ end
 SpecialCallNode(form, location) = SpecialCallNode(form, location, StatementInfo())
 
 
-struct ReturnNode <: BranchNode
+struct ReturnNode <: ControlflowNode
     argument::TapeValue
     location::BranchIndex
     info::StatementInfo
@@ -62,7 +65,7 @@ end
 ReturnNode(argument, location) = ReturnNode(argument, location, StatementInfo())
 
 
-struct JumpNode <: BranchNode
+struct JumpNode <: ControlflowNode
     target::Int
     arguments::Vector{<:TapeValue}
     condition::TapeValue
@@ -72,32 +75,3 @@ end
 
 JumpNode(target, arguments, condition, location) =
     JumpNode(target, arguments, condition, location, StatementInfo())
-
-
-
-push!(node::NestedCallNode, child::AbstractNode) = (push!(node.subtape, child); node)
-
-parents(node::JumpNode) = getindex.(reduce(vcat, references.(node.arguments),
-                                           init = references(node.condition)))
-parents(node::ReturnNode) = getindex.(references(node.argument))
-parents(node::SpecialCallNode) = getindex.(references(node.form))
-parents(node::NestedCallNode) = getindex.(references(node.call))
-parents(node::PrimitiveCallNode) = getindex.(references(node.call))
-parents(::ConstantNode) = AbstractNode[]
-parents(::ArgumentNode) = AbstractNode[]
-
-children(::JumpNode) = AbstractNode[]
-children(::ReturnNode) = AbstractNode[]
-children(::SpecialCallNode) = AbstractNode[]
-children(node::NestedCallNode) = node.subtape.nodes
-children(::PrimitiveCallNode) = AbstractNode[]
-children(::ConstantNode) = AbstractNode[]
-children(::ArgumentNode) = AbstractNode[]
-
-value(::JumpNode) = nothing
-value(::ReturnNode) = nothing
-value(node::SpecialCallNode) = value(node.form)
-value(node::NestedCallNode) = value(node.call)
-value(node::PrimitiveCallNode) = value(node.call)
-value(node::ConstantNode) = value(node.value)
-value(node::ArgumentNode) = value(node.value)

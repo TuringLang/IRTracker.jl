@@ -10,24 +10,11 @@ printlimited(io::IO, value::Nothing) = print(io, repr(value))
 
 function joinlimited(io::IO, values, delim)
     L = length(values)
-
     if L > 0
         for (i, value) in enumerate(values)
             printlimited(io, value)
             i != L && print(io, delim)
         end
-    end
-end
-
-
-function show(io::IO, tape::GraphTape, level = 0)
-    maxlevel = get(io, :maxlevel, typemax(level))
-    level > maxlevel && return
-    
-    for (i, node) in enumerate(tape.nodes)
-        print(io, " " ^ 2level, "@", i, ": ")
-        show(io, node, level)
-        i < length(tape.nodes) && print(io, "\n")
     end
 end
 
@@ -44,11 +31,18 @@ end
 
 function show(io::IO, node::NestedCallNode, level = 0)
     maxlevel = get(io, :maxlevel, typemax(level))
+    level > maxlevel && return
+
     print(io, "[", node.location, "] ")
     print(io, node.call, " = ")
     printlimited(io, value(node))
     level < maxlevel && print(io, "\n") # prevent double newlines in limited printing
-    show(io, node.subtape, level + 1)
+    
+    for (i, child) in enumerate(node)
+        print(io, " " ^ 2level, "@", i, ": ")
+        show(io, child, level + 1)
+        i < length(node) && print(io, "\n")
+    end
 end
 
 function show(io::IO, node::SpecialCallNode, level = 0)
