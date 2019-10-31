@@ -33,7 +33,7 @@ end
         return error_ir(F, Args...)
     else
         new_ir = transform_ir(ir)
-        @coreshow new_ir
+        # @coreshow new_ir
         return new_ir
     end
 end
@@ -49,10 +49,10 @@ Intrinsic functions cannot be tracked.
 """
 track(f, args...) = track(DEFAULT_CTX, f, args...)
 track(ctx::AbstractTrackingContext, f, args...) =
-    trackinternal(ctx, f, TapeConstant(nameof(f)), args, TapeConstant.(args), VarIndex(0, 0))
+    trackinternal(ctx, f, TapeConstant(f), args, TapeConstant.(args), VarIndex(0, 0))
 
 function trackinternal(ctx::AbstractTrackingContext, f, f_repr, args, args_repr, location)
-    println("Tracking ", f, " with args ", args)
+    # println("Tracking ", f, " with args ", args)
     
     if isprimitive(ctx, f, args...)
         result = f(args...)

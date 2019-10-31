@@ -131,7 +131,7 @@ function specialrecord(builder::TrackBuilder, location, special_expr)
     form = Expr(head, args...)
     args_repr = tapevalues(builder, special_expr.args)
     form_repr = DCGCall.TapeSpecialForm(form, QuoteNode(head), args_repr)
-    return DCGCall.SpecialCallNode(form_repr)
+    return DCGCall.SpecialCallNode(form_repr, location)
 end
 
 function constantrecord(builder::TrackBuilder, location, constant_expr)
