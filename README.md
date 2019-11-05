@@ -1,5 +1,7 @@
 # DynamicComputationGraphs.jl
 
+> ATTENTION: THE EXAMPLES ARE A BIT OUTDATED SINCE THE LAST REFACTORINGS, TAKE WITH CARE!
+
 ## Plan
 
 My basic idea is to use a tape consisting of the IR instructions of the executed code, including control flow.
