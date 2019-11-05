@@ -13,6 +13,9 @@ import DynamicComputationGraphs: isprimitive
 ≅(x, y) = false
 
 
+
+
+
 @testset "DynamicComputationGraphs" begin
     ########### Basic sanity checks #################
     @testset "sanity checks" begin
@@ -163,19 +166,22 @@ import DynamicComputationGraphs: isprimitive
 
 
     ########## Contexts #####################
+
+    
     @testset "contexts" begin
+        # definitions 
         struct FDiffContext <: AbstractTrackingContext end
-        isprimitive(::FDiffContext, f, args...) = !isnothing(frule(f, args...))
-
+        DynamicComputationGraphs.isprimitive(::FDiffContext, f, args...) = !isnothing(frule(f, args...))
+        
         f(x) = x + 1
-        # julia> track(FDiffContext(), f, 1.0)
-        # f(1.0) = 2.0
+        # f(42) = 43
         #   @1: [Argument §1:%1] = f
-        #   @2: [Argument §1:%2] = 1.0
-        #   @3: [§1:%3] +(@2, 1) = 2.0
-        #   @4: [§1:1] return @3 = 2.0
+        #   @2: [Argument §1:%2] = 42
+        #   @3: [§1:%3] +(@2, 1) = 43
+        #   @4: [§1:1] return @3 = 43
 
-        let call = track(FDiffContext(), f, 42)
+        ctx = FDiffContext()
+        let call = track(ctx, f, 42)
             @test length(call) == 4
             @test call[3] isa PrimitiveCallNode
         end
