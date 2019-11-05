@@ -40,16 +40,17 @@ end
 
 
 """
-    track([ctx, ]f, args...)
+    track([ctx, ]f, args...) -> Node
 
-Evaluate `f(args...)`, while keeping track of the IR evaluation sequence in a `GraphTape`.  
-Returns a `Node`, depending on whether the call was primitive or nested.
+Evaluate `f(args...)`, while keeping track of the IR evaluation sequence.  Returns some kind of
+`Node`, depending on whether the call was primitive or nested.
 
 Intrinsic functions cannot be tracked.
 """
 track(f, args...) = track(DEFAULT_CTX, f, args...)
 track(ctx::AbstractTrackingContext, f, args...) =
     trackcall(ctx, f, TapeConstant(f), args, TapeConstant.(args), NodeInfo())
+
 
 function trackcall(ctx::AbstractTrackingContext, f, f_repr, args, args_repr, info)
     # println("Tracking ", f, " with args ", args)

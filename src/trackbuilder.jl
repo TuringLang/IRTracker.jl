@@ -106,7 +106,7 @@ nodeinfo(
     meta = :nothing
 ) = DCGCall.NodeInfo(location, parent, meta)
 
-currentnode(builder::TrackBuilder) = xcall(:getfield, builder.recorder, :incomplete_node)
+currentnode(builder::TrackBuilder) = xcall(:getfield, builder.recorder, QuoteNode(:incomplete_node))
 
 
 # The XYZrecord functions all record a complex `Expr` creating a node for tracking (at runtime)
@@ -132,7 +132,7 @@ function callrecord(builder::TrackBuilder, location, call_expr)
     arguments = xcall(:tuple, map(substitute_variable(builder), arguments_expr)...)
     f_repr = tapevalue(builder, f_expr)
     arguments_repr = tapevalues(builder, arguments_expr)
-    ctx = xcall(:getfield, builder.recorder, :context)
+    ctx = xcall(:getfield, builder.recorder, QuoteNode(:context))
     info = nodeinfo(location = location, parent = currentnode(builder))
     return DCGCall.trackcall(ctx, f, f_repr, arguments, arguments_repr, info)
 end

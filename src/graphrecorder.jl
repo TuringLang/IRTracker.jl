@@ -9,26 +9,33 @@ const VisitedVars = Dict{IRTools.Variable, TapeReference}
 struct GraphRecorder{Ctx<:AbstractTrackingContext}
     """`AbstractTrackingContext` used during tracking."""
     context::Ctx
-    """(Partial) node of recorded IR statements."""
-    incomplete_node::NestedCallNode
+    
+    """(Partial) list of recorded IR statements."""
+    tape::Vector{<:AbstractNode}
+    
+    """IR on which the recorder is run."""
+    original_ir::IRTools.IR
+    
     """
     The mapping from original SSA variables to `TapeReference`es, used for substituting them
     in the recorded expressions.
     """
     visited_vars::VisitedVars
+    
+    """Node used as \"forward reference\" in `TapeReference`s."""
+    incomplete_node::NestedCallNode
 end
 
-function GraphRecorder(ir::IRTools.IR, context)
-    empty_node = NestedCallNode()
-    empty_node.children = AbstractNode[]
-    empty_node.original_ir = ir
-    GraphRecorder(context, empty_node, VisitedVars())
-end
+GraphRecorder(ir::IRTools.IR, context) =
+    GraphRecorder(context, AbstractNode[], ir, VisitedVars(), NestedCallNode())
 
 
 function finish_recording(recorder::GraphRecorder, result, f_repr, args_repr, info)
+    call = TapeCall(result, f_repr, collect(args_repr))
     complete_node = recorder.incomplete_node
-    complete_node.call = TapeCall(result, f_repr, collect(args_repr))
+    complete_node.call = call
+    complete_node.children = recorder.tape
+    complete_node.original_ir = recorder.original_ir
     complete_node.info = info
     return complete_node
 end
@@ -40,10 +47,10 @@ usage of its SSA variable.
 """
 function push!(recorder::GraphRecorder, node::DataflowNode)
     # push node with vars converted to tape references
-    push!(recorder.incomplete_node, node)
+    push!(recorder.tape, node)
     
     # remember mapping this nodes variable to the respective tape reference
-    last_index = length(recorder.incomplete_node)
+    last_index = length(recorder.tape)
     push!(recorder.visited_vars,
           IRTools.var(location(node).line) => TapeReference(recorder.incomplete_node, last_index))
     return recorder
@@ -52,7 +59,7 @@ end
 """Track a control flow node on the `GraphRecorder`."""
 function push!(recorder::GraphRecorder, node::ControlflowNode)
     # push node with vars converted to tape references
-    push!(recorder.incomplete_node, node)
+    push!(recorder.tape, node)
     return recorder
     # branches' tape references don't need to be remembered, of course
 end
