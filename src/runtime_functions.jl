@@ -1,10 +1,12 @@
 
-function isprimitive(ctx::Ctx, f::F, args...) where {Ctx<:AbstractTrackingContext, F}
+function isbuiltin(f::F, args...) where {F}
     # from Cassette.canrecurse
     # (https://github.com/jrevels/Cassette.jl/blob/79eabe829a16b6612e0eba491d9f43dc9c11ff02/src/context.jl#L457-L473)
     mod = Base.typename(F).module
-    return ((F <: Core.Builtin) && !(mod === Core.Compiler)) || F <: Core.IntrinsicFunction
+    return ((F <: Core.Builtin) && !(mod === Core.Compiler))
 end
+
+isbuiltin(f::Core.IntrinsicFunction, args...) = true
 
 
 
