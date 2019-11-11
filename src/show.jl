@@ -5,7 +5,7 @@ printlevels(io::IO, value, levels::Integer) = print(IOContext(io, :maxlevel => l
 printlevels(value, levels::Integer) = printlevels(stdout::IO, value, levels)
 
 showvalue(io::IO, value) = show(IOContext(io, :limit => true), value)
-showvalue(io::IO, value::Nothing) = show(io, repr(value))
+showvalue(io::IO, value::Nothing) = show(io, value)
 # showvalue(io::IO, value) = repr(value, context = IOContext(io, :limit => true, :compact => true))
 
 
@@ -26,21 +26,34 @@ printlocation(io::IO, prefix, ix::IRIndex, postfixes...) =
 printlocation(io::IO, prefix, ::NoIndex, postfixes...) = 
     print(io, postfixes...)
 
+function printmetadata(io::IO, metadata::Dict{Symbol, <:Any})
+    !isempty(metadata) && print(io, "\t", "[")
+    for (i, (k, v)) in enumerate(metadata)
+        print(io, k, " = ")
+        showvalue(io, v)
+        i < length(metadata) && print(io, ", ")
+    end
+    !isempty(metadata) && print(io, "]")
+end
+
 
 function show(io::IO, node::ConstantNode, level = 1)
     printlocation(io, "Constant", location(node), " = ")
     showvalue(io, value(node))
+    printmetadata(io, metadata(node))
 end
 
 function show(io::IO, node::PrimitiveCallNode, level = 1)
     printlocation(io, location(node), node.call, " = ")
     showvalue(io, value(node))
+    printmetadata(io, metadata(node))
 end
 
 function show(io::IO, node::NestedCallNode, level = 1)
     maxlevel = get(io, :maxlevel, typemax(level))
     printlocation(io, location(node), node.call, " = ")
     showvalue(io, value(node))
+    printmetadata(io, metadata(node))
 
     if level < maxlevel
         print(io, "\n") # prevent double newlines
@@ -55,16 +68,19 @@ end
 function show(io::IO, node::SpecialCallNode, level = 1)
     printlocation(io, location(node), node.form, " = ")
     showvalue(io, value(node))
+    printmetadata(io, metadata(node))
 end
 
 function show(io::IO, node::ArgumentNode, level = 1)
-    printlocation(io, "Argument", location(node), "= ")
+    printlocation(io, "Argument", location(node), " = ")
     showvalue(io, value(node))
+    printmetadata(io, metadata(node))
 end
 
 function show(io::IO, node::ReturnNode, level = 1)
     printlocation(io, location(node), "return ", node.argument, " = ")
     showvalue(io, value(node.argument))
+    printmetadata(io, metadata(node))
 end
 
 function show(io::IO, node::JumpNode, level = 1)
@@ -85,6 +101,8 @@ function show(io::IO, node::JumpNode, level = 1)
     if !isnothing(reason)
         print(io, " since ", reason)
     end
+
+    printmetadata(io, metadata(node))
 end
 
 show(io::IO, index::VarIndex) = print(io, "§", index.block, ":%", index.line, "")
