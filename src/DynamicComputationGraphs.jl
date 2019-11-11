@@ -11,10 +11,11 @@ include("tracker.jl")
 include("runtime_functions.jl")
 
 
+
 # graph.jl
 export BranchIndex, IRIndex, NoIndex, NO_INDEX, VarIndex
 export NodeInfo
-export AbstractNode, ControlflowNode, DataflowNode, RecursiveNode
+export AbstractNode, ControlFlowNode, DataFlowNode, RecursiveNode
 export ArgumentNode, ConstantNode, JumpNode, NestedCallNode, PrimitiveCallNode,
     ReturnNode, SpecialCallNode
 export TapeCall, TapeConstant, TapeExpr, TapeReference, TapeSpecialForm, TapeValue

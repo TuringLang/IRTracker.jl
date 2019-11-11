@@ -7,19 +7,20 @@ Base.@kwdef struct NodeInfo
 end
 
 
-struct ArgumentNode <: DataflowNode
+
+struct ArgumentNode <: DataFlowNode
     value::TapeConstant
     info::NodeInfo
 end
 
 
-struct ConstantNode <: DataflowNode
+struct ConstantNode <: DataFlowNode
     value::TapeConstant
     info::NodeInfo
 end
 
 
-struct PrimitiveCallNode <: DataflowNode
+struct PrimitiveCallNode <: DataFlowNode
     call::TapeCall
     info::NodeInfo
 end
@@ -35,19 +36,19 @@ mutable struct NestedCallNode <: RecursiveNode
 end
 
 
-struct SpecialCallNode <: DataflowNode
+struct SpecialCallNode <: DataFlowNode
     form::TapeSpecialForm
     info::NodeInfo
 end
 
 
-struct ReturnNode <: ControlflowNode
+struct ReturnNode <: ControlFlowNode
     argument::TapeValue
     info::NodeInfo
 end
 
 
-struct JumpNode <: ControlflowNode
+struct JumpNode <: ControlFlowNode
     target::Int
     arguments::Vector{<:TapeValue}
     condition::TapeValue

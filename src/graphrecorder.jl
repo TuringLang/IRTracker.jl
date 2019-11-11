@@ -45,7 +45,7 @@ end
 Track a data flow node on the `GraphRecorder`, taking care to remember this as the current last
 usage of its SSA variable.
 """
-function push!(recorder::GraphRecorder, node::DataflowNode)
+function push!(recorder::GraphRecorder, node::DataFlowNode)
     # push node with vars converted to tape references
     push!(recorder.tape, node)
     
@@ -57,7 +57,7 @@ function push!(recorder::GraphRecorder, node::DataflowNode)
 end
 
 """Track a control flow node on the `GraphRecorder`."""
-function push!(recorder::GraphRecorder, node::ControlflowNode)
+function push!(recorder::GraphRecorder, node::ControlFlowNode)
     # push node with vars converted to tape references
     push!(recorder.tape, node)
     return recorder
