@@ -104,7 +104,7 @@ nodeinfo(
     ;location = GlobalRef(DynamicComputationGraphs, :NO_INDEX),
     parent = :nothing,
     meta = :nothing
-) = DCGCall.NodeInfo(location, parent, meta)
+) = DCGCall.NodeInfo(location, parent)
 
 currentnode(builder::TrackBuilder) = xcall(:getfield, builder.recorder, QuoteNode(:incomplete_node))
 

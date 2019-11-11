@@ -1,11 +1,14 @@
 """Extra data and metadata associated with an SSA statement"""
-Base.@kwdef struct NodeInfo
-    location::IRIndex = NO_INDEX
-    parent::Union{RecursiveNode, Nothing} = nothing
+struct NodeInfo
+    location::IRIndex
+    parent::Union{RecursiveNode, Nothing}
     # slot::Core.Slot
-    metadata::Any = nothing
+    metadata::Dict{Symbol, Any}
 end
 
+NodeInfo() = NodeInfo(NO_INDEX, nothing, Dict{Symbol, Any}())
+NodeInfo(location) = NodeInfo(location, nothing, Dict{Symbol, Any}())
+NodeInfo(location, parent) = NodeInfo(location, parent, Dict{Symbol, Any}())
 
 
 struct ArgumentNode <: DataFlowNode
