@@ -60,7 +60,7 @@ Return a node representing the call of `f` on `args`.
 function trackcall(ctx::AbstractTrackingContext, f, f_repr, args, args_repr, info)
     # println("Tracking ", f, " with args ", args)
 
-    if isbuiltin(f, args) || !canrecur(ctx, f, args...) 
+    if isbuiltin(f) || !canrecur(ctx, f, args...) 
         trackprimitive(ctx, f, f_repr, args, args_repr, info)
     else
         tracknested(ctx, f, f_repr, args, args_repr, info)
@@ -91,7 +91,7 @@ tracknested(ctx::AbstractTrackingContext, f, f_repr, args, args_repr, info) =
 
 Decide whether `f(args...)` can be recursively tracked (within `ctx`).
 """
-canrecur(ctx::AbstractTrackingContext, f, args...) = !isbuiltin(ctx, f, args...)
+canrecur(ctx::AbstractTrackingContext, f, args...) = !isbuiltin(f)
 
 
 """Fallback implementation for `trackprimitive` -- don't overload this!"""
