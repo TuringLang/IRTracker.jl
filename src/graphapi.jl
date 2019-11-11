@@ -21,9 +21,13 @@ getindex(node::NestedCallNode, i) = node.children[i]
 firstindex(node::NestedCallNode) = firstindex(node.children)
 lastindex(node::NestedCallNode) = lastindex(node.children)
 
-function backward(f!, node::NestedCallNode)
+
+function backward!(f!, node::NestedCallNode)
+    kernel!(::ControlFlowNode) = nothing
+    kernel!(node::DataFlowNode) = f!(node, ancestors(node))
+
     for node in Iterators.reverse(node)
-        f!(node, parents(node))
+        kernel!(node)
     end
 end
 
@@ -55,6 +59,9 @@ value(node::NestedCallNode) = value(node.call)
 value(node::PrimitiveCallNode) = value(node.call)
 value(node::ConstantNode) = value(node.value)
 value(node::ArgumentNode) = value(node.value)
+
+arguments(node::NestedCallNode) = filter(child -> child isa ArgumentNode, children(node))
+arguments(node::AbstractNode) = ArgumentNode[]
 
 parent(node::AbstractNode) = node.info.parent
 location(node::AbstractNode) = node.info.location

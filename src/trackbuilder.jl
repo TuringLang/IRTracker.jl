@@ -1,5 +1,5 @@
 using IRTools: Block, IR, Statement, Variable
-using IRTools: arguments, argument!, block, blocks, branches, branch!, return!, xcall
+using IRTools: argument!, block, blocks, branches, branch!, return!, xcall
 import IRTools: block!
 
 
@@ -222,7 +222,7 @@ end
 
 function track_arguments!(builder::TrackBuilder, new_block::Block, old_block::Block; isfirst = false)
     # copy over arguments from old block
-    for argument in arguments(old_block)
+    for argument in IRTools.arguments(old_block)
         # without `insert = false`, `nothing` gets added to branches pointing here
         new_argument = argument!(new_block, insert = false)
         record_new_variable!(builder, argument, new_argument)
@@ -242,7 +242,7 @@ function track_arguments!(builder::TrackBuilder, new_block::Block, old_block::Bl
     end
 
     # track rest of the arguments from the old block
-    for argument in arguments(old_block)
+    for argument in IRTools.arguments(old_block)
         location = DCGCall.VarIndex(new_block.id, argument.id)
         record = argumentrecord(builder, location, argument)
         pushrecord!(builder, new_block, record)

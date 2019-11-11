@@ -19,7 +19,7 @@ export AbstractNode, ControlFlowNode, DataFlowNode, RecursiveNode
 export ArgumentNode, ConstantNode, JumpNode, NestedCallNode, PrimitiveCallNode,
     ReturnNode, SpecialCallNode
 export TapeCall, TapeConstant, TapeExpr, TapeReference, TapeSpecialForm, TapeValue
-export ancestors, backward, children, metadata, location, parent, references, value
+export ancestors, backward!, children, metadata, location, parent, references, value
 
 # trackingcontext.jl
 export AbstractTrackingContext, DefaultTrackingContext
@@ -28,7 +28,11 @@ export AbstractTrackingContext, DefaultTrackingContext
 export printlevels
 
 # tracker.jl
-export track
+export track, trackcall, tracknested, trackprimitive
+export canrecur, recordnested, recordprimitive
+
+# runtime_functions.jl
+export isbuiltin
 
 
 end # module
