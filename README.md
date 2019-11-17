@@ -69,7 +69,7 @@ geom(1, 0.5) = 2
     @3: [Argument §1:%3]  = 0.5
     @4: [§1:%4] lt_float(@2, @3) = false
     @5: [§1:1] return @4 = false
-  @6: [§1:1] goto §2 since false
+  @6: [§1:1] goto §2 since @5
   @7: [§2:%6] +(@2, 1) = 2
     @1: [Argument §1:%1]  = +
     @2: [Argument §1:%2]  = 1
@@ -111,10 +111,10 @@ adjoint values in the metadata.
 The data structure used for this is an abstract `AbstractNode` type, with subtypes for:
 
 - Arguments and constants;
-- Special calls (such as `:inbounds`) and primitive calls (by default, everything which is builtin;
+- Special calls (such as `:inbounds`) and primitive calls (by default, everything which is builtin
   or intrinsic, but this can be changed by using a context – see below);
 - Nested calls, containing recursively the nodes from a non-primitive call; and
-- Return and jump nodes, occuring when a branch is taken.
+- Return and jump nodes, being recorded when a branch is taken.
   
 
 ## Implementation
@@ -124,7 +124,7 @@ constant number of statements before or after each original statement (and some 
 each block), somehow like this:
 
 ```
-transform_ir(@code_ir geom(1, 0.5))
+julia> transform_ir(@code_ir geom(1, 0.5))
 1: (%4, %1, %2, %3)
   %5 = GraphRecorder(1: (%1, %2, %3)
   %4 = Main.rand()
@@ -229,8 +229,6 @@ This can be achieved by using an `IRTools` dynamo, which in essence is just a fa
 function, allowing one to operate with `IRTools.IR` instead of "raw" `CodeInfo`s.  In this dynamo,
 the original IR is completely rebuilt to insert all necessary tracking statements.
 
-Additionally, 
-
 There’s some things to note:
 
 - Branches are recorded by first creating a node for each branch in a block, then passing this as an
@@ -249,7 +247,17 @@ There’s some things to note:
 
 ## Contexts
 
-Are implemented; documentation coming soon (until then, see `runtests.jl`).
+You may have noticed that there is an additional, fourth argument occuring in the transformed IR
+shown above.  This is the additional context that gets passed down the transformed functions, and is
+used for dispatch in in the internal functions (mostly `trackcall`).  These context arguments work
+similar to the contexts in Cassette.jl, and let you overload the behaviour of how tracking works.
+
+The main parts of customizable behaviour are 1) to change what is considered a primitive (e.g., a
+“primitively” differentiable function is primitive in an AD application – no need to recurse
+further), and 2) to record custom metadata.
+
+This system is basically working, but still a bit under construction (mostly in that there will be
+more points provided that can be overloaded, and documentation given).
 
 
 ## Trying it out
@@ -258,6 +266,72 @@ Currently, there are only a couple of very primitive examples in `runtests.jl`, 
 simple:
 
     node = track(f, args...)
+    
+`node` will be a `NestedCallNode` (unless `f` is primitive), with `value(node)` being the result of
+`f(args...)`.  Nodes in general have `children`, a `parent`, a `location`, and `metadata`; see
+`graphapi.jl` for more functionality.
+
+If we want to use contexts, we have to create a new subtype of `AbstractTrackingContext`.  Say we
+want to limit the recursive tracking to a maximum level, then we could start with the following:
+
+```
+struct DepthLimitContext <: AbstractTrackingContext
+    level::Int
+    maxlevel::Int
+end
+
+DepthLimitContext(maxlevel) = DepthLimitContext(1, maxlevel)
+
+# a little helper:
+increase_level(ctx::DepthLimitContext) = DepthLimitContext(ctx.level + 1, ctx.maxlevel)
+```
+
+Then, we can overload some functions for things we want to change:
+
+```
+# this is the main thing: 
+canrecur(ctx::DepthLimitContext, f, args...) =
+    ctx.level < ctx.maxlevel
+
+# and if we recur into a nested function, we need to update the level in the context:
+function tracknested(
+    ctx::DepthLimitContext, f, f_repr, args, args_repr, info
+)
+    new_ctx = increase_level(ctx)
+    return recordnested(new_ctx, f, f_repr, args, args_repr, info)
+end
+```
+
+`recordnested` is the fallback implementation, like `recurse` in Cassette.jl.
+
+Once we have a custom context, we can just pass it as the first argument to `track`:
+
+```
+julia> ctx = DepthLimitContext(2)
+DepthLimitContext(1, 2)
+
+julia> call = track(ctx, geom, 1, 0.5)
+geom(1, 0.5) = 3
+  @1: [Argument §1:%1]  = geom
+  @2: [Argument §1:%2]  = 1
+  @3: [Argument §1:%3]  = 0.5
+  @4: [§1:%4] rand() = 0.6953878796518627
+  @5: [§1:%5] <(@4, @3) = false
+  @6: [§1:1] goto §2 since false
+  @7: [§2:%6] +(@2, 1) = 2
+  @8: [§2:%7] geom(@7, @3) = 3
+  @9: [§2:1] return @8 = 3
+```
+
+Note that here, all the nodes at level 2 are `PrimitiveNode`s!
+
+If no context is provided, the constant `DEFAULT_CTX::DefaultTrackingContext` will be used, which
+tracks everything down to primitive/intrinsic functions, and records no additional metadata.
+
+At the moment, the overloadable methods are `canrecur`, `trackprimitive`, `tracknested`, and
+`trackcall`.  Their fallbacks are `recordnested`, `recordprimitive`, and `isbuiltin` (you are not
+forced to use these, but otherwise, you’d have to manually construct the node structures to return.)
+
 
 
 
