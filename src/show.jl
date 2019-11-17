@@ -97,9 +97,10 @@ function show(io::IO, node::JumpNode, level = 1)
         print(io, ")")
     end
 
-    reason = value(node.condition)
+    reason = node.condition
     if !isnothing(reason)
         print(io, " since ", reason)
+        (reason isa TapeReference) && print(io, " == ", value(reason))
     end
 
     printmetadata(io, metadata(node))
