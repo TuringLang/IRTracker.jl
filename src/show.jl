@@ -72,7 +72,7 @@ function show(io::IO, node::SpecialCallNode, level = 1)
 end
 
 function show(io::IO, node::ArgumentNode, level = 1)
-    printlocation(io, "Argument", location(node), " = ")
+    printlocation(io, "Argument", location(node), "= ")
     showvalue(io, value(node))
     printmetadata(io, metadata(node))
 end
@@ -90,15 +90,14 @@ function show(io::IO, node::JumpNode, level = 1)
     if L > 0
         print(io, " (")
         for (i, argument) in enumerate(node.arguments)
-            (argument isa TapeReference) && print(io, argument, "= ")
-            showvalue(io, value(argument))
+            print(io, argument)
             i != L && print(io, ", ")
         end
         print(io, ")")
     end
 
     reason = node.condition
-    if !isnothing(reason)
+    if !isnothing(value(reason))
         print(io, " since ", reason)
         (reason isa TapeReference) && print(io, " == ", value(reason))
     end
