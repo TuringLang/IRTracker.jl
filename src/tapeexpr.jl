@@ -30,7 +30,7 @@ end
 struct TapeCall <: TapeExpr
     value::Any
     f::TapeValue
-    arguments::Vector{<:TapeValue}
+    arguments::ArgumentTuple
 end
 
 
@@ -38,7 +38,7 @@ end
 struct TapeSpecialForm <: TapeExpr
     value::Any
     head::Symbol
-    arguments::Vector{<:TapeValue}
+    arguments::ArgumentTuple
 
     # TapeSpecialForm(value, head::Symbol, arguments::Vector{<:TapeValue}) = new{head}(value, head, arguments)
 end

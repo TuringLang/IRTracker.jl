@@ -39,6 +39,9 @@ abstract type RecursiveNode <: DataFlowNode end
 abstract type ControlFlowNode <: AbstractNode end
 
 
+const ArgumentTuple = Tuple{Vararg{Any}}
+
+
 include("tapeexpr.jl")
 
 include("nodes.jl")

@@ -53,7 +53,7 @@ end
 
 struct JumpNode <: ControlFlowNode
     target::Int
-    arguments::Vector{<:TapeValue}
+    arguments::ArgumentTuple
     condition::TapeValue
     info::NodeInfo
 end

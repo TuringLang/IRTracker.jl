@@ -104,7 +104,7 @@ canrecur(ctx::AbstractTrackingContext, f, args...) = !isbuiltin(f)
 """Fallback implementation for `trackprimitive` -- don't overload this!"""
 function recordprimitive(ctx::AbstractTrackingContext, f, f_repr, args, args_repr, info)
     result = f(args...)
-    tapecall = TapeCall(result, f_repr, collect(args_repr))
+    tapecall = TapeCall(result, f_repr, args_repr)
     return PrimitiveCallNode(tapecall, info)
 end
 

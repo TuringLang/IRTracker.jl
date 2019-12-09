@@ -32,7 +32,7 @@ GraphRecorder(ir::IRTools.IR, context) =
 
 """Wrap the list of recorded nodes of `recorder` into a full `NestedCallNode`."""
 function finish_recording(recorder::GraphRecorder, result, f_repr, args_repr, info)
-    call = TapeCall(result, f_repr, collect(args_repr))
+    call = TapeCall(result, f_repr, args_repr)
     complete_node = recorder.incomplete_node
     complete_node.call = call
     complete_node.children = recorder.tape

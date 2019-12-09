@@ -98,11 +98,11 @@ end
 """
     tapevalues(builder, values)
 
-Construct an expression returning a vector of `TapeValues`, given by transforming `values` using
+Construct an expression returning a tuple of `TapeValues`, given by transforming `values` using
 `tapevalue`.
 """
 function tapevalues(builder::TrackBuilder, values)
-    return xcall(:getindex, TapeValue, tapevalue.(Ref(builder), values)...)
+    return xcall(:tuple, tapevalue.(Ref(builder), values)...)
 end
 
 
