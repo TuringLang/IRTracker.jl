@@ -186,7 +186,7 @@ end
 function track_branches!(builder::TrackBuilder, new_block::Block, branches)
     # called only from within a non-primitive call
     for (i, branch) in enumerate(branches)
-        location = DCGCall.BranchIndex(new_block.id, i)
+        location = BranchIndex(new_block.id, i)
         substituted_args = map(substitute_variable(builder), branch.args)
         
         if IRTools.isreturn(branch)
@@ -208,7 +208,7 @@ end
 
 function track_statement!(builder::TrackBuilder, new_block::Block,
                           variable::Variable, statement::Statement)
-    location = DCGCall.VarIndex(new_block.id, variable.id)
+    location = VarIndex(new_block.id, variable.id)
     expr = statement.expr
 
     if Meta.isexpr(expr, :call)
@@ -253,7 +253,7 @@ function track_arguments!(builder::TrackBuilder, new_block::Block, old_block::Bl
 
     # track rest of the arguments from the old block
     for argument in IRTools.arguments(old_block)
-        location = DCGCall.VarIndex(new_block.id, argument.id)
+        location = VarIndex(new_block.id, argument.id)
         record = argumentrecord(builder, location, argument)
         pushrecord!(builder, new_block, record)
     end
