@@ -1,5 +1,7 @@
 # DynamicComputationGraphs.jl
 
+[![Build Status](https://travis-ci.org/phipsgabler/DynamicComputationGraphs.jl.svg?branch=master)](https://travis-ci.org/phipsgabler/DynamicComputationGraphs.jl)
+
 The aim of this project is to provide a graph representation suitable for dynamic models, as they
 occur in probabilistic programming languages (e.g. with stochastic control flow, or model
 recursion).  To implement this, I use an approach between the two traditional ideas: operator
