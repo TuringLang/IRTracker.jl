@@ -13,6 +13,7 @@ DynamicComputationGraphs.<bla>(args...).
 const DCGCall = _DCGCall()
 
 
+"""Equivalent of show without using the event loop (for usage in generated functions)."""
 macro coreshow(exs...)
     blk = Expr(:block)
     for ex in exs

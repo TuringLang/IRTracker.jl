@@ -30,6 +30,7 @@ GraphRecorder(ir::IRTools.IR, context) =
     GraphRecorder(context, AbstractNode[], ir, VisitedVars(), NestedCallNode())
 
 
+"""Wrap the list of recorded nodes of `recorder` into a full `NestedCallNode`."""
 function finish_recording(recorder::GraphRecorder, result, f_repr, args_repr, info)
     call = TapeCall(result, f_repr, collect(args_repr))
     complete_node = recorder.incomplete_node
@@ -65,6 +66,7 @@ function push!(recorder::GraphRecorder, node::ControlFlowNode)
 end
 
 
+"""Push `node` onto `recorder` and return its value."""
 record!(recorder::GraphRecorder, node::AbstractNode) = (push!(recorder, node); value(node))
 
 

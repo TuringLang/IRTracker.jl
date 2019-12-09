@@ -33,6 +33,11 @@ end
 
 
 # Graph API for general nodes
+"""
+    ancestors(node) -> Vector{<:AbstractNode}
+
+Return all nodes that `node` references; i.e., all data it depends on.
+"""
 ancestors(node::JumpNode) = getindex.(reduce(vcat, references.(node.arguments),
                                            init = references(node.condition)))
 ancestors(node::ReturnNode) = getindex.(references(node.argument))
@@ -44,13 +49,34 @@ ancestors(::ArgumentNode) = AbstractNode[]
 
 #TODO: descendants
 
-children(::JumpNode) = AbstractNode[]
-children(::ReturnNode) = AbstractNode[]
-children(::SpecialCallNode) = AbstractNode[]
+
+"""
+    children(node) -> Vector{<:AbstractNode}
+
+Return all sub-nodes of this node (only none-empty if `node` is a `NestedCallNode`).
+"""
 children(node::NestedCallNode) = node.children
-children(::PrimitiveCallNode) = AbstractNode[]
-children(::ConstantNode) = AbstractNode[]
-children(::ArgumentNode) = AbstractNode[]
+children(node::AbstractNode) = AbstractNode[]
+
+
+"""
+    arguments(node) -> Vector{ArgumentNode}
+
+Return the sub-nodes representing the arguments of a nested call.
+"""
+arguments(node::NestedCallNode) = filter(child -> child isa ArgumentNode, children(node))
+arguments(node::AbstractNode) = ArgumentNode[]
+
+
+"""Return the `NestedNode` `node` is a child of."""
+parent(node::AbstractNode) = node.info.parent
+
+
+"""Return the of the original IR statement `node` was recorded from."""
+location(node::AbstractNode) = node.info.location
+
+
+metadata(node::AbstractNode) = node.info.metadata
 
 value(::JumpNode) = nothing
 value(::ReturnNode) = nothing
@@ -60,9 +86,4 @@ value(node::PrimitiveCallNode) = value(node.call)
 value(node::ConstantNode) = value(node.value)
 value(node::ArgumentNode) = value(node.value)
 
-arguments(node::NestedCallNode) = filter(child -> child isa ArgumentNode, children(node))
-arguments(node::AbstractNode) = ArgumentNode[]
 
-parent(node::AbstractNode) = node.info.parent
-location(node::AbstractNode) = node.info.location
-metadata(node::AbstractNode) = node.info.metadata

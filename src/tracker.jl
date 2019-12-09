@@ -25,6 +25,13 @@ function error_ir(F, Args...)
     return ir
 end
 
+"""
+    _recordnestedcall(Ctx, F, Args...)
+
+The @dynamo/generated function actually calling the transformed IR.  Returns a tuple of return value
+and `GraphRecorder`.
+"""
+function _recordnestedcall end
 
 @dynamo function _recordnestedcall(Ctx, F, Args...)
     ir = IR(F, Args...)

@@ -24,6 +24,7 @@ getindex(ir::IRTools.IR, ix::VarIndex) = ir[IRTools.var(ix.line)]
 getindex(ir::IRTools.IR, ix::BranchIndex) = IRTools.branches(ir, ix.block)[ix.line]
 getindex(ir::IRTools.IR, ix::NoIndex) = throw(DomainError(ix, "Can't use `NoIndex` as an IR index!"))
 
+
 # we need this forward declaration here, because mutually recursive types are not possible (yet...)
 
 """Node in a `GraphTape`.  Represents statements or branches in tracked IR."""

@@ -33,6 +33,12 @@ function TrackBuilder(ir::IR)
 end
 
 
+"""
+    block(builder[, i]) -> Block
+
+Create a new block in the IR constructed by `builder`.  If `i == 0`, then return the default 
+first block in empty IR.
+"""
 block!(builder::TrackBuilder) = block!(builder.new_ir)
 block!(builder::TrackBuilder, i) =
     (i == 1) ? block(builder.new_ir, 1) : block!(builder.new_ir)
@@ -165,8 +171,8 @@ end
     pushrecord!(builder, block, record; substituting = var)
 
 Add to `block`` the IR necessary to record `record`, which should be an expression returning a
-`Node`.  If `var` is given, it is recorded as being substituted by the new SSA variable in the
-transformed IR.
+`Node`.  If `substituting` is given, it is recorded as being substituted by this new SSA variable in
+the transformed IR.
 """
 function pushrecord!(builder::TrackBuilder, block::Block, record;
                      substituting = nothing, line = 0)
