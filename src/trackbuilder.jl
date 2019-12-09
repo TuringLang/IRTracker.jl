@@ -17,10 +17,11 @@ mutable struct TrackBuilder
     jump_targets::Dict{Int, Vector{Int}}
     """Number (label) of the unified return block to be added at the end."""
     return_block::Int
+    
     """SSA variable for the `GraphRecorder` used at runtime."""
     recorder::Union{Variable, Nothing}
-
-    TrackBuilder(o, n, v, j, r) = new(o, n, v, j, r)
+    """SSA variable for the tracking context."""
+    context::Union{Variable, Nothing}
 end
 
 function TrackBuilder(ir::IR)
@@ -29,7 +30,7 @@ function TrackBuilder(ir::IR)
     jump_targets = jumptargets(ir)
     return_block = length(ir.blocks) + 1
 
-    TrackBuilder(ir, new_ir, variable_map, jump_targets, return_block)
+    TrackBuilder(ir, new_ir, variable_map, jump_targets, return_block, nothing, nothing)
 end
 
 
@@ -138,9 +139,8 @@ function callrecord(builder::TrackBuilder, location, call_expr)
     arguments = xcall(:tuple, map(substitute_variable(builder), arguments_expr)...)
     f_repr = tapevalue(builder, f_expr)
     arguments_repr = tapevalues(builder, arguments_expr)
-    ctx = xcall(:getfield, builder.recorder, QuoteNode(:context))
     info = nodeinfo(location = location, parent = currentnode(builder))
-    return DCGCall.trackcall(ctx, f, f_repr, arguments, arguments_repr, info)
+    return DCGCall.trackcall(builder.context, f, f_repr, arguments, arguments_repr, info)
 end
 
 function specialrecord(builder::TrackBuilder, location, special_expr)
@@ -236,9 +236,9 @@ function track_arguments!(builder::TrackBuilder, new_block::Block, old_block::Bl
 
     # this is the first block, here we set up the recorder and context argument
     if isfirst
-        tracking_context = argument!(new_block, at = 1, insert = false)
+        builder.context = argument!(new_block, at = 1, insert = false)
         builder.recorder = push!(new_block, DCGCall.GraphRecorder(copy(builder.original_ir),
-                                                                  tracking_context))
+                                                                  builder.context))
     end
     
     # record jumps to here, if there are any, by adding a new argument and recording it
