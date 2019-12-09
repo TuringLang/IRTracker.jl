@@ -22,6 +22,8 @@ mutable struct TrackBuilder
     recorder::Union{Variable, Nothing}
     """SSA variable for the tracking context."""
     context::Union{Variable, Nothing}
+    """SSA variable for the current parent node (i.e., `recorder.incomplete_node`)."""
+    parent_node::Union{Variable, Nothing}
 end
 
 function TrackBuilder(ir::IR)
@@ -30,7 +32,8 @@ function TrackBuilder(ir::IR)
     jump_targets = jumptargets(ir)
     return_block = length(ir.blocks) + 1
 
-    TrackBuilder(ir, new_ir, variable_map, jump_targets, return_block, nothing, nothing)
+    TrackBuilder(ir, new_ir, variable_map, jump_targets, return_block,
+                 nothing, nothing, nothing)
 end
 
 
@@ -113,8 +116,6 @@ nodeinfo(
     meta = :nothing
 ) = DCGCall.NodeInfo(location, parent)
 
-currentnode(builder::TrackBuilder) = xcall(:getfield, builder.recorder, QuoteNode(:incomplete_node))
-
 
 # The XYZrecord functions all record a complex `Expr` creating a node for tracking (at runtime)
 # the respective kind of SSA statement.  This `Expr` can then be pushed to the IR, followed by an
@@ -122,14 +123,14 @@ currentnode(builder::TrackBuilder) = xcall(:getfield, builder.recorder, QuoteNod
 
 function returnrecord(builder::TrackBuilder, location, branch)
     argument_repr = tapevalue(builder, branch.args[1])
-    info = nodeinfo(location = location, parent = currentnode(builder))
+    info = nodeinfo(location = location, parent = builder.parent_node)
     return DCGCall.ReturnNode(argument_repr, info)
 end
 
 function jumprecord(builder::TrackBuilder, location, branch)
     condition_repr = tapevalue(builder, branch.condition)
     arguments_repr = tapevalues(builder, branch.args)
-    info = nodeinfo(location = location, parent = currentnode(builder))
+    info = nodeinfo(location = location, parent = builder.parent_node)
     return DCGCall.JumpNode(branch.block, arguments_repr, condition_repr, info)
 end
 
@@ -139,7 +140,7 @@ function callrecord(builder::TrackBuilder, location, call_expr)
     arguments = xcall(:tuple, map(substitute_variable(builder), arguments_expr)...)
     f_repr = tapevalue(builder, f_expr)
     arguments_repr = tapevalues(builder, arguments_expr)
-    info = nodeinfo(location = location, parent = currentnode(builder))
+    info = nodeinfo(location = location, parent = builder.parent_node)
     return DCGCall.trackcall(builder.context, f, f_repr, arguments, arguments_repr, info)
 end
 
@@ -149,20 +150,20 @@ function specialrecord(builder::TrackBuilder, location, special_expr)
     form = Expr(head, args...)
     args_repr = tapevalues(builder, special_expr.args)
     form_repr = DCGCall.TapeSpecialForm(form, QuoteNode(head), args_repr)
-    info = nodeinfo(location = location, parent = currentnode(builder))
+    info = nodeinfo(location = location, parent = builder.parent_node)
     return DCGCall.SpecialCallNode(form_repr, info)
 end
 
 function constantrecord(builder::TrackBuilder, location, constant_expr)
     # TODO: make this itself a constant :)
     constant_repr = DCGCall.TapeConstant(constant_expr)
-    info = nodeinfo(location = location, parent = currentnode(builder))
+    info = nodeinfo(location = location, parent = builder.parent_node)
     return DCGCall.ConstantNode(constant_repr, info)
 end
 
 function argumentrecord(builder::TrackBuilder, location, argument_expr)
     argument_repr = DCGCall.TapeConstant(substitute_variable(builder, argument_expr))
-    info = nodeinfo(location = location, parent = currentnode(builder))
+    info = nodeinfo(location = location, parent = builder.parent_node)
     return DCGCall.ArgumentNode(argument_repr, info)
 end
 
@@ -239,6 +240,9 @@ function track_arguments!(builder::TrackBuilder, new_block::Block, old_block::Bl
         builder.context = argument!(new_block, at = 1, insert = false)
         builder.recorder = push!(new_block, DCGCall.GraphRecorder(copy(builder.original_ir),
                                                                   builder.context))
+        builder.parent_node = push!(new_block,
+                                    xcall(:getfield, builder.recorder, QuoteNode(:incomplete_node)))
+
     end
     
     # record jumps to here, if there are any, by adding a new argument and recording it

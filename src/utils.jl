@@ -54,3 +54,10 @@ end
 xcall_kw(mod::Module, f::Symbol, args...; kwargs...) =
     xcall_kw(GlobalRef(mod, f), args...; kwargs...)
 xcall_kw(f::Symbol, args...; kwargs...) = xcall_kw(GlobalRef(Base, f), args...; kwargs...)
+
+
+@generated function reified_ir(f, args...)
+    # Since this is generated, it will generate the IR once per method and then return the literal
+    # value inlined.
+    return IRTools.IR(f, args...)
+end
