@@ -109,7 +109,7 @@ show(io::IO, index::VarIndex) = print(io, "§", index.block, ":%", index.line, "
 show(io::IO, index::BranchIndex) = print(io, "§", index.block, ":", index.line)
 
 show(io::IO, expr::TapeReference) = print(io, "@", expr.index)
-show(io::IO, expr::TapeConstant) = showvalue(io, expr.value)
+show(io::IO, expr::TapeConstant) = (print(io, "⟨"); showvalue(io, expr.value); print(io, "⟩"))
 
 function show(io::IO, expr::TapeCall)
     print(io, expr.f, "(")
