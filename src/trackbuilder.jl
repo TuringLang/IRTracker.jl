@@ -246,11 +246,12 @@ function track_arguments!(builder::TrackBuilder, new_block::Block, old_block::Bl
     # this is the first block, here we set up the recorder and context argument
     if isfirst
         builder.context = argument!(new_block, at = 1, insert = false)
-        builder.recorder = push!(new_block, DCGCall.GraphRecorder(copy(builder.original_ir),
-                                                                  builder.context))
-        builder.parent_node = push!(new_block,
-                                    xcall(:getfield, builder.recorder, QuoteNode(:incomplete_node)))
 
+        recorder_expr = DCGCall.GraphRecorder(copy(builder.original_ir), builder.context)
+        builder.recorder = push!(new_block, recorder_expr)
+
+        parent_expr = xcall(:getfield, builder.recorder, QuoteNode(:incomplete_node))
+        builder.parent_node = push!(new_block, parent_expr)
     end
     
     # record jumps to here, if there are any, by adding a new argument and recording it
