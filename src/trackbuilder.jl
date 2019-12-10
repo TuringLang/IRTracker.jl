@@ -78,24 +78,32 @@ function jumptargets(ir::IR)
 end
 
 
+inlined(value) = QuoteNode(value)
+
+
 """
     tapevalue(builder, value)
 
 Transform a value (i.e., a SSA variable or a constant) occuring in an `Expr` or other part of a 
-SSA statement into a `TapeValue`.
+SSA statement into a `TapeValue` call, or an inlined `TapeValue`, if possible.
 """
+
+function tapevalue(builder::TrackBuilder, value::IRTools.Variable)
+    return DCGCall.tapeify(builder.recorder, inlined(value))
+end
+
 function tapevalue(builder::TrackBuilder, value::Any)
+    return inlined(TapeConstant(value))
+end
+
+function tapevalue(builder::TrackBuilder, value::GlobalRef)
+    # GlobalRefs can be resolved only at runtime, so we leave then in a non-inlined expression
     return DCGCall.TapeConstant(value)
 end
 
-function tapevalue(builder::TrackBuilder, value::IRTools.Variable)
-    return DCGCall.tapeify(builder.recorder, QuoteNode(value))
-end
-
-function tapevalue(builder::TrackBuilder, value::Symbol)
-    # this is a case occoring in special calls, which uses symbols at expression-level to
-    # signify values (e.g., Expr(:boundscheck, :pop), Expr(:meta, :inline))
-    return DCGCall.TapeConstant(QuoteNode(value))
+function tapevalue(builder::TrackBuilder, value::QuoteNode)
+    # some (many?) constants are already wrapped in a QuoteNode -- we simply re-wrap
+    return inlined(TapeConstant(value.value))
 end
 
 
@@ -111,7 +119,7 @@ end
 
 
 nodeinfo(
-    ;location = GlobalRef(DynamicComputationGraphs, :NO_INDEX),
+    ;location = inlined(NO_INDEX),
     parent = :nothing,
     meta = :nothing
 ) = DCGCall.NodeInfo(location, parent)
@@ -155,8 +163,7 @@ function specialrecord(builder::TrackBuilder, location, special_expr)
 end
 
 function constantrecord(builder::TrackBuilder, location, constant_expr)
-    # TODO: make this itself a constant :)
-    constant_repr = DCGCall.TapeConstant(constant_expr)
+    constant_repr = tapevalue(builder, constant_expr)
     info = nodeinfo(location = location, parent = builder.parent_node)
     return DCGCall.ConstantNode(constant_repr, info)
 end
@@ -186,7 +193,7 @@ end
 function track_branches!(builder::TrackBuilder, new_block::Block, branches)
     # called only from within a non-primitive call
     for (i, branch) in enumerate(branches)
-        location = BranchIndex(new_block.id, i)
+        location = inlined(BranchIndex(new_block.id, i))
         substituted_args = map(substitute_variable(builder), branch.args)
         
         if IRTools.isreturn(branch)
@@ -208,7 +215,7 @@ end
 
 function track_statement!(builder::TrackBuilder, new_block::Block,
                           variable::Variable, statement::Statement)
-    location = VarIndex(new_block.id, variable.id)
+    location = inlined(VarIndex(new_block.id, variable.id))
     expr = statement.expr
 
     if Meta.isexpr(expr, :call)
@@ -219,6 +226,7 @@ function track_statement!(builder::TrackBuilder, new_block::Block,
         record = specialrecord(builder, location, expr)
     else
         # everything else is a constant evaluating to itself
+        # many constants are wrapped in `QuoteNode`s, but some aren't...
         record = constantrecord(builder, location, expr)
     end
 
@@ -253,7 +261,7 @@ function track_arguments!(builder::TrackBuilder, new_block::Block, old_block::Bl
 
     # track rest of the arguments from the old block
     for argument in IRTools.arguments(old_block)
-        location = VarIndex(new_block.id, argument.id)
+        location = inlined(VarIndex(new_block.id, argument.id))
         record = argumentrecord(builder, location, argument)
         pushrecord!(builder, new_block, record)
     end
