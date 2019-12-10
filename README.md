@@ -57,33 +57,33 @@ first time and less the second time:
     
 ```
 julia> printlevels(track(geom, 1, 0.5), 3)
-geom(1, 0.5) = 2
-  @1: [Argument §1:%1]  = geom
-  @2: [Argument §1:%2]  = 1
-  @3: [Argument §1:%3]  = 0.5
-  @4: [§1:%4] rand() = 0.5800257791874384
-    @1: [Argument §1:%1]  = rand
-    @2: [§1:%2] @1(<some huge MersenneTwister>), Float64) = 0.5800257791874384
-    @3: [§1:1] return @2 = 0.5800257791874384
-  @5: [§1:%5] <(@4, @3) = false
-    @1: [Argument §1:%1]  = <
-    @2: [Argument §1:%2]  = 0.5800257791874384
-    @3: [Argument §1:%3]  = 0.5
-    @4: [§1:%4] lt_float(@2, @3) = false
+⟨geom⟩(⟨1⟩, ⟨0.5⟩) = 2
+  @1: [Argument §1:%1] = geom
+  @2: [Argument §1:%2] = 1
+  @3: [Argument §1:%3] = 0.5
+  @4: [§1:%4] ⟨rand⟩() = 0.8802784300250812
+    @1: [Argument §1:%1] = rand
+    @2: [§1:%2] @1(⟨some huge Mersenne twister constant⟩, ⟨Float64⟩) = 0.8802784300250812
+    @3: [§1:1] return @2 = 0.8802784300250812
+  @5: [§1:%5] ⟨<⟩(@4, @3) = false
+    @1: [Argument §1:%1] = <
+    @2: [Argument §1:%2] = 0.8802784300250812
+    @3: [Argument §1:%3] = 0.5
+    @4: [§1:%4] ⟨lt_float⟩(@2, @3) = false
     @5: [§1:1] return @4 = false
-  @6: [§1:1] goto §2 since @5
-  @7: [§2:%6] +(@2, 1) = 2
-    @1: [Argument §1:%1]  = +
-    @2: [Argument §1:%2]  = 1
-    @3: [Argument §1:%3]  = 1
-    @4: [§1:%4] add_int(@2, @3) = 2
+  @6: [§1:1] goto §2 since @5 == false
+  @7: [§2:%6] ⟨+⟩(@2, ⟨1⟩) = 2
+    @1: [Argument §1:%1] = +
+    @2: [Argument §1:%2] = 1
+    @3: [Argument §1:%3] = 1
+    @4: [§1:%4] ⟨add_int⟩(@2, @3) = 2
     @5: [§1:1] return @4 = 2
-  @8: [§2:%7] geom(@7, @3) = 2
-    @1: [Argument §1:%1]  = geom
-    @2: [Argument §1:%2]  = 2
-    @3: [Argument §1:%3]  = 0.5
-    @4: [§1:%4] rand() = 0.439123904036538
-    @5: [§1:%5] <(@4, @3) = true
+  @8: [§2:%7] ⟨geom⟩(@7, @3) = 2
+    @1: [Argument §1:%1] = geom
+    @2: [Argument §1:%2] = 2
+    @3: [Argument §1:%3] = 0.5
+    @4: [§1:%4] ⟨rand⟩() = 0.1168277531343338
+    @5: [§1:%5] ⟨<⟩(@4, @3) = true
     @6: [§1:2] return @2 = 2
   @9: [§2:1] return @8 = 2
 ```
@@ -106,6 +106,7 @@ This, together with the original IR, while being a bit cryptic, contains the fol
   and the position among all branch statements within that block: `[§b:position]`.
 - Nested function calls and their arguments (note that the argument `%1` stands for the function itself and
   is not used most of the time).
+- Constants (literals in the expressions) are written in ⟨angle brackets⟩, for better debugging.
 
 In this form, a backward pass is as trivial as following back the references from the last `return` and adding 
 adjoint values in the metadata.
@@ -126,9 +127,9 @@ constant number of statements before or after each original statement (and some 
 each block), somehow like this:
 
 ```
-julia> transform_ir(@code_ir geom(1, 0.5))
+julia> DynamicComputationGraphs.transform_ir(@code_ir geom(1, 0.5))
 1: (%4, %1, %2, %3)
-  %5 = GraphRecorder(1: (%1, %2, %3)
+  %5 = DynamicComputationGraphs.GraphRecorder(1: (%1, %2, %3)
   %4 = Main.rand()
   %5 = %4 < %3
   br 2 unless %5
@@ -137,92 +138,67 @@ julia> transform_ir(@code_ir geom(1, 0.5))
   %6 = %2 + 1
   %7 = Main.geom(%6, %3)
   return %7, %4)
-  %6 = TapeConstant(%1)
-  %7 = VarIndex(1, 1)
-  %8 = Base.getfield(%5, :incomplete_node)
-  %9 = NodeInfo(%7, %8)
-  %10 = ArgumentNode(%6, %9)
-  %11 = record!(%5, %10)
-  %12 = TapeConstant(%2)
-  %13 = VarIndex(1, 2)
-  %14 = Base.getfield(%5, :incomplete_node)
-  %15 = NodeInfo(%13, %14)
-  %16 = ArgumentNode(%12, %15)
-  %17 = record!(%5, %16)
-  %18 = TapeConstant(%3)
-  %19 = VarIndex(1, 3)
-  %20 = Base.getfield(%5, :incomplete_node)
-  %21 = NodeInfo(%19, %20)
-  %22 = ArgumentNode(%18, %21)
-  %23 = record!(%5, %22)
-  %24 = Base.getfield(%5, :context)
-  %25 = TapeConstant(Main.rand)
-  %26 = Base.tuple()
-  %27 = Base.getindex(TapeValue)
-  %28 = VarIndex(1, 4)
-  %29 = Base.getfield(%5, :incomplete_node)
-  %30 = NodeInfo(%28, %29)
-  %31 = trackcall(%24, Main.rand, %25, %26, %27, %30)
-  %32 = record!(%5, %31)
-  %33 = Base.getfield(%5, :context)
-  %34 = TapeConstant(Main.:<)
-  %35 = Base.tuple(%32, %3)
-  %36 = tapeify(%5, $(QuoteNode(%4)))
-  %37 = tapeify(%5, $(QuoteNode(%3)))
-  %38 = Base.getindex(TapeValue, %36, %37)
-  %39 = VarIndex(1, 5)
-  %40 = Base.getfield(%5, :incomplete_node)
-  %41 = NodeInfo(%39, %40)
-  %42 = trackcall(%33, Main.:<, %34, %35, %38, %41)
-  %43 = record!(%5, %42)
-  %44 = Base.getindex(TapeValue)
-  %45 = tapeify(%5, $(QuoteNode(%5)))
-  %46 = BranchIndex(1, 1)
-  %47 = Base.getfield(%5, :incomplete_node)
-  %48 = NodeInfo(%46, %47)
-  %49 = JumpNode(2, %44, %45, %48)
-  %50 = tapeify(%5, $(QuoteNode(%2)))
-  %51 = BranchIndex(1, 2)
-  %52 = Base.getfield(%5, :incomplete_node)
-  %53 = NodeInfo(%51, %52)
-  %54 = ReturnNode(%50, %53)
-  br 2 (%49) unless %43
-  br 3 (%2, %54)
-2: (%55)
-  %56 = record!(%5, %55)
-  %57 = Base.getfield(%5, :context)
-  %58 = TapeConstant(Main.:+)
-  %59 = Base.tuple(%2, 1)
-  %60 = tapeify(%5, $(QuoteNode(%2)))
-  %61 = TapeConstant(1)
-  %62 = Base.getindex(TapeValue, %60, %61)
-  %63 = VarIndex(2, 6)
-  %64 = Base.getfield(%5, :incomplete_node)
-  %65 = NodeInfo(%63, %64)
-  %66 = trackcall(%57, Main.:+, %58, %59, %62, %65)
-  %67 = record!(%5, %66)
-  %68 = Base.getfield(%5, :context)
-  %69 = TapeConstant(Main.geom)
-  %70 = Base.tuple(%67, %3)
-  %71 = tapeify(%5, $(QuoteNode(%6)))
-  %72 = tapeify(%5, $(QuoteNode(%3)))
-  %73 = Base.getindex(TapeValue, %71, %72)
-  %74 = VarIndex(2, 7)
-  %75 = Base.getfield(%5, :incomplete_node)
-  %76 = NodeInfo(%74, %75)
-  %77 = trackcall(%68, Main.geom, %69, %70, %73, %76)
-  %78 = record!(%5, %77)
-  %79 = tapeify(%5, $(QuoteNode(%7)))
-  %80 = BranchIndex(2, 1)
-  %81 = Base.getfield(%5, :incomplete_node)
-  %82 = NodeInfo(%80, %81)
-  %83 = ReturnNode(%79, %82)
-  br 3 (%78, %83)
-3: (%84, %85)
-  %86 = record!(%5, %85)
-  %87 = Base.tuple(%84, %5)
-  return %87
-
+  %6 = Base.getfield(%5, :incomplete_node)
+  %7 = DynamicComputationGraphs.TapeConstant(%1)
+  %8 = DynamicComputationGraphs.NodeInfo($(QuoteNode(§1:%1)), %6)
+  %9 = DynamicComputationGraphs.ArgumentNode(%7, %8)
+  %10 = DynamicComputationGraphs.record!(%5, %9)
+  %11 = DynamicComputationGraphs.TapeConstant(%2)
+  %12 = DynamicComputationGraphs.NodeInfo($(QuoteNode(§1:%2)), %6)
+  %13 = DynamicComputationGraphs.ArgumentNode(%11, %12)
+  %14 = DynamicComputationGraphs.record!(%5, %13)
+  %15 = DynamicComputationGraphs.TapeConstant(%3)
+  %16 = DynamicComputationGraphs.NodeInfo($(QuoteNode(§1:%3)), %6)
+  %17 = DynamicComputationGraphs.ArgumentNode(%15, %16)
+  %18 = DynamicComputationGraphs.record!(%5, %17)
+  %19 = DynamicComputationGraphs.TapeConstant(Main.rand)
+  %20 = Base.tuple()
+  %21 = Base.tuple()
+  %22 = DynamicComputationGraphs.NodeInfo($(QuoteNode(§1:%4)), %6)
+  %23 = DynamicComputationGraphs.trackcall(%4, Main.rand, %19, %20, %21, %22)
+  %24 = DynamicComputationGraphs.record!(%5, %23)
+  %25 = DynamicComputationGraphs.TapeConstant(Main.:<)
+  %26 = Base.tuple(%24, %3)
+  %27 = DynamicComputationGraphs.tapeify(%5, $(QuoteNode(%4)))
+  %28 = DynamicComputationGraphs.tapeify(%5, $(QuoteNode(%3)))
+  %29 = Base.tuple(%27, %28)
+  %30 = DynamicComputationGraphs.NodeInfo($(QuoteNode(§1:%5)), %6)
+  %31 = DynamicComputationGraphs.trackcall(%4, Main.:<, %25, %26, %29, %30)
+  %32 = DynamicComputationGraphs.record!(%5, %31)
+  %33 = Base.tuple()
+  %34 = DynamicComputationGraphs.tapeify(%5, $(QuoteNode(%5)))
+  %35 = DynamicComputationGraphs.NodeInfo($(QuoteNode(§1:1)), %6)
+  %36 = DynamicComputationGraphs.JumpNode(2, %33, %34, %35)
+  %37 = DynamicComputationGraphs.tapeify(%5, $(QuoteNode(%2)))
+  %38 = DynamicComputationGraphs.NodeInfo($(QuoteNode(§1:2)), %6)
+  %39 = DynamicComputationGraphs.ReturnNode(%37, %38)
+  br 2 (%36) unless %32
+  br 3 (%2, %39)
+2: (%40)
+  %41 = DynamicComputationGraphs.record!(%5, %40)
+  %42 = DynamicComputationGraphs.TapeConstant(Main.:+)
+  %43 = Base.tuple(%2, 1)
+  %44 = DynamicComputationGraphs.tapeify(%5, $(QuoteNode(%2)))
+  %45 = Base.tuple(%44, $(QuoteNode(⟨1⟩)))
+  %46 = DynamicComputationGraphs.NodeInfo($(QuoteNode(§2:%6)), %6)
+  %47 = DynamicComputationGraphs.trackcall(%4, Main.:+, %42, %43, %45, %46)
+  %48 = DynamicComputationGraphs.record!(%5, %47)
+  %49 = DynamicComputationGraphs.TapeConstant(Main.geom)
+  %50 = Base.tuple(%48, %3)
+  %51 = DynamicComputationGraphs.tapeify(%5, $(QuoteNode(%6)))
+  %52 = DynamicComputationGraphs.tapeify(%5, $(QuoteNode(%3)))
+  %53 = Base.tuple(%51, %52)
+  %54 = DynamicComputationGraphs.NodeInfo($(QuoteNode(§2:%7)), %6)
+  %55 = DynamicComputationGraphs.trackcall(%4, Main.geom, %49, %50, %53, %54)
+  %56 = DynamicComputationGraphs.record!(%5, %55)
+  %57 = DynamicComputationGraphs.tapeify(%5, $(QuoteNode(%7)))
+  %58 = DynamicComputationGraphs.NodeInfo($(QuoteNode(§2:1)), %6)
+  %59 = DynamicComputationGraphs.ReturnNode(%57, %58)
+  br 3 (%56, %59)
+3: (%60, %61)
+  %62 = DynamicComputationGraphs.record!(%5, %61)
+  %63 = Base.tuple(%60, %5)
+  return %63
 ```
 
 The function `trackcall` then recursively does the same kind of thing to the nested calls.
@@ -245,6 +221,9 @@ There’s some things to note:
   recursive tracking).
 - The purpose of `tapeify` is to make tape references (`@i` in the output) that actually point to
   the last usage of a SSA variable (since that can happen multiple times in a loop).
+- There are some splice-in `QuoteNode`s.  These result from inlined literal values known at the time
+  of the transformation (either because they are statically determined, such as IR
+  indices/locations, or because they result from literals in the original code).
   
 
 ## Contexts
@@ -291,7 +270,9 @@ increase_level(ctx::DepthLimitContext) = DepthLimitContext(ctx.level + 1, ctx.ma
 Then, we can overload some functions for things we want to change:
 
 ```
-# this is the main thing: 
+import DynamicComputationGraphs: canrecur, tracknested
+
+# this is the main thing to make this work: 
 canrecur(ctx::DepthLimitContext, f, args...) =
     ctx.level < ctx.maxlevel
 
@@ -313,16 +294,17 @@ julia> ctx = DepthLimitContext(2)
 DepthLimitContext(1, 2)
 
 julia> call = track(ctx, geom, 1, 0.5)
-geom(1, 0.5) = 3
-  @1: [Argument §1:%1]  = geom
-  @2: [Argument §1:%2]  = 1
-  @3: [Argument §1:%3]  = 0.5
-  @4: [§1:%4] rand() = 0.6953878796518627
-  @5: [§1:%5] <(@4, @3) = false
-  @6: [§1:1] goto §2 since false
-  @7: [§2:%6] +(@2, 1) = 2
-  @8: [§2:%7] geom(@7, @3) = 3
-  @9: [§2:1] return @8 = 3
+⟨geom⟩(⟨1⟩, ⟨0.5⟩) = 2
+  @1: [Argument §1:%1] = geom
+  @2: [Argument §1:%2] = 1
+  @3: [Argument §1:%3] = 0.5
+  @4: [§1:%4] ⟨rand⟩() = 0.8575315064434967
+  @5: [§1:%5] ⟨<⟩(@4, @3) = false
+  @6: [§1:1] goto §2 since @5 == false
+  @7: [§2:%6] ⟨+⟩(@2, ⟨1⟩) = 2
+  @8: [§2:%7] ⟨geom⟩(@7, @3) = 2
+  @9: [§2:1] return @8 = 2
+
 ```
 
 Note that here, all the nodes at level 2 are `PrimitiveNode`s!
