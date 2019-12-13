@@ -13,6 +13,7 @@ NodeInfo(location, parent) = NodeInfo(location, parent, Dict{Symbol, Any}())
 
 struct ArgumentNode <: DataFlowNode
     value::TapeConstant
+    number::Int
     info::NodeInfo
 end
 

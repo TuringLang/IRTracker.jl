@@ -168,10 +168,10 @@ function constantrecord(builder::TrackBuilder, location, constant_expr)
     return DCGCall.ConstantNode(constant_repr, info)
 end
 
-function argumentrecord(builder::TrackBuilder, location, argument_expr)
+function argumentrecord(builder::TrackBuilder, location, number, argument_expr)
     argument_repr = DCGCall.TapeConstant(substitute_variable(builder, argument_expr))
     info = nodeinfo(location = location, parent = builder.parent_node)
-    return DCGCall.ArgumentNode(argument_repr, info)
+    return DCGCall.ArgumentNode(argument_repr, number, info)
 end
 
 
@@ -261,9 +261,10 @@ function track_arguments!(builder::TrackBuilder, new_block::Block, old_block::Bl
     end
 
     # track rest of the arguments from the old block
-    for argument in IRTools.arguments(old_block)
+    for (i, argument) in enumerate(IRTools.arguments(old_block))
         location = inlined(VarIndex(new_block.id, argument.id))
-        record = argumentrecord(builder, location, argument)
+        number = inlined(i)
+        record = argumentrecord(builder, location, number, argument)
         pushrecord!(builder, new_block, record)
     end
 

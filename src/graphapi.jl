@@ -36,16 +36,24 @@ end
 """
     ancestors(node) -> Vector{<:AbstractNode}
 
-Return all nodes that `node` references; i.e., all data it depends on.
+Return all nodes that `node` references; i.e., all data it depends on.  Argument nodes link back to
+the parent block.
 """
-ancestors(node::JumpNode) = getindex.(reduce(vcat, references.(node.arguments),
-                                           init = references(node.condition)))
+ancestors(node::JumpNode) = getindex.(reduce(append!, references.(node.arguments),
+                                             init = references(node.condition)))
 ancestors(node::ReturnNode) = getindex.(references(node.argument))
 ancestors(node::SpecialCallNode) = getindex.(references(node.form))
 ancestors(node::NestedCallNode) = getindex.(references(node.call))
 ancestors(node::PrimitiveCallNode) = getindex.(references(node.call))
 ancestors(::ConstantNode) = AbstractNode[]
-ancestors(::ArgumentNode) = AbstractNode[]
+function ancestors(node::ArgumentNode)
+    # first argument is always the function itself -- need to treat this separately
+    if node.number == 1
+        return getindex.(references(parent(node).call.f))
+    else
+        return getindex.(references(parent(node).call.arguments[node.number - 1]))
+    end
+end
 
 #TODO: descendants
 
