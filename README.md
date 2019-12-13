@@ -249,11 +249,89 @@ simple:
     node = track(f, args...)
     
 `node` will be a `NestedCallNode` (unless `f` is primitive), with `value(node)` being the result of
-`f(args...)`.  Nodes in general have `children`, a `parent`, a `location`, and `metadata`; see
-`graphapi.jl` for more functionality.
+`f(args...)`.
+
+Since tracked graphs are recursive, they can become very large.  To inspect only the “top level” of
+them, you can use `printlevels`:
+
+```
+julia> f(x) = sin(x) + x
+
+julia> node = track(f, 1.0);
+
+julia> printlevels(node, 2)
+⟨f⟩(⟨1.0⟩) = 1.8414709848078965
+  @1: [Argument §1:%1] = f
+  @2: [Argument §1:%2] = 1.0
+  @3: [§1:%3] ⟨sin⟩(@2) = 0.8414709848078965
+  @4: [§1:%4] ⟨+⟩(@3, @2) = 1.8414709848078965
+  @5: [§1:1] return @4 = 1.8414709848078965
+```
+
+Nodes in general may have `children` and a `parent`:
+
+```
+julia> children(node)[1:2]
+2-element Array{AbstractNode,1}:
+ [Argument §1:%1] = f  
+ [Argument §1:%2] = 1.0
+ 
+julia> parent(node[4]) === node
+true
+```
+
+As you can see, normal indexing can also be used to access the children of a nested node.  Each node
+also has a `location`, which can be used to as an index into the original IR:
+
+```
+julia> printlevels(node[4], 1)
+[§1:%4] ⟨+⟩(@3, @2) = 1.8414709848078965
+
+julia> location(node[4])
+§1:%4
+
+julia> node.original_ir[location(node[4])]
+IRTools.Inner.Statement(:(%1 + %3), Any, 1)
+```
+
+To inspect the dependencies in the code, we can use `ancestors`:
+
+```
+julia> for a in ancestors(node[4]); printlevels(a, 1); println(); end
+[§1:%3] ⟨sin⟩(@2) = 0.8414709848078965
+[Argument §1:%2] = 1.0
+```
+
+We can also inspect the various contents of each node:
+
+```
+julia> typeof(node[3])
+NestedCallNode
+
+julia> value(node[3])
+0.8414709848078965
+
+julia> node[3].call.f
+⟨sin⟩
+
+julia> value(node[3].call.f)
+sin (generic function with 12 methods)
+
+julia> node[3].call.arguments
+(@2,)
+
+julia> value.(node[3].call.arguments)
+(1.0,)
+```
+
+See `graphapi.jl`, `nodes.jl`, and `tapeexpr.jl` for more functionality.
+
+
+### Contexts
 
 If we want to use contexts, we have to create a new subtype of `AbstractTrackingContext`.  Say we
-want to limit the recursive tracking to a maximum level, then we could start with the following:
+want to limit the recursive tracking to a maximum level (to avoid having to call `printlevels` every
+time), then we could start with the following:
 
 ```
 struct DepthLimitContext <: AbstractTrackingContext
@@ -273,13 +351,10 @@ Then, we can overload some functions for things we want to change:
 import DynamicComputationGraphs: canrecur, tracknested
 
 # this is the main thing to make this work: 
-canrecur(ctx::DepthLimitContext, f, args...) =
-    ctx.level < ctx.maxlevel
+canrecur(ctx::DepthLimitContext, f, args...) = ctx.level < ctx.maxlevel
 
 # and if we recur into a nested function, we need to update the level in the context:
-function tracknested(
-    ctx::DepthLimitContext, f, f_repr, args, args_repr, info
-)
+function tracknested(ctx::DepthLimitContext, f, f_repr, args, args_repr, info)
     new_ctx = increase_level(ctx)
     return recordnested(new_ctx, f, f_repr, args, args_repr, info)
 end
@@ -310,7 +385,8 @@ julia> call = track(ctx, geom, 1, 0.5)
 Note that here, all the nodes at level 2 are `PrimitiveNode`s!
 
 If no context is provided, the constant `DEFAULT_CTX::DefaultTrackingContext` will be used, which
-tracks everything down to primitive/intrinsic functions, and records no additional metadata.
+tracks everything down to primitive/intrinsic functions (see `isbuiltin`), and records no additional
+metadata.
 
 At the moment, the overloadable methods are `canrecur`, `trackprimitive`, `tracknested`, and
 `trackcall`.  Their fallbacks are `recordnested`, `recordprimitive`, and `isbuiltin` (you are not
