@@ -57,35 +57,38 @@ first time and less the second time:
     
 ```
 julia> printlevels(track(geom, 1, 0.5), 3)
-⟨geom⟩(⟨1⟩, ⟨0.5⟩) = 2
+⟨geom⟩(⟨1⟩, ⟨0.5⟩) = 3
   @1: [Argument §1:%1] = geom
   @2: [Argument §1:%2] = 1
   @3: [Argument §1:%3] = 0.5
-  @4: [§1:%4] ⟨rand⟩() = 0.8802784300250812
+  @4: [§1:%4] ⟨rand⟩() = 0.5649805445318339
     @1: [Argument §1:%1] = rand
-    @2: [§1:%2] @1(⟨some huge Mersenne twister constant⟩, ⟨Float64⟩) = 0.8802784300250812
-    @3: [§1:1] return @2 = 0.8802784300250812
+    @2: [§1:%2] @1(⟨some huge Mersenne twister constant⟩, ⟨Float64⟩) = 0.5649805445318339
+    @3: [§1:&1] return @2 = 0.5649805445318339
   @5: [§1:%5] ⟨<⟩(@4, @3) = false
     @1: [Argument §1:%1] = <
-    @2: [Argument §1:%2] = 0.8802784300250812
+    @2: [Argument §1:%2] = 0.5649805445318339
     @3: [Argument §1:%3] = 0.5
     @4: [§1:%4] ⟨lt_float⟩(@2, @3) = false
-    @5: [§1:1] return @4 = false
-  @6: [§1:1] goto §2 since @5 == false
+    @5: [§1:&1] return @4 = false
+  @6: [§1:&1] goto §2 since @5 == false
   @7: [§2:%6] ⟨+⟩(@2, ⟨1⟩) = 2
     @1: [Argument §1:%1] = +
     @2: [Argument §1:%2] = 1
     @3: [Argument §1:%3] = 1
     @4: [§1:%4] ⟨add_int⟩(@2, @3) = 2
-    @5: [§1:1] return @4 = 2
-  @8: [§2:%7] ⟨geom⟩(@7, @3) = 2
+    @5: [§1:&1] return @4 = 2
+  @8: [§2:%7] ⟨geom⟩(@7, @3) = 3
     @1: [Argument §1:%1] = geom
     @2: [Argument §1:%2] = 2
     @3: [Argument §1:%3] = 0.5
-    @4: [§1:%4] ⟨rand⟩() = 0.1168277531343338
-    @5: [§1:%5] ⟨<⟩(@4, @3) = true
-    @6: [§1:2] return @2 = 2
-  @9: [§2:1] return @8 = 2
+    @4: [§1:%4] ⟨rand⟩() = 0.9938271839338844
+    @5: [§1:%5] ⟨<⟩(@4, @3) = false
+    @6: [§1:&1] goto §2 since @5 == false
+    @7: [§2:%6] ⟨+⟩(@2, ⟨1⟩) = 3
+    @8: [§2:%7] ⟨geom⟩(@7, @3) = 3
+    @9: [§2:&1] return @8 = 3
+  @9: [§2:&1] return @8 = 3
 ```
 
 (This result is expanded to only three levels, since the full output would be huge.)
@@ -103,10 +106,11 @@ This, together with the original IR, while being a bit cryptic, contains the fol
   referred to in expressions recorded, to that a backward pass is trivial.
 - The branching instructions actually taken, written in literal form `goto label`.  Blocks are
   referred to by paragraph signs: `§b`.  They are annotated as well with the block they come from,
-  and the position among all branch statements within that block: `[§b:position]`.
+  and the position among all branch statements within that block: `[§b:&position]`.
 - Nested function calls and their arguments (note that the argument `%1` stands for the function itself and
   is not used most of the time).
-- Constants (literals in the expressions) are written in ⟨angle brackets⟩, for better debugging.
+- Constants (literals in the expressions) are written in ⟨angle brackets⟩ (this makes debugging the
+  transformed code easier).
 
 In this form, a backward pass is as trivial as following back the references from the last `return` and adding 
 adjoint values in the metadata.
@@ -141,15 +145,15 @@ julia> DynamicComputationGraphs.transform_ir(@code_ir geom(1, 0.5))
   %6 = Base.getfield(%5, :incomplete_node)
   %7 = DynamicComputationGraphs.TapeConstant(%1)
   %8 = DynamicComputationGraphs.NodeInfo($(QuoteNode(§1:%1)), %6)
-  %9 = DynamicComputationGraphs.ArgumentNode(%7, %8)
+  %9 = DynamicComputationGraphs.ArgumentNode(%7, $(QuoteNode(1)), %8)
   %10 = DynamicComputationGraphs.record!(%5, %9)
   %11 = DynamicComputationGraphs.TapeConstant(%2)
   %12 = DynamicComputationGraphs.NodeInfo($(QuoteNode(§1:%2)), %6)
-  %13 = DynamicComputationGraphs.ArgumentNode(%11, %12)
+  %13 = DynamicComputationGraphs.ArgumentNode(%11, $(QuoteNode(2)), %12)
   %14 = DynamicComputationGraphs.record!(%5, %13)
   %15 = DynamicComputationGraphs.TapeConstant(%3)
   %16 = DynamicComputationGraphs.NodeInfo($(QuoteNode(§1:%3)), %6)
-  %17 = DynamicComputationGraphs.ArgumentNode(%15, %16)
+  %17 = DynamicComputationGraphs.ArgumentNode(%15, $(QuoteNode(3)), %16)
   %18 = DynamicComputationGraphs.record!(%5, %17)
   %19 = DynamicComputationGraphs.TapeConstant(Main.rand)
   %20 = Base.tuple()
@@ -167,10 +171,10 @@ julia> DynamicComputationGraphs.transform_ir(@code_ir geom(1, 0.5))
   %32 = DynamicComputationGraphs.record!(%5, %31)
   %33 = Base.tuple()
   %34 = DynamicComputationGraphs.tapeify(%5, $(QuoteNode(%5)))
-  %35 = DynamicComputationGraphs.NodeInfo($(QuoteNode(§1:1)), %6)
+  %35 = DynamicComputationGraphs.NodeInfo($(QuoteNode(§1:&1)), %6)
   %36 = DynamicComputationGraphs.JumpNode(2, %33, %34, %35)
   %37 = DynamicComputationGraphs.tapeify(%5, $(QuoteNode(%2)))
-  %38 = DynamicComputationGraphs.NodeInfo($(QuoteNode(§1:2)), %6)
+  %38 = DynamicComputationGraphs.NodeInfo($(QuoteNode(§1:&2)), %6)
   %39 = DynamicComputationGraphs.ReturnNode(%37, %38)
   br 2 (%36) unless %32
   br 3 (%2, %39)
@@ -192,7 +196,7 @@ julia> DynamicComputationGraphs.transform_ir(@code_ir geom(1, 0.5))
   %55 = DynamicComputationGraphs.trackcall(%4, Main.geom, %49, %50, %53, %54)
   %56 = DynamicComputationGraphs.record!(%5, %55)
   %57 = DynamicComputationGraphs.tapeify(%5, $(QuoteNode(%7)))
-  %58 = DynamicComputationGraphs.NodeInfo($(QuoteNode(§2:1)), %6)
+  %58 = DynamicComputationGraphs.NodeInfo($(QuoteNode(§2:&1)), %6)
   %59 = DynamicComputationGraphs.ReturnNode(%57, %58)
   br 3 (%56, %59)
 3: (%60, %61)
@@ -265,16 +269,19 @@ julia> printlevels(node, 2)
   @2: [Argument §1:%2] = 1.0
   @3: [§1:%3] ⟨sin⟩(@2) = 0.8414709848078965
   @4: [§1:%4] ⟨+⟩(@3, @2) = 1.8414709848078965
-  @5: [§1:1] return @4 = 1.8414709848078965
+  @5: [§1:&1] return @4 = 1.8414709848078965
 ```
 
 Nodes in general may have `children` and a `parent`:
 
 ```
-julia> children(node)[1:2]
-2-element Array{AbstractNode,1}:
- [Argument §1:%1] = f  
- [Argument §1:%2] = 1.0
+julia> children(node)
+5-element Array{AbstractNode,1}:
+ [Argument §1:%1] = f                    
+ [Argument §1:%2] = 1.0                  
+ [§1:%3] ⟨sin⟩(@2) = 0.8414709848078965  
+ [§1:%4] ⟨+⟩(@3, @2) = 1.8414709848078965
+ [§1:&1] return @4 = 1.8414709848078965 
  
 julia> parent(node[4]) === node
 true
@@ -284,7 +291,7 @@ As you can see, normal indexing can also be used to access the children of a nes
 also has a `location`, which can be used to as an index into the original IR:
 
 ```
-julia> printlevels(node[4], 1)
+julia> printlevels(node[4], 1)   # this node is huge…
 [§1:%4] ⟨+⟩(@3, @2) = 1.8414709848078965
 
 julia> location(node[4])
@@ -297,9 +304,10 @@ IRTools.Inner.Statement(:(%1 + %3), Any, 1)
 To inspect the dependencies in the code, we can use `ancestors`:
 
 ```
-julia> for a in ancestors(node[4]); printlevels(a, 1); println(); end
-[§1:%3] ⟨sin⟩(@2) = 0.8414709848078965
-[Argument §1:%2] = 1.0
+julia> ancestors(node[4])
+2-element Array{DataFlowNode,1}:
+ [§1:%3] ⟨sin⟩(@2) = 0.8414709848078965
+ [Argument §1:%2] = 1.0 
 ```
 
 We can also inspect the various contents of each node:
@@ -365,28 +373,24 @@ end
 Once we have a custom context, we can just pass it as the first argument to `track`:
 
 ```
-julia> ctx = DepthLimitContext(2)
-DepthLimitContext(1, 2)
-
-julia> call = track(ctx, geom, 1, 0.5)
+julia> call = track(DepthLimitContext(2), geom, 1, 0.5)
 ⟨geom⟩(⟨1⟩, ⟨0.5⟩) = 2
   @1: [Argument §1:%1] = geom
   @2: [Argument §1:%2] = 1
   @3: [Argument §1:%3] = 0.5
-  @4: [§1:%4] ⟨rand⟩() = 0.8575315064434967
+  @4: [§1:%4] ⟨rand⟩() = 0.7382990026907705
   @5: [§1:%5] ⟨<⟩(@4, @3) = false
-  @6: [§1:1] goto §2 since @5 == false
+  @6: [§1:&1] goto §2 since @5 == false
   @7: [§2:%6] ⟨+⟩(@2, ⟨1⟩) = 2
   @8: [§2:%7] ⟨geom⟩(@7, @3) = 2
-  @9: [§2:1] return @8 = 2
-
+  @9: [§2:&1] return @8 = 2
 ```
 
 Note that here, all the nodes at level 2 are `PrimitiveNode`s!
 
 If no context is provided, the constant `DEFAULT_CTX::DefaultTrackingContext` will be used, which
 tracks everything down to primitive/intrinsic functions (see `isbuiltin`), and records no additional
-metadata.
+metadata.  `DepthLimitContext` is also provided by the library, in case you need it.
 
 At the moment, the overloadable methods are `canrecur`, `trackprimitive`, `tracknested`, and
 `trackcall`.  Their fallbacks are `recordnested`, `recordprimitive`, and `isbuiltin` (you are not

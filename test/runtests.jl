@@ -5,8 +5,6 @@ using Distributions
 using Random
 using ChainRules
 
-import DynamicComputationGraphs: canrecur, tracknested
-
 
 # typed equality comparison
 ≅(x::T, y::T) where {T} = x == y
@@ -187,21 +185,7 @@ import DynamicComputationGraphs: canrecur, tracknested
         #   @5: [§1:1] return @4 = 0.08347845208436622
 
 
-        # Limit recording to a maximum layer
-        struct DepthLimitContext <: AbstractTrackingContext; level::Int; maxlevel::Int; end
-        DepthLimitContext(maxlevel) = DepthLimitContext(1, maxlevel)
-        increase_level(ctx::DepthLimitContext) = DepthLimitContext(ctx.level + 1, ctx.maxlevel)
-
-        DynamicComputationGraphs.canrecur(ctx::DepthLimitContext, f, args...) =
-            ctx.level < ctx.maxlevel
-        
-        function DynamicComputationGraphs.tracknested(
-            ctx::DepthLimitContext, f, f_repr, args, args_repr, info
-        )
-            new_ctx = increase_level(ctx)
-            return DynamicComputationGraphs.recordnested(new_ctx, f, f_repr, args, args_repr, info)
-        end
-
+        # Limit recording to a maximum layer; see `trackingcontext.jl` for implementation
         let ctx = DepthLimitContext(2), call = track(ctx, f, 42)
             @test length(call) == 5
             @test call[3] isa PrimitiveCallNode

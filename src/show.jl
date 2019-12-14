@@ -1,13 +1,17 @@
 import Base: show
 
 
-printlevels(io::IO, value, levels::Integer) = print(IOContext(io, :maxlevel => levels), value)
-printlevels(value, levels::Integer) = printlevels(stdout::IO, value, levels)
+printlevels(io::IO, mime::MIME, value, levels::Integer) = show(IOContext(io, :maxlevel => levels),
+                                                              mime, value)
+printlevels(io::IO, value, levels::Integer) = show(IOContext(io, :maxlevel => levels),
+                                                   MIME"text/plain"(), value)
+printlevels(value, levels::Integer) = printlevels(stdout, value, levels)
 
+
+# INTERNAL STUFF
 showvalue(io::IO, value) = show(IOContext(io, :limit => true), value)
 showvalue(io::IO, value::Nothing) = show(io, value)
 # showvalue(io::IO, value) = repr(value, context = IOContext(io, :limit => true, :compact => true))
-
 
 function joinlimited(io::IO, values, delim)
     L = length(values)
@@ -34,9 +38,11 @@ function printmetadata(io::IO, metadata::Dict{Symbol, <:Any})
         i < length(metadata) && print(io, ", ")
     end
     !isempty(metadata) && print(io, "]")
+    return nothing
 end
 
 
+# ACTUAL SHOW IMPLEMENTATIONS
 function show(io::IO, node::ConstantNode, level = 1)
     printlocation(io, "Constant", location(node), " = ")
     showvalue(io, value(node))
@@ -114,13 +120,12 @@ function show(io::IO, mime::MIME"text/plain", node::NestedCallNode, level = 1)
     end
 end
 
-
 show(io::IO, ::MIME"text/plain", node::AbstractNode, level = 1) = show(io, node, level)
-
 
 
 show(io::IO, index::VarIndex) = print(io, "§", index.block, ":%", index.line, "")
 show(io::IO, index::BranchIndex) = print(io, "§", index.block, ":&", index.line)
+
 
 show(io::IO, expr::TapeReference) = print(io, "@", expr.index)
 show(io::IO, expr::TapeConstant) = (print(io, "⟨"); showvalue(io, expr.value); print(io, "⟩"))

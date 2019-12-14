@@ -25,7 +25,7 @@ export ancestors, backward!, children, metadata, location, parent, references, v
 export AbstractTrackingContext, DefaultTrackingContext, DepthLimitContext
 
 # show.jl
-export printlevels
+export showlevels
 
 # tracker.jl
 export track, trackcall, tracknested, trackprimitive
