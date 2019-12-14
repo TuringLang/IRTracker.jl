@@ -22,7 +22,7 @@ export TapeCall, TapeConstant, TapeExpr, TapeReference, TapeSpecialForm, TapeVal
 export ancestors, backward!, children, metadata, location, parent, references, value
 
 # trackingcontext.jl
-export AbstractTrackingContext, DefaultTrackingContext
+export AbstractTrackingContext, DefaultTrackingContext, DepthLimitContext
 
 # show.jl
 export printlevels
