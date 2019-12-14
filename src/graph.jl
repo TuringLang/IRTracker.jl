@@ -1,6 +1,7 @@
 using IRTools
 import Base: getindex
 
+
 """
 Unique index to a certain position in IR code; either to a variable, given by block and number,
 or to a branch, given by block and position among all branches.

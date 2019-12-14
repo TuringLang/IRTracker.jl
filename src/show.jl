@@ -54,15 +54,6 @@ function show(io::IO, node::NestedCallNode, level = 1)
     printlocation(io, location(node), node.call, " = ")
     showvalue(io, value(node))
     printmetadata(io, metadata(node))
-
-    if level < maxlevel
-        print(io, "\n") # prevent double newlines
-        for (i, child) in enumerate(node)
-            print(io, "  " ^ level, "@", i, ": ")
-            show(io, child, level + 1)
-            i < length(node) && print(io, "\n")
-        end
-    end
 end
 
 function show(io::IO, node::SpecialCallNode, level = 1)
@@ -105,8 +96,31 @@ function show(io::IO, node::JumpNode, level = 1)
     printmetadata(io, metadata(node))
 end
 
+
+# Recursive printing for display purposes:
+function show(io::IO, mime::MIME"text/plain", node::NestedCallNode, level = 1)
+    maxlevel = get(io, :maxlevel, typemax(level))
+    printlocation(io, location(node), node.call, " = ")
+    showvalue(io, value(node))
+    printmetadata(io, metadata(node))
+
+    if level < maxlevel
+        print(io, "\n") # prevent double newlines
+        for (i, child) in enumerate(node)
+            print(io, "  " ^ level, "@", i, ": ")
+            show(io, mime, child, level + 1)
+            i < length(node) && print(io, "\n")
+        end
+    end
+end
+
+
+show(io::IO, ::MIME"text/plain", node::AbstractNode, level = 1) = show(io, node, level)
+
+
+
 show(io::IO, index::VarIndex) = print(io, "§", index.block, ":%", index.line, "")
-show(io::IO, index::BranchIndex) = print(io, "§", index.block, ":", index.line)
+show(io::IO, index::BranchIndex) = print(io, "§", index.block, ":&", index.line)
 
 show(io::IO, expr::TapeReference) = print(io, "@", expr.index)
 show(io::IO, expr::TapeConstant) = (print(io, "⟨"); showvalue(io, expr.value); print(io, "⟩"))
