@@ -91,6 +91,10 @@ julia> printlevels(track(geom, 1, 0.5), 3)
   @9: [§2:&1] return @8 = 3
 ```
 
+or in a simplified graphical form: 
+
+![Graph extracted from the example function](paper/graph.png)
+
 (This result is expanded to only three levels, since the full output would be huge.)
 
 Here, the indented lines indicate the "inner code" recorded in the recursive calls.  Since we record
