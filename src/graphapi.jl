@@ -95,3 +95,8 @@ value(node::ConstantNode) = value(node.value)
 value(node::ArgumentNode) = value(node.value)
 
 
+getmetadata(node::AbstractNode, key::Symbol) = metadata(node)[key]
+getmetadata(node::AbstractNode, key::Symbol, default) = get(metadata(node), key, default)
+getmetadata!(node::AbstractNode, key::Symbol, default) = get!(metadata(node), key, default)
+getmetadata!(f, node::AbstractNode, key::Symbol) = get!(f, metadata(node), key)
+setmetadata!(node::AbstractNode, key::Symbol, value) = metadata(node)[key] = value
