@@ -30,6 +30,7 @@ export printlevels
 # tracker.jl
 export track, trackcall, tracknested, trackprimitive
 export canrecur, recordnested, recordprimitive
+export @code_tracked
 
 # runtime_functions.jl
 export isbuiltin

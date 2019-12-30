@@ -2,6 +2,21 @@ using IRTools
 using IRTools: IR, @dynamo
 
 
+"""
+    @code_tracked f(args...)
+
+Convenience macro similar to `@code_ir` or `@code_lowered`.  Retrieves the transformed IR with added
+tracking functionality.
+"""
+macro code_tracked(ex)
+    # from https://github.com/MikeInnes/IRTools.jl/blob/5fe0052795dab8b520085382ccd2eb8197b8f6d0/src/reflection/reflection.jl#L177
+    Meta.isexpr(ex, :call) || error("Only function calls allowed!")
+    f, args = ex.args[1], ex.args[2:end]
+    ir = :(IRTools.Inner.code_ir($(esc(f)), IRTools.Inner.typesof($(esc.(args)...))))
+    return :(transform_ir($ir))
+end
+
+
 """Construct the transformed IR with tracking statements from `old_ir`."""
 function transform_ir(old_ir::IR)
     IRTools.explicitbranch!(old_ir) # make implicit jumps explicit

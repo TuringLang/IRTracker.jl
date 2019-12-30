@@ -135,7 +135,7 @@ constant number of statements before or after each original statement (and some 
 each block), somehow like this:
 
 ```
-julia> transform_ir(@code_ir geom(1, 0.5))
+julia> @code_tracked geom(1, 0.5)
 1: (%4, %1, %2, %3)
   %5 = GraphRecorder(1: (%1, %2, %3)
   %4 = rand()
@@ -211,9 +211,10 @@ julia> transform_ir(@code_ir geom(1, 0.5))
 
 The function `trackcall` then recursively does the same kind of thing to the nested calls.
 
-This can be achieved by using an `IRTools` dynamo, which in essence is just a fancier generated
-function, allowing one to operate with `IRTools.IR` instead of "raw" `CodeInfo`s.  In this dynamo,
-the original IR is completely rebuilt to insert all necessary tracking statements.
+This can be achieved by using an `IRTools`
+[dynamo](https://mikeinnes.github.io/IRTools.jl/latest/dynamo/), which in essence is just a fancier
+generated function, allowing one to operate with `IRTools.IR` instead of "raw" `CodeInfo`s.  In this
+dynamo, the original IR is completely rebuilt to insert all necessary tracking statements.
 
 There’s some things to note:
 
