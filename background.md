@@ -11,6 +11,15 @@
     https://alexey.radul.name/ideas/2013/introduction-to-automatic-differentiation/ (2013).
     
     Very high-level introduction of AD terms and concepts.
+- Luo, R. Implement Your Own Automatic Differentiation with Julia in ONE day. Half Integer
+  http://rogerluo.me/blog/2018/10/23/write-an-ad-in-one-day/index.html (2018), and Luo, R. Implement
+  Your Own Source To Source AD in ONE day! Half Integer
+  http://rogerluo.me/blog/2019/07/27/yassad/index.html (2019).
+  
+  These two blog posts are very detailed and code-based, but if you know how AD works basically,
+  they show you how to implement forward and backward mode using operator overloading and backward
+  mode using source transformation.  Basically, a little `Flux.Tracker` and `Zygote` with excellent
+  explanations (although a bit dense, since he uses `IRTools`, so you have to know that as well).
     
     
 ## Standard and general works
