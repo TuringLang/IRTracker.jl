@@ -61,3 +61,17 @@ xcall_kw(f::Symbol, args...; kwargs...) = xcall_kw(GlobalRef(Base, f), args...; 
     # value inlined.
     return IRTools.IR(f, args...)
 end
+
+
+mutable struct Cached{T}
+    value::Union{Nothing, Some{T}}
+
+    Cached{T}() where {T} = new{T}(nothing)
+    Cached(something::T) where {T} = new{T}(Some(something))
+end
+
+hasvalue(cached::Cached) = !isnothing(cached.value)
+setvalue!(cached::Cached{T}, value) where {T} = (cached.value = Some(convert(T, value)); value)
+getvalue(cached::Cached) = hasvalue(cached) ? cached.value.value : error("value not set")
+getvalue!(cached::Cached{T}, value) where {T} = hasvalue(cached) ? getvalue(cached) : setvalue!(cached, value)
+reset!(cached::Cached) = (cached.value = nothing)

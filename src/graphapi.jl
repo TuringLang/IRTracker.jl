@@ -70,7 +70,20 @@ function ancestors(node::ArgumentNode)
     end
 end
 
-#TODO: descendants
+
+function calculate_descendants!(node)
+    for child in node, ancestor in ancestors(child)
+        descendants = getvalue!(ancestor.info.descendants, Vector{AbstractNode}())
+        child ∉ descendants && push!(descendants, child)
+    end
+
+    return node
+end
+
+function descendants(node::AbstractNode)
+    !hasvalue(node.info.descendants) && calculate_descendants!(parent(node))
+    return getvalue(node.info.descendants)
+end
 
 
 """

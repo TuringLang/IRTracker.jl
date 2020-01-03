@@ -3,12 +3,15 @@ struct NodeInfo
     location::IRIndex
     parent::Union{RecursiveNode, Nothing}
     # slot::Core.Slot
+    descendants::Cached{Vector{AbstractNode}}
     metadata::Dict{Symbol, Any}
 end
 
-NodeInfo() = NodeInfo(NO_INDEX, nothing, Dict{Symbol, Any}())
-NodeInfo(location) = NodeInfo(location, nothing, Dict{Symbol, Any}())
-NodeInfo(location, parent) = NodeInfo(location, parent, Dict{Symbol, Any}())
+NodeInfo() = NodeInfo(NO_INDEX, nothing, Cached{Vector{AbstractNode}}(), Dict{Symbol, Any}())
+NodeInfo(location) = NodeInfo(
+    location, nothing, Cached{Vector{AbstractNode}}(), Dict{Symbol, Any}())
+NodeInfo(location, parent) = NodeInfo(
+    location, parent, Cached{Vector{AbstractNode}}(), Dict{Symbol, Any}())
 
 
 struct ArgumentNode <: DataFlowNode

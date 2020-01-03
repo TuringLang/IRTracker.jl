@@ -11,7 +11,7 @@ struct GraphRecorder{Ctx<:AbstractTrackingContext}
     context::Ctx
     
     """(Partial) list of recorded IR statements."""
-    tape::Vector{<:AbstractNode}
+    tape::Vector{AbstractNode}
     
     """IR on which the recorder is run."""
     original_ir::IRTools.IR

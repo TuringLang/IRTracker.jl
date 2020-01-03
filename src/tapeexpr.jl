@@ -40,7 +40,7 @@ struct TapeSpecialForm <: TapeExpr
     head::Symbol
     arguments::ArgumentTuple
 
-    # TapeSpecialForm(value, head::Symbol, arguments::Vector{<:TapeValue}) = new{head}(value, head, arguments)
+    # TapeSpecialForm(value, head::Symbol, arguments::Vector{TapeValue}) = new{head}(value, head, arguments)
 end
 
 
