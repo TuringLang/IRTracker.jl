@@ -32,6 +32,21 @@ function backward!(f!, node::NestedCallNode)
 end
 
 
+function datapath(node::NestedCallNode)
+    current_front = Set{AbstractNode}(ancestors(node[end]))
+    datanodes = Set{AbstractNode}(current_front)
+
+    while !isempty(current_front)
+        current_node = pop!(current_front)
+        new_front = ancestors(current_node)
+        union!(current_front, new_front)
+        union!(datanodes, new_front)
+    end
+
+    return filter(in(datanodes), children(node))
+end
+
+
 # Graph API for general nodes
 """
     ancestors(node) -> Vector{<:AbstractNode}
@@ -72,7 +87,7 @@ children(node::AbstractNode) = AbstractNode[]
 
 Return the sub-nodes representing the arguments of a nested call.
 """
-arguments(node::NestedCallNode) = filter(child -> child isa ArgumentNode, children(node))
+arguments(node::NestedCallNode) = [child for child in node if child isa ArgumentNode]
 arguments(node::AbstractNode) = ArgumentNode[]
 
 

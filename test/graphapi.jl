@@ -17,5 +17,7 @@
         @test length(call[3]) == 5
         @test length(children(call[3])) == 5
         @test parent(call[end]) === call
+        
+        @test datapath(call) ≅ call[[2, 3]]
     end
 end

@@ -6,7 +6,7 @@ using Random
 using ChainRules
 
 
-# typed equality comparison
+# typed equality comparison with `\cong`
 ≅(x::T, y::T) where {T} = x == y
 ≅(x, y) = false
 

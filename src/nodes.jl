@@ -32,7 +32,7 @@ end
 
 mutable struct NestedCallNode <: RecursiveNode
     call::TapeCall
-    children::Vector{<:AbstractNode}
+    children::Vector{AbstractNode}
     original_ir::IRTools.IR
     info::NodeInfo
 

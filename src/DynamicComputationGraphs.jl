@@ -19,7 +19,7 @@ export AbstractNode, ControlFlowNode, DataFlowNode, RecursiveNode
 export ArgumentNode, ConstantNode, JumpNode, NestedCallNode, PrimitiveCallNode,
     ReturnNode, SpecialCallNode
 export TapeCall, TapeConstant, TapeExpr, TapeReference, TapeSpecialForm, TapeValue
-export ancestors, backward!, children, metadata, location, parent, references, value
+export ancestors, backward!, children, datapath, metadata, location, parent, references, value
 
 # trackingcontext.jl
 export AbstractTrackingContext, DefaultTrackingContext, DepthLimitContext
