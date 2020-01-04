@@ -61,28 +61,41 @@ ancestors(node::SpecialCallNode) = getindex.(references(node.form))
 ancestors(node::NestedCallNode) = getindex.(references(node.call))
 ancestors(node::PrimitiveCallNode) = getindex.(references(node.call))
 ancestors(::ConstantNode) = AbstractNode[]
-function ancestors(node::ArgumentNode)
+ancestors(::ArgumentNode) = AbstractNode[]
+# function ancestors(node::ArgumentNode)
     # first argument is always the function itself -- need to treat this separately
-    if node.number == 1
-        return getindex.(references(parent(node).call.f))
-    else
-        return getindex.(references(parent(node).call.arguments[node.number - 1]))
-    end
-end
+    # if node.number == 1
+        # return getindex.(references(parent(node).call.f))
+    # else
+        # return getindex.(references(parent(node).call.arguments[node.number - 1]))
+    # end
+# end
 
 
-function calculate_descendants!(node)
-    for child in node, ancestor in ancestors(child)
-        descendants = getvalue!(ancestor.info.descendants, Vector{AbstractNode}())
-        child ∉ descendants && push!(descendants, child)
-    end
+"""
+    descendants(node) -> Vector{AbstractNode}
 
-    return node
-end
-
+Return all nodes that reference `node`; i.e., all data that depends on it.
+"""
 function descendants(node::AbstractNode)
+    isnothing(parent(node)) && return Vector{AbstractNode}()
     !hasvalue(node.info.descendants) && calculate_descendants!(parent(node))
     return getvalue(node.info.descendants)
+end
+
+
+function calculate_descendants!(node::AbstractNode)
+    for child in children(node)
+        # make sure all nodes have at least an empty descendants list
+        setvalue!(child.info.descendants, Vector{AbstractNode}())
+        
+        for ancestor in ancestors(child)
+            descendants = getvalue(ancestor.info.descendants)
+            child ∉ descendants && push!(descendants, child)
+        end
+    end
+    
+    return node
 end
 
 
@@ -112,8 +125,6 @@ parent(node::AbstractNode) = node.info.parent
 location(node::AbstractNode) = node.info.location
 
 
-metadata(node::AbstractNode) = node.info.metadata
-
 value(::JumpNode) = nothing
 value(::ReturnNode) = nothing
 value(node::SpecialCallNode) = value(node.form)
@@ -121,6 +132,9 @@ value(node::NestedCallNode) = value(node.call)
 value(node::PrimitiveCallNode) = value(node.call)
 value(node::ConstantNode) = value(node.value)
 value(node::ArgumentNode) = value(node.value)
+
+
+metadata(node::AbstractNode) = node.info.metadata
 
 
 getmetadata(node::AbstractNode, key::Symbol) = metadata(node)[key]

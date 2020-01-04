@@ -38,6 +38,7 @@ function finish_recording(recorder::GraphRecorder, result, f_repr, args_repr, in
     complete_node.children = recorder.tape
     complete_node.original_ir = recorder.original_ir
     complete_node.info = info
+    calculate_descendants!(complete_node)
     return complete_node
 end
 
