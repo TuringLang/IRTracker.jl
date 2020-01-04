@@ -32,37 +32,146 @@ function backward!(f!, node::NestedCallNode)
 end
 
 
-function datapath(node::NestedCallNode)
-    current_front = Set{AbstractNode}(ancestors(node[end]))
-    datanodes = Set{AbstractNode}(current_front)
+####################################################################################################
+# Node info and metadata accessors
 
-    while !isempty(current_front)
-        current_node = pop!(current_front)
-        new_front = ancestors(current_node)
-        union!(current_front, new_front)
-        union!(datanodes, new_front)
+"""Return the of the original IR statement `node` was recorded from."""
+location(node::AbstractNode) = node.info.location
+
+value(::JumpNode) = nothing
+value(::ReturnNode) = nothing
+value(node::SpecialCallNode) = value(node.form)
+value(node::NestedCallNode) = value(node.call)
+value(node::PrimitiveCallNode) = value(node.call)
+value(node::ConstantNode) = value(node.value)
+value(node::ArgumentNode) = value(node.value)
+
+metadata(node::AbstractNode) = node.info.metadata
+
+getmetadata(node::AbstractNode, key::Symbol) = metadata(node)[key]
+getmetadata(node::AbstractNode, key::Symbol, default) = get(metadata(node), key, default)
+getmetadata!(node::AbstractNode, key::Symbol, default) = get!(metadata(node), key, default)
+getmetadata!(f, node::AbstractNode, key::Symbol) = get!(f, metadata(node), key)
+setmetadata!(node::AbstractNode, key::Symbol, value) = metadata(node)[key] = value
+
+
+####################################################################################################
+# General graph query API, modelled after XPath axes, see:
+# https://developer.mozilla.org/en-US/docs/Web/XPath/Axes
+
+abstract type Axis end
+
+abstract type Forward <: Axis end
+abstract type Reverse <: Axis end
+
+struct Parent <: Forward end
+struct Child <: Reverse end
+struct Preceding <: Forward end # corresponding to preceding-sibling
+struct Following <: Reverse end # corresponding to following-sibling
+struct Ancestor <: Forward end
+struct Descendant <: Reverse end
+
+
+query(node::AbstractNode, ::Type{Parent}) = node.info.parent
+
+
+query(node::AbstractNode, ::Type{Child}) = Vector{AbstractNode}()
+query(node::NestedCallNode, ::Type{Child}) = node.children
+
+function query(node::AbstractNode, ::Type{Following})
+    parent = query(node, Parent)
+    if isnothing(parent)
+        return Vector{AbstractNode}()
+    else
+        return @view parent.children[(position(node, parent) + 1):end]
+    end
+end
+
+function query(node::AbstractNode, ::Type{Preceding})
+    parent = query(node, Parent)
+    if isnothing(parent)
+        return Vector{AbstractNode}()
+    else
+        return @view parent.children[1:(position(node, parent) - 1)]
+    end
+end
+
+function query(node::AbstractNode, ::Type{Ancestor})
+    ancestors = Vector{AbstractNode}()
+    current = query(node, Parent)
+    while !isnothing(current)
+        push!(ancestors, current)
+        current = query(current, Parent)
     end
 
-    return filter(in(datanodes), children(node))
+    return ancestors
+end
+
+function query(node::AbstractNode, ::Type{Descendant})
+    descendants = copy(query(node, Child))
+    first_unhandled = 1
+
+    while first_unhandled ≤ length(descendants)
+        for descendant in @view descendants[first_unhandled:end]
+            append!(descendants, query(descendant, Child))
+            first_unhandled += 1
+        end
+    end
+    
+    return descendants
 end
 
 
-# Graph API for general nodes
-"""
-    ancestors(node) -> Vector{<:AbstractNode}
+position(node::AbstractNode, parent::Nothing) = 1
+position(node::AbstractNode, parent::AbstractNode) = findfirst(==(node), parent.children)
+position(node::AbstractNode) = position(node, node.info.parent)
 
-Return all nodes that `node` references; i.e., all data it depends on.  Argument nodes link back to
-the parent block.
+
+####################################################################################################
+# Accessor functions based on Query API, and specialized queries
+
+
 """
-ancestors(node::JumpNode) = getindex.(reduce(append!, references.(node.arguments),
-                                             init = references(node.condition)))
-ancestors(node::ReturnNode) = getindex.(references(node.argument))
-ancestors(node::SpecialCallNode) = getindex.(references(node.form))
-ancestors(node::NestedCallNode) = getindex.(references(node.call))
-ancestors(node::PrimitiveCallNode) = getindex.(references(node.call))
-ancestors(::ConstantNode) = AbstractNode[]
-ancestors(::ArgumentNode) = AbstractNode[]
-# function ancestors(node::ArgumentNode)
+    children(node) -> Vector{<:AbstractNode}
+
+Return all sub-nodes of this node (only none-empty if `node` is a `NestedCallNode`).
+"""
+children(node::NestedCallNode) = query(node, Child)
+
+"""
+    parent(node) -> Union{Nothing, NestedCallNode}
+
+Return the `NestedNode` `node` is a child of (the root call has no parent).
+"""
+parent(node::AbstractNode) = query(node, Parent)
+
+
+"""
+    arguments(node) -> Vector{ArgumentNode}
+
+Return the sub-nodes representing the arguments of a nested call.
+"""
+arguments(node::AbstractNode) = [child for child in query(node, Child) if child isa ArgumentNode]
+
+
+
+####################################################################################################
+# Data dependency analysis
+
+"""
+    referenced(node) -> Vector{<:AbstractNode}
+
+Return all nodes that `node` references; i.e., all data it immediately depends on.
+"""
+referenced(node::JumpNode) = getindex.(reduce(append!, references.(node.arguments),
+                                              init = references(node.condition)))
+referenced(node::ReturnNode) = getindex.(references(node.argument))
+referenced(node::SpecialCallNode) = getindex.(references(node.form))
+referenced(node::NestedCallNode) = getindex.(references(node.call))
+referenced(node::PrimitiveCallNode) = getindex.(references(node.call))
+referenced(::ConstantNode) = AbstractNode[]
+referenced(::ArgumentNode) = AbstractNode[]
+# function referenced(node::ArgumentNode)
     # first argument is always the function itself -- need to treat this separately
     # if node.number == 1
         # return getindex.(references(parent(node).call.f))
@@ -73,72 +182,28 @@ ancestors(::ArgumentNode) = AbstractNode[]
 
 
 """
-    descendants(node) -> Vector{AbstractNode}
+    dependents(node) -> Vector{<:AbstractNode}
 
-Return all nodes that reference `node`; i.e., all data that depends on it.
+Return all nodes that reference `node`; i.e., all data that immediately depends on it.
 """
-function descendants(node::AbstractNode)
-    isnothing(parent(node)) && return Vector{AbstractNode}()
-    !hasvalue(node.info.descendants) && calculate_descendants!(parent(node))
-    return getvalue(node.info.descendants)
-end
+dependents(node::AbstractNode) = #filter(f -> (node in reference(f))::Bool, query(node, Following))
+    [f for f in query(node, Following) if node in referenced(f)]
+# an instance of https://github.com/JuliaLang/julia/issues/28889
 
+function datapath(node::NestedCallNode)
+    current_front = Set{AbstractNode}(referenced(node[end]))
+    datanodes = Set{AbstractNode}(current_front)
 
-function calculate_descendants!(node::AbstractNode)
-    for child in children(node)
-        # make sure all nodes have at least an empty descendants list
-        setvalue!(child.info.descendants, Vector{AbstractNode}())
-        
-        for ancestor in ancestors(child)
-            descendants = getvalue(ancestor.info.descendants)
-            child ∉ descendants && push!(descendants, child)
-        end
+    while !isempty(current_front)
+        current_node = pop!(current_front)
+        new_front = referenced(current_node)
+        union!(current_front, new_front)
+        union!(datanodes, new_front)
     end
-    
-    return node
+
+    return filter(in(datanodes), children(node))
 end
 
 
-"""
-    children(node) -> Vector{<:AbstractNode}
-
-Return all sub-nodes of this node (only none-empty if `node` is a `NestedCallNode`).
-"""
-children(node::NestedCallNode) = node.children
-children(node::AbstractNode) = AbstractNode[]
 
 
-"""
-    arguments(node) -> Vector{ArgumentNode}
-
-Return the sub-nodes representing the arguments of a nested call.
-"""
-arguments(node::NestedCallNode) = [child for child in node if child isa ArgumentNode]
-arguments(node::AbstractNode) = ArgumentNode[]
-
-
-"""Return the `NestedNode` `node` is a child of."""
-parent(node::AbstractNode) = node.info.parent
-
-
-"""Return the of the original IR statement `node` was recorded from."""
-location(node::AbstractNode) = node.info.location
-
-
-value(::JumpNode) = nothing
-value(::ReturnNode) = nothing
-value(node::SpecialCallNode) = value(node.form)
-value(node::NestedCallNode) = value(node.call)
-value(node::PrimitiveCallNode) = value(node.call)
-value(node::ConstantNode) = value(node.value)
-value(node::ArgumentNode) = value(node.value)
-
-
-metadata(node::AbstractNode) = node.info.metadata
-
-
-getmetadata(node::AbstractNode, key::Symbol) = metadata(node)[key]
-getmetadata(node::AbstractNode, key::Symbol, default) = get(metadata(node), key, default)
-getmetadata!(node::AbstractNode, key::Symbol, default) = get!(metadata(node), key, default)
-getmetadata!(f, node::AbstractNode, key::Symbol) = get!(f, metadata(node), key)
-setmetadata!(node::AbstractNode, key::Symbol, value) = metadata(node)[key] = value

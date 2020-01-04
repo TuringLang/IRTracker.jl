@@ -19,8 +19,12 @@ export AbstractNode, ControlFlowNode, DataFlowNode, RecursiveNode
 export ArgumentNode, ConstantNode, JumpNode, NestedCallNode, PrimitiveCallNode,
     ReturnNode, SpecialCallNode
 export TapeCall, TapeConstant, TapeExpr, TapeReference, TapeSpecialForm, TapeValue
-export ancestors, backward!, children, datapath, descendants, metadata, location, parent,
-    references, value
+
+# graphapi.jl
+export getmetadata, getmetadata!, metadata, location, setmetadata!, value
+export ancestors, children, parent, descendants, query
+export Ancestor, Child, Descendant, Following, Parent, Preceding
+export dependents, referenced
 
 # trackingcontext.jl
 export AbstractTrackingContext, DefaultTrackingContext, DepthLimitContext

@@ -19,14 +19,14 @@
         @test parent(call[end]) === call
         
         @test datapath(call) == call[[2, 3]]
-        @test ancestors.(call) == [call[[]], call[[]], call[[2]], call[[3]]]
-        @test descendants.(call) == [call[[]], call[[3]], call[[4]], call[[]]]
+        @test dependents.(call) == [call[[]], call[[3]], call[[4]], call[[]]]
+        @test referenced.(call) == [call[[]], call[[]], call[[2]], call[[3]]]
     end
 
     let call = track(union, [1], [2])
         for child in children(call)
-            @test all(child in descendants(a) for a in ancestors(child))
-            @test all(child in ancestors(d) for d in descendants(child))
+            @test all(child in dependents(r) for r in referenced(child))
+            @test all(child in referenced(d) for d in dependents(child))
         end
     end
 end
