@@ -182,7 +182,7 @@ referenced(node::ArgumentNode, ::Type{Union{Preceding, Parent}}) = referenced(no
     backward(f, node[, axis])
 
 Traverse references backward in `axis` order (default: `Preceding`).  By default, `union` all nodes
-onto an array.  If `f` is given, the current node and its parents are passed in for every node of
+onto an array.  If `f` is given, the current node and its references are passed in for every node of
 which `node` is a data dependecy, and you can do arbitrary things to it.
 """
 function backward(node::AbstractNode, axis::Type{<:Reverse} = Preceding)
@@ -216,6 +216,37 @@ function dependents(node::AbstractNode)
     return [f for f in query(node, Following) if node in referenced(f, Preceding)]
     # or: filter(f -> (node in referenced(f, Preceding))::Bool, query(node, Following))
     # an instance of https://github.com/JuliaLang/julia/issues/28889
+end
+
+
+
+"""
+    forward(node) -> Vector{AbstractNode}
+    forward(f, node)
+
+Traverse dependencies forward.  By default, `union` all nodes onto an array.  If `f` is given, the
+current node and its dependents are passed in for every node is a data dependecy of `node`, and you
+can do arbitrary things to it.
+"""
+function forward(node::AbstractNode)
+    result = Vector{AbstractNode}()
+    return forward(node) do node, deps
+        union!(result, deps)
+    end
+end
+
+function forward(f, node::AbstractNode)
+    current_deps = Vector{AbstractNode}(dependents(node))
+    result = f(node, current_deps)
+    
+    while !isempty(current_deps)
+        node = pop!(current_deps)
+        new_deps = dependents(node)
+        result = f(node, new_deps)
+        union!(current_deps, new_deps)
+    end
+
+    return result
 end
 
 

@@ -24,11 +24,12 @@
         @test referenced(call[3][4], Parent) == AbstractNode[]
         @test referenced(call[3][4], Union{Preceding, Parent}) == call[3][[2, 3]]
 
-        @test dependents.(call) == [call[[]], call[[3]], call[[4]], call[[]]]
-
         @test backward(call[end], Preceding) == call[[3, 2]]
         @test backward(call[3][5], Preceding) == call[3][[4, 2, 3]]
-        @test backward(call[3][5], Union{Preceding, Parent}) == [call[3][[4, 2, 3]]; call[2]] 
+        @test backward(call[3][5], Union{Preceding, Parent}) == [call[3][[4, 2, 3]]; call[2]]
+
+        @test dependents.(call) == [call[[]], call[[3]], call[[4]], call[[]]]
+        @test forward.(call) == [call[[]], call[[3, 4]], call[[4]], call[[]]]
     end
 
 
