@@ -11,13 +11,11 @@
         #     @5: [§1:&1] return @4 = 43
         #   @4: [§1:&1] return @3 = 43
         
-        @test length(call) == 4
         @test length(children(call)) == 4
-        @test length(call[3]) == 5
         @test length(children(call[3])) == 5
         @test parent(call[end]) == call
         
-        @test referenced.(call) == [call[[]], call[[]], call[[2]], call[[3]]]
+        @test referenced.(children(call)) == [call[[]], call[[]], call[[2]], call[[3]]]
         @test referenced(call[3][2], Preceding)  == AbstractNode[]
         @test referenced(call[3][2], Parent) == call[[2]]
         @test referenced(call[3][4], Preceding) == call[3][[2, 3]]
@@ -28,8 +26,8 @@
         @test backward(call[3][5], Preceding) == call[3][[4, 2, 3]]
         @test backward(call[3][5], Union{Preceding, Parent}) == [call[3][[4, 2, 3]]; call[2]]
 
-        @test dependents.(call) == [call[[]], call[[3]], call[[4]], call[[]]]
-        @test forward.(call) == [call[[]], call[[3, 4]], call[[4]], call[[]]]
+        @test dependents.(children(call)) == [call[[]], call[[3]], call[[4]], call[[]]]
+        @test forward.(children(call)) == [call[[]], call[[3, 4]], call[[4]], call[[]]]
     end
 
 

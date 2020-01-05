@@ -4,7 +4,13 @@ import Base: firstindex, getindex, lastindex, parent, push!
 
 
 # Special functions for NestedCallNode
-push!(node::NestedCallNode, child::AbstractNode) = (push!(node.children, child); node)
+function push!(node::NestedCallNode, child::AbstractNode)
+    push!(node.children, child)
+    child.info.position = length(node.children)
+    return node
+end
+
+
 getindex(node::NestedCallNode, i) = node.children[i]
 firstindex(node::NestedCallNode) = firstindex(node.children)
 lastindex(node::NestedCallNode) = lastindex(node.children)
@@ -15,6 +21,11 @@ lastindex(node::NestedCallNode) = lastindex(node.children)
 
 """Return the of the original IR statement `node` was recorded from."""
 location(node::AbstractNode) = node.info.location
+
+position(node::AbstractNode, parent::Nothing) = 1
+position(node::AbstractNode, parent::AbstractNode) = findfirst(==(node), parent.children)
+position(node::AbstractNode) = position(node, node.info.parent)
+# position(node::AbstractNode) = node.info.position
 
 value(::JumpNode) = nothing
 value(::ReturnNode) = nothing
@@ -60,7 +71,7 @@ function query(node::AbstractNode, ::Type{Following})
     if isnothing(parent)
         return Vector{AbstractNode}()
     else
-        return @view parent.children[(position(node, parent) + 1):end]
+        return @view parent.children[(position(node) + 1):end]
     end
 end
 
@@ -69,7 +80,7 @@ function query(node::AbstractNode, ::Type{Preceding})
     if isnothing(parent)
         return Vector{AbstractNode}()
     else
-        return @view parent.children[1:(position(node, parent) - 1)]
+        return @view parent.children[1:(position(node) - 1)]
     end
 end
 
@@ -97,11 +108,6 @@ function query(node::AbstractNode, ::Type{Descendant})
     
     return descendants
 end
-
-
-position(node::AbstractNode, parent::Nothing) = 1
-position(node::AbstractNode, parent::AbstractNode) = findfirst(==(node), parent.children)
-position(node::AbstractNode) = position(node, node.info.parent)
 
 
 ####################################################################################################

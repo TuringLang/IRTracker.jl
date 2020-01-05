@@ -1,19 +1,18 @@
 import Base: show
 
 
-printlevels(io::IO, mime::MIME, value, levels::Integer) = show(IOContext(io, :maxlevel => levels),
-                                                              mime, value)
-printlevels(io::IO, value, levels::Integer) = show(IOContext(io, :maxlevel => levels),
-                                                   MIME"text/plain"(), value)
+# INTERNAL STUFF
+printlevels(io::IO, mime::MIME, value, levels::Integer) =
+    show(IOContext(io, :maxlevel => levels), mime, value)
+printlevels(io::IO, value, levels::Integer) =
+    show(IOContext(io, :maxlevel => levels), MIME"text/plain"(), value)
 printlevels(value, levels::Integer) = printlevels(stdout, value, levels)
 
-
-# INTERNAL STUFF
 showvalue(io::IO, value) = show(IOContext(io, :limit => true), value)
 showvalue(io::IO, value::Nothing) = show(io, value)
 # showvalue(io::IO, value) = repr(value, context = IOContext(io, :limit => true, :compact => true))
 
-function joinlimited(io::IO, values, delim)
+function joindelimited(io::IO, values, delim)
     L = length(values)
     if L > 0
         for (i, value) in enumerate(values)
@@ -23,65 +22,54 @@ function joinlimited(io::IO, values, delim)
     end
 end
 
-maybespace(str) = isempty(str) ? "" : " "
-printlocation(io::IO, ix::IRIndex, postfixes...) = printlocation(io, "", ix, postfixes...)
-printlocation(io::IO, prefix, ix::IRIndex, postfixes...) =
-    print(io, "[", prefix, maybespace(prefix), ix, "]", maybespace(postfixes), postfixes...)
-printlocation(io::IO, prefix, ::NoIndex, postfixes...) = 
-    print(io, postfixes...)
 
-function printmetadata(io::IO, metadata::Dict{Symbol, <:Any})
-    !isempty(metadata) && print(io, "\t", "[")
-    for (i, (k, v)) in enumerate(metadata)
-        print(io, k, " = ")
-        showvalue(io, v)
-        i < length(metadata) && print(io, ", ")
+# DISPATCH ON PARTS OF DIFFERENT NODES
+annotation(::AbstractNode) = ""
+annotation(::ConstantNode) = "Const"
+annotation(node::ArgumentNode) = "Arg"
+
+function showpretext(io::IO, node::AbstractNode, postfix...)
+    # position(node) > 0 && print("@", position(node), ":", postfix...)
+end
+
+function showpretext(io::IO, ::MIME"text/plain", node::AbstractNode, postfix...)
+    # position(node) > 0 && print("@", position(node), ": ")
+    
+    if !isempty(annotation(node))
+        if location(node) !== NO_INDEX
+            print(io, "[", annotation(node), ":", location(node), "]", postfix...)
+        else
+            print(io, "[", annotation(node), "]", postfix...)
+        end
+    else
+        if location(node) !== NO_INDEX
+            print(io, "[", location(node), "]", postfix...)
+        end
     end
-    !isempty(metadata) && print(io, "]")
-    return nothing
 end
 
 
-# ACTUAL SHOW IMPLEMENTATIONS
-function show(io::IO, node::ConstantNode, level = 1)
-    printlocation(io, "Constant", location(node), " = ")
-    showvalue(io, value(node))
-    printmetadata(io, metadata(node))
-end
 
-function show(io::IO, node::PrimitiveCallNode, level = 1)
-    printlocation(io, location(node), node.call, " = ")
-    showvalue(io, value(node))
-    printmetadata(io, metadata(node))
+showcall(io::IO, node::ConstantNode, postfix...) = nothing
+showcall(io::IO, node::ArgumentNode, postfix...) = nothing
+showcall(io::IO, node::PrimitiveCallNode, postfix...) =
+    print(io, node.call, " =", postfix...)
+showcall(io::IO, node::NestedCallNode, postfix...) =
+    print(io, node.call, " =", postfix...)
+showcall(io::IO, node::SpecialCallNode, postfix...) =
+    print(io, node.form, " =", postfix...)
+function showcall(io::IO, node::ReturnNode, postfix...)
+    if node.argument isa TapeReference
+        print(io, "return ", node.argument, " = ")
+        showvalue(io, value(node.argument))
+    else
+        print(io, "return ", node.argument)
+    end
+    print(io, postfix...)
 end
-
-function show(io::IO, node::NestedCallNode, level = 1)
-    maxlevel = get(io, :maxlevel, typemax(level))
-    printlocation(io, location(node), node.call, " = ")
-    showvalue(io, value(node))
-    printmetadata(io, metadata(node))
-end
-
-function show(io::IO, node::SpecialCallNode, level = 1)
-    printlocation(io, location(node), node.form, " = ")
-    showvalue(io, value(node))
-    printmetadata(io, metadata(node))
-end
-
-function show(io::IO, node::ArgumentNode, level = 1)
-    printlocation(io, "Argument", location(node), "= ")
-    showvalue(io, value(node))
-    printmetadata(io, metadata(node))
-end
-
-function show(io::IO, node::ReturnNode, level = 1)
-    printlocation(io, location(node), "return ", node.argument, " = ")
-    showvalue(io, value(node.argument))
-    printmetadata(io, metadata(node))
-end
-
-function show(io::IO, node::JumpNode, level = 1)
-    printlocation(io, location(node), "goto §", node.target)
+function showcall(io::IO, node::JumpNode, postfix...)
+    print(io, "goto §", node.target)
+    
     L = length(node.arguments)
 
     if L > 0
@@ -96,34 +84,71 @@ function show(io::IO, node::JumpNode, level = 1)
     reason = node.condition
     if !isnothing(value(reason))
         print(io, " since ", reason)
-        (reason isa TapeReference) && print(io, " == ", value(reason))
-    end
-
-    printmetadata(io, metadata(node))
-end
-
-
-# Recursive printing for display purposes:
-function show(io::IO, mime::MIME"text/plain", node::NestedCallNode, level = 1)
-    maxlevel = get(io, :maxlevel, typemax(level))
-    printlocation(io, location(node), node.call, " = ")
-    showvalue(io, value(node))
-    printmetadata(io, metadata(node))
-
-    if level < maxlevel
-        print(io, "\n") # prevent double newlines
-        subnodes = children(node)
-        for (i, child) in enumerate(subnodes)
-            print(io, "  " ^ level, "@", i, ": ")
-            show(io, mime, child, level + 1)
-            i < length(subnodes) && print(io, "\n")
+        if reason isa TapeReference
+            print(io, " == ")
+            showvalue(io, value(reason))
         end
     end
+
+    print(io, postfix...)
 end
 
-show(io::IO, ::MIME"text/plain", node::AbstractNode, level = 1) = show(io, node, level)
+showresult(io::IO, node::AbstractNode, postfix...) =
+    (showvalue(io, value(node)); print(io, postfix...))
+showresult(io::IO, node::ControlFlowNode, postfix...) = nothing
+
+showmetadata(io::IO, node::AbstractNode) = nothing
+function showmetadata(io::IO, ::MIME"text/plain", node::AbstractNode)
+    meta = metadata(node)
+    !isempty(meta) && print(io, "[")
+    for (i, (k, v)) in enumerate(meta)
+        print(io, k, " = ")
+        showvalue(io, v)
+        i < length(meta) && print(io, ", ")
+    end
+    !isempty(meta) && print(io, "]")
+    return nothing
+end
 
 
+# ACTUAL SHOW METHODS
+function show(io::IO, node::AbstractNode, level = 1)
+    showpretext(io, node, " ")
+    showcall(io, node, " ")
+    showresult(io, node, "\t")
+    showmetadata(io, node)
+end
+
+function show(io::IO, mime::MIME"text/plain", node::AbstractNode, level = 1)
+    showpretext(io, mime, node, " ")
+    showcall(io, node, " ")
+    showresult(io, node, "\t")
+    showmetadata(io, mime, node)
+end
+
+function show(io::IO, mime::MIME"text/plain", node::NestedCallNode, level = 1)
+    # Special case: recursive printing for display purposes
+    showpretext(io, mime, node, " ")
+    showcall(io, node, " ")
+    showresult(io, node)
+
+    maxlevel = get(io, :maxlevel, typemax(level))
+    if level < maxlevel
+        print(io, "\n") # prevent double newlines
+        kids = children(node)
+        for (i, child) in enumerate(kids)
+            print(io, "  " ^ level)
+            print(io, "@", i, ": ")
+            show(io, mime, child, level + 1)
+            i < length(kids) && print(io, "\n")
+        end
+    end
+
+    showmetadata(io, mime, node)
+end
+
+
+# OTHER TYPES
 show(io::IO, index::VarIndex) = print(io, "§", index.block, ":%", index.line, "")
 show(io::IO, index::BranchIndex) = print(io, "§", index.block, ":&", index.line)
 
@@ -133,13 +158,13 @@ show(io::IO, expr::TapeConstant) = (print(io, "⟨"); showvalue(io, expr.value);
 
 function show(io::IO, expr::TapeCall)
     print(io, expr.f, "(")
-    joinlimited(io, expr.arguments, ", ")
+    joindelimited(io, expr.arguments, ", ")
     print(io, ")")
 end
 
 function show(io::IO, expr::TapeSpecialForm)
     print(io, expr.head, "(")
-    joinlimited(io, expr.arguments, ", ")
+    joindelimited(io, expr.arguments, ", ")
     print(io, ")")
 end
 
