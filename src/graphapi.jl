@@ -63,11 +63,6 @@ struct Following <: Forward end # corresponding to following-sibling
 struct Ancestor <: Reverse end
 struct Descendant <: Forward end
 
-for (t, f) in [(:Parent, :Child), (:Preceding, :Following), (:Ancestor, :Descendant)]
-    @eval invertaxis(::Type{$t}) = $f
-    @eval invertaxis(::Type{$f}) = $t
-end
-
 
 query(node::AbstractNode, ::Type{Parent}) = node.info.parent
 
@@ -209,15 +204,6 @@ function backward(f, node::AbstractNode, axis::Type{<:Reverse} = Preceding)
 
     return result
 end
-
-# function backward!(f!, node::NestedCallNode)
-#     kernel!(::ControlFlowNode) = nothing
-#     kernel!(node::DataFlowNode) = f!(node, ancestors(node))
-
-#     for node in Iterators.reverse(node)
-#         kernel!(node)
-#     end
-# end
 
 
 """
