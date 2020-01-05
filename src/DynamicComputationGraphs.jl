@@ -24,7 +24,7 @@ export TapeCall, TapeConstant, TapeExpr, TapeReference, TapeSpecialForm, TapeVal
 export getmetadata, getmetadata!, metadata, location, setmetadata!, value
 export ancestors, children, parent, descendants, query
 export Ancestor, Child, Descendant, Following, Parent, Preceding
-export dependents, referenced
+export backward, dependents, referenced
 
 # trackingcontext.jl
 export AbstractTrackingContext, DefaultTrackingContext, DepthLimitContext

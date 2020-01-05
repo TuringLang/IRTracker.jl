@@ -15,21 +15,13 @@ length(node::NestedCallNode) = length(node.children)
 size(node::NestedCallNode) = size(node.children)
 collect(node::NestedCallNode) = collect(node.children)
 iterate(rNode::Iterators.Reverse{NestedCallNode}) = iterate(Iterators.reverse(rNode.itr.children))
-iterate(rNode::Iterators.Reverse{NestedCallNode}, state) = iterate(Iterators.reverse(rNode.itr.children), state)
+iterate(rNode::Iterators.Reverse{NestedCallNode}, state) =
+    iterate(Iterators.reverse(rNode.itr.children), state)
 
 getindex(node::NestedCallNode, i) = node.children[i]
 firstindex(node::NestedCallNode) = firstindex(node.children)
 lastindex(node::NestedCallNode) = lastindex(node.children)
 
-
-function backward!(f!, node::NestedCallNode)
-    kernel!(::ControlFlowNode) = nothing
-    kernel!(node::DataFlowNode) = f!(node, ancestors(node))
-
-    for node in Iterators.reverse(node)
-        kernel!(node)
-    end
-end
 
 
 ####################################################################################################
@@ -64,16 +56,20 @@ abstract type Axis end
 abstract type Forward <: Axis end
 abstract type Reverse <: Axis end
 
-struct Parent <: Forward end
-struct Child <: Reverse end
-struct Preceding <: Forward end # corresponding to preceding-sibling
-struct Following <: Reverse end # corresponding to following-sibling
-struct Ancestor <: Forward end
-struct Descendant <: Reverse end
+struct Parent <: Reverse end
+struct Child <: Forward end
+struct Preceding <: Reverse end # corresponding to preceding-sibling
+struct Following <: Forward end # corresponding to following-sibling
+struct Ancestor <: Reverse end
+struct Descendant <: Forward end
+
+for (t, f) in [(:Parent, :Child), (:Preceding, :Following), (:Ancestor, :Descendant)]
+    @eval invertaxis(::Type{$t}) = $f
+    @eval invertaxis(::Type{$f}) = $t
+end
 
 
 query(node::AbstractNode, ::Type{Parent}) = node.info.parent
-
 
 query(node::AbstractNode, ::Type{Child}) = Vector{AbstractNode}()
 query(node::NestedCallNode, ::Type{Child}) = node.children
@@ -130,7 +126,6 @@ position(node::AbstractNode) = position(node, node.info.parent)
 ####################################################################################################
 # Accessor functions based on Query API, and specialized queries
 
-
 """
     children(node) -> Vector{<:AbstractNode}
 
@@ -154,30 +149,74 @@ Return the sub-nodes representing the arguments of a nested call.
 arguments(node::AbstractNode) = [child for child in query(node, Child) if child isa ArgumentNode]
 
 
-
 ####################################################################################################
 # Data dependency analysis
 
 """
-    referenced(node) -> Vector{<:AbstractNode}
+    referenced(node[, axis]) -> Vector{<:AbstractNode}
 
 Return all nodes that `node` references; i.e., all data it immediately depends on.
 """
-referenced(node::JumpNode) = getindex.(reduce(append!, references.(node.arguments),
-                                              init = references(node.condition)))
-referenced(node::ReturnNode) = getindex.(references(node.argument))
-referenced(node::SpecialCallNode) = getindex.(references(node.form))
-referenced(node::NestedCallNode) = getindex.(references(node.call))
-referenced(node::PrimitiveCallNode) = getindex.(references(node.call))
-referenced(::ConstantNode) = AbstractNode[]
-referenced(::ArgumentNode) = AbstractNode[]
-# function referenced(node::ArgumentNode)
+referenced(node::AbstractNode) = referenced(node, Preceding)
+
+referenced(node::JumpNode, ::Type{Preceding}) =
+    getindex.(reduce(append!, references.(node.arguments), init = references(node.condition)))
+referenced(node::ReturnNode, ::Type{Preceding}) = getindex.(references(node.argument))
+referenced(node::SpecialCallNode, ::Type{Preceding}) = getindex.(references(node.form))
+referenced(node::NestedCallNode, ::Type{Preceding}) = getindex.(references(node.call))
+referenced(node::PrimitiveCallNode, ::Type{Preceding}) = getindex.(references(node.call))
+referenced(::ConstantNode, ::Type{Preceding}) = AbstractNode[]
+referenced(::ArgumentNode, ::Type{Preceding}) = AbstractNode[]
+
+referenced(node::AbstractNode, ::Type{Parent}) = referenced(node, Preceding) #AbstractNode[]
+function referenced(node::ArgumentNode, ::Type{Parent})
     # first argument is always the function itself -- need to treat this separately
-    # if node.number == 1
-        # return getindex.(references(parent(node).call.f))
-    # else
-        # return getindex.(references(parent(node).call.arguments[node.number - 1]))
-    # end
+    if node.number == 1
+        return getindex.(references(parent(node).call.f))
+    else
+        return getindex.(references(parent(node).call.arguments[node.number - 1]))
+    end
+end
+
+referenced(node::AbstractNode, ::Type{Ancestor}) = referenced(node, Parent)
+
+
+"""
+    backward(node[, axis]) -> Vector{AbstractNode}
+    backward(f, node[, axis])
+
+Traverse references backward in `axis` order (default: `Preceding`).  By default, `union` all nodes
+onto an array.  If `f` is given, the current node and its parents are passed in for every node of
+which `node` is a data dependecy, and you can do arbitrary things to it.
+"""
+function backward(node::AbstractNode, axis::Type{<:Reverse} = Preceding)
+    result = Vector{AbstractNode}()
+    return backward(node, axis) do node, refs
+        union!(result, refs)
+    end
+end
+
+function backward(f, node::AbstractNode, axis::Type{<:Reverse} = Preceding)
+    current_refs = Vector{AbstractNode}(referenced(node, axis))
+    result = f(node, current_refs)
+    
+    while !isempty(current_refs)
+        node = pop!(current_refs)
+        new_refs = referenced(node, axis)
+        result = f(node, new_refs)
+        union!(current_refs, new_refs)
+    end
+
+    return result
+end
+
+# function backward!(f!, node::NestedCallNode)
+#     kernel!(::ControlFlowNode) = nothing
+#     kernel!(node::DataFlowNode) = f!(node, ancestors(node))
+
+#     for node in Iterators.reverse(node)
+#         kernel!(node)
+#     end
 # end
 
 
@@ -186,23 +225,15 @@ referenced(::ArgumentNode) = AbstractNode[]
 
 Return all nodes that reference `node`; i.e., all data that immediately depends on it.
 """
-dependents(node::AbstractNode) = #filter(f -> (node in reference(f))::Bool, query(node, Following))
-    [f for f in query(node, Following) if node in referenced(f)]
-# an instance of https://github.com/JuliaLang/julia/issues/28889
-
-function datapath(node::NestedCallNode)
-    current_front = Set{AbstractNode}(referenced(node[end]))
-    datanodes = Set{AbstractNode}(current_front)
-
-    while !isempty(current_front)
-        current_node = pop!(current_front)
-        new_front = referenced(current_node)
-        union!(current_front, new_front)
-        union!(datanodes, new_front)
-    end
-
-    return filter(in(datanodes), children(node))
+function dependents(node::AbstractNode)
+    return [f for f in query(node, Following) if node in referenced(f, Preceding)]
+    # or: filter(f -> (node in referenced(f, Preceding))::Bool, query(node, Following))
+    # an instance of https://github.com/JuliaLang/julia/issues/28889
 end
+
+
+
+
 
 
 
