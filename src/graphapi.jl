@@ -163,7 +163,7 @@ referenced(node::PrimitiveCallNode, ::Type{Preceding}) = getindex.(references(no
 referenced(::ConstantNode, ::Type{Preceding}) = AbstractNode[]
 referenced(::ArgumentNode, ::Type{Preceding}) = AbstractNode[]
 
-referenced(node::AbstractNode, ::Type{Parent}) = referenced(node, Preceding) #AbstractNode[]
+referenced(node::AbstractNode, ::Type{Parent}) = AbstractNode[]
 function referenced(node::ArgumentNode, ::Type{Parent})
     # first argument is always the function itself -- need to treat this separately
     if node.number == 1
@@ -173,7 +173,8 @@ function referenced(node::ArgumentNode, ::Type{Parent})
     end
 end
 
-referenced(node::AbstractNode, ::Type{Ancestor}) = referenced(node, Parent)
+referenced(node::AbstractNode, ::Type{Union{Preceding, Parent}}) = referenced(node, Preceding)
+referenced(node::ArgumentNode, ::Type{Union{Preceding, Parent}}) = referenced(node, Parent)
 
 
 """
