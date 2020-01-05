@@ -1,27 +1,13 @@
 using IRTools
-import Base: collect, eltype, iterate, length, size
-import Base: firstindex, getindex, lastindex
-import Base: parent, push!
+import Base: firstindex, getindex, lastindex, parent, push!
 
 
 
-# Graph API for NestedCallNode
+# Special functions for NestedCallNode
 push!(node::NestedCallNode, child::AbstractNode) = (push!(node.children, child); node)
-
-iterate(node::NestedCallNode) = iterate(node.children)
-iterate(node::NestedCallNode, state) = iterate(node.children, state)
-eltype(node::NestedCallNode) = AbstractNode
-length(node::NestedCallNode) = length(node.children)
-size(node::NestedCallNode) = size(node.children)
-collect(node::NestedCallNode) = collect(node.children)
-iterate(rNode::Iterators.Reverse{NestedCallNode}) = iterate(Iterators.reverse(rNode.itr.children))
-iterate(rNode::Iterators.Reverse{NestedCallNode}, state) =
-    iterate(Iterators.reverse(rNode.itr.children), state)
-
 getindex(node::NestedCallNode, i) = node.children[i]
 firstindex(node::NestedCallNode) = firstindex(node.children)
 lastindex(node::NestedCallNode) = lastindex(node.children)
-
 
 
 ####################################################################################################

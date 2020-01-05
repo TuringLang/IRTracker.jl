@@ -112,10 +112,11 @@ function show(io::IO, mime::MIME"text/plain", node::NestedCallNode, level = 1)
 
     if level < maxlevel
         print(io, "\n") # prevent double newlines
-        for (i, child) in enumerate(node)
+        subnodes = children(node)
+        for (i, child) in enumerate(subnodes)
             print(io, "  " ^ level, "@", i, ": ")
             show(io, mime, child, level + 1)
-            i < length(node) && print(io, "\n")
+            i < length(subnodes) && print(io, "\n")
         end
     end
 end
