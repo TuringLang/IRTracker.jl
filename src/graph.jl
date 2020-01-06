@@ -40,10 +40,15 @@ abstract type RecursiveNode <: DataFlowNode end
 abstract type ControlFlowNode <: AbstractNode end
 
 
+const ParentRef = Ref{Union{RecursiveNode, Nothing}}
+const no_parent = Ref{Union{RecursiveNode, Nothing}}(nothing)
+
 const ArgumentTuple = Tuple{Vararg{Any}}
 
 
 include("tapeexpr.jl")
+
+include("nodeinfo.jl")
 
 include("nodes.jl")
 

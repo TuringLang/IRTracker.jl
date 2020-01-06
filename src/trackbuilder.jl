@@ -22,8 +22,6 @@ mutable struct TrackBuilder
     recorder::Union{Variable, Nothing}
     """SSA variable for the tracking context."""
     context::Union{Variable, Nothing}
-    """SSA variable for the current parent node (i.e., `recorder.incomplete_node`)."""
-    parent_node::Union{Variable, Nothing}
 end
 
 function TrackBuilder(ir::IR)
@@ -32,8 +30,7 @@ function TrackBuilder(ir::IR)
     jump_targets = jumptargets(ir)
     return_block = length(ir.blocks) + 1
 
-    TrackBuilder(ir, new_ir, variable_map, jump_targets, return_block,
-                 nothing, nothing, nothing)
+    TrackBuilder(ir, new_ir, variable_map, jump_targets, return_block, nothing, nothing)
 end
 
 
@@ -118,11 +115,7 @@ function tapevalues(builder::TrackBuilder, values)
 end
 
 
-nodeinfo(
-    ;location = inlined(NO_INDEX),
-    parent = :nothing,
-    meta = :nothing
-) = DCGCall.NodeInfo(location, parent)
+nodeinfo(;location = inlined(NO_INDEX)) = DCGCall.NodeInfo(location)
 
 
 # The XYZrecord functions all record a complex `Expr` creating a node for tracking (at runtime)
@@ -131,14 +124,14 @@ nodeinfo(
 
 function returnrecord(builder::TrackBuilder, location, branch)
     argument_repr = tapevalue(builder, branch.args[1])
-    info = nodeinfo(location = location, parent = builder.parent_node)
+    info = nodeinfo(location = location)
     return DCGCall.ReturnNode(argument_repr, info)
 end
 
 function jumprecord(builder::TrackBuilder, location, branch)
     condition_repr = tapevalue(builder, branch.condition)
     arguments_repr = tapevalues(builder, branch.args)
-    info = nodeinfo(location = location, parent = builder.parent_node)
+    info = nodeinfo(location = location)
     return DCGCall.JumpNode(branch.block, arguments_repr, condition_repr, info)
 end
 
@@ -148,7 +141,7 @@ function callrecord(builder::TrackBuilder, location, call_expr)
     arguments = xcall(:tuple, map(substitute_variable(builder), arguments_expr)...)
     f_repr = tapevalue(builder, f_expr)
     arguments_repr = tapevalues(builder, arguments_expr)
-    info = nodeinfo(location = location, parent = builder.parent_node)
+    info = nodeinfo(location = location)
     return DCGCall.trackcall(builder.context, f, f_repr, arguments, arguments_repr, info)
 end
 
@@ -158,19 +151,19 @@ function specialrecord(builder::TrackBuilder, location, special_expr)
     form = Expr(head, args...)
     args_repr = tapevalues(builder, special_expr.args)
     form_repr = DCGCall.TapeSpecialForm(form, QuoteNode(head), args_repr)
-    info = nodeinfo(location = location, parent = builder.parent_node)
+    info = nodeinfo(location = location)
     return DCGCall.SpecialCallNode(form_repr, info)
 end
 
 function constantrecord(builder::TrackBuilder, location, constant_expr)
     constant_repr = tapevalue(builder, constant_expr)
-    info = nodeinfo(location = location, parent = builder.parent_node)
+    info = nodeinfo(location = location)
     return DCGCall.ConstantNode(constant_repr, info)
 end
 
 function argumentrecord(builder::TrackBuilder, location, number, argument_expr)
     argument_repr = DCGCall.TapeConstant(substitute_variable(builder, argument_expr))
-    info = nodeinfo(location = location, parent = builder.parent_node)
+    info = nodeinfo(location = location)
     return DCGCall.ArgumentNode(argument_repr, number, info)
 end
 
@@ -243,15 +236,12 @@ function track_arguments!(builder::TrackBuilder, new_block::Block, old_block::Bl
         record_new_variable!(builder, argument, new_argument)
     end
 
-    # this is the first block, here we set up the recorder and context argument
+    # this is the first block, here we set up the recorder and the context argument
     if isfirst
         builder.context = argument!(new_block, at = 1, insert = false)
 
-        recorder_expr = DCGCall.GraphRecorder(copy(builder.original_ir), builder.context)
+        recorder_expr = DCGCall.GraphRecorder(builder.context, copy(builder.original_ir))
         builder.recorder = push!(new_block, recorder_expr)
-
-        parent_expr = xcall(:getfield, builder.recorder, QuoteNode(:incomplete_node))
-        builder.parent_node = push!(new_block, parent_expr)
     end
     
     # record jumps to here, if there are any, by adding a new argument and recording it

@@ -30,11 +30,11 @@ annotation(node::ArgumentNode) = "Arg"
 
 
 function showpretext(io::IO, node::AbstractNode, postfix...)
-    position(node) > 0 && print("@", position(node), ":", postfix...)
+    !isnothing(position(node)) && print("@", position(node), ":", postfix...)
 end
 
 function showpretext(io::IO, ::MIME"text/plain", node::AbstractNode, postfix...)
-    position(node) > 0 && print("@", position(node), ": ")
+    !isnothing(position(node)) > 0 && print("@", position(node), ": ")
     
     if !isempty(annotation(node))
         if location(node) !== NO_INDEX

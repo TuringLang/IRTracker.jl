@@ -34,7 +34,7 @@ and `GraphRecorder`.
 """
 function _recordnestedcall end
 
-@dynamo function _recordnestedcall(Ctx, F, Args...)
+@dynamo function _recordnestedcall(Rec, F, Args...)
     ir = IR(F, Args...)
     
     if isnothing(ir)

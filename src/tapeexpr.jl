@@ -15,7 +15,8 @@ Representation of an SSA variable.  References a child node of a `NestedCallNode
 of a Wengert list.  Behaves like `Ref` (i.e., you can get the referenced node of `r` by `r[]`).
 """
 struct TapeReference <: TapeValue
-    node::RecursiveNode
+    # since the parent is only known later, when it's constructed, we need a nullable reference here
+    parent_ref::ParentRef
     index::Int
 end
 
@@ -45,8 +46,7 @@ end
 
 
 
-getindex(ref::TapeReference) = ref.node[ref.index]
-
+getindex(expr::TapeReference) = expr.parent_ref[].children[expr.index]
 
 """
     references(expr::TapeExpr) -> Vector{TapeReference}
@@ -65,3 +65,4 @@ value(expr::TapeCall) = expr.value
 value(expr::TapeSpecialForm) = expr.value
 value(expr::TapeConstant) = expr.value
 value(expr::TapeReference) = value(expr[])
+

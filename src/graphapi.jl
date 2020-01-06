@@ -1,47 +1,5 @@
 using IRTools
-import Base: firstindex, getindex, lastindex, parent, push!
-
-
-
-# Special functions for NestedCallNode
-function push!(node::NestedCallNode, child::AbstractNode)
-    push!(node.children, child)
-    child.info.position = length(node.children)
-    return node
-end
-
-
-getindex(node::NestedCallNode, i) = node.children[i]
-firstindex(node::NestedCallNode) = firstindex(node.children)
-lastindex(node::NestedCallNode) = lastindex(node.children)
-
-
-####################################################################################################
-# Node info and metadata accessors
-
-"""Return the of the original IR statement `node` was recorded from."""
-location(node::AbstractNode) = node.info.location
-
-position(node::AbstractNode, parent::Nothing) = 1
-position(node::AbstractNode, parent::AbstractNode) = findfirst(==(node), parent.children)
-position(node::AbstractNode) = position(node, node.info.parent)
-# position(node::AbstractNode) = node.info.position
-
-value(::JumpNode) = nothing
-value(::ReturnNode) = nothing
-value(node::SpecialCallNode) = value(node.form)
-value(node::NestedCallNode) = value(node.call)
-value(node::PrimitiveCallNode) = value(node.call)
-value(node::ConstantNode) = value(node.value)
-value(node::ArgumentNode) = value(node.value)
-
-metadata(node::AbstractNode) = node.info.metadata
-
-getmetadata(node::AbstractNode, key::Symbol) = metadata(node)[key]
-getmetadata(node::AbstractNode, key::Symbol, default) = get(metadata(node), key, default)
-getmetadata!(node::AbstractNode, key::Symbol, default) = get!(metadata(node), key, default)
-getmetadata!(f, node::AbstractNode, key::Symbol) = get!(f, metadata(node), key)
-setmetadata!(node::AbstractNode, key::Symbol, value) = metadata(node)[key] = value
+import Base: parent
 
 
 ####################################################################################################
@@ -61,7 +19,7 @@ struct Ancestor <: Reverse end
 struct Descendant <: Forward end
 
 
-query(node::AbstractNode, ::Type{Parent}) = node.info.parent
+query(node::AbstractNode, ::Type{Parent}) = parent(parent)
 
 query(node::AbstractNode, ::Type{Child}) = Vector{AbstractNode}()
 query(node::NestedCallNode, ::Type{Child}) = node.children
