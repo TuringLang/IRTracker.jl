@@ -28,12 +28,13 @@ annotation(::AbstractNode) = ""
 annotation(::ConstantNode) = "Const"
 annotation(node::ArgumentNode) = "Arg"
 
+
 function showpretext(io::IO, node::AbstractNode, postfix...)
-    # position(node) > 0 && print("@", position(node), ":", postfix...)
+    position(node) > 0 && print("@", position(node), ":", postfix...)
 end
 
 function showpretext(io::IO, ::MIME"text/plain", node::AbstractNode, postfix...)
-    # position(node) > 0 && print("@", position(node), ": ")
+    position(node) > 0 && print("@", position(node), ": ")
     
     if !isempty(annotation(node))
         if location(node) !== NO_INDEX
@@ -58,6 +59,7 @@ showcall(io::IO, node::NestedCallNode, postfix...) =
     print(io, node.call, " =", postfix...)
 showcall(io::IO, node::SpecialCallNode, postfix...) =
     print(io, node.form, " =", postfix...)
+
 function showcall(io::IO, node::ReturnNode, postfix...)
     if node.argument isa TapeReference
         print(io, "return ", node.argument, " = ")
@@ -67,6 +69,7 @@ function showcall(io::IO, node::ReturnNode, postfix...)
     end
     print(io, postfix...)
 end
+
 function showcall(io::IO, node::JumpNode, postfix...)
     print(io, "goto §", node.target)
     
@@ -93,11 +96,14 @@ function showcall(io::IO, node::JumpNode, postfix...)
     print(io, postfix...)
 end
 
+
 showresult(io::IO, node::AbstractNode, postfix...) =
     (showvalue(io, value(node)); print(io, postfix...))
 showresult(io::IO, node::ControlFlowNode, postfix...) = nothing
 
+
 showmetadata(io::IO, node::AbstractNode) = nothing
+
 function showmetadata(io::IO, ::MIME"text/plain", node::AbstractNode)
     meta = metadata(node)
     !isempty(meta) && print(io, "[")
@@ -138,7 +144,6 @@ function show(io::IO, mime::MIME"text/plain", node::NestedCallNode, level = 1)
         kids = children(node)
         for (i, child) in enumerate(kids)
             print(io, "  " ^ level)
-            print(io, "@", i, ": ")
             show(io, mime, child, level + 1)
             i < length(kids) && print(io, "\n")
         end
