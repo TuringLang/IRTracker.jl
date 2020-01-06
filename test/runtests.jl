@@ -13,15 +13,15 @@ using ChainRules
 
 @testset "DynamicComputationGraphs" begin
     ########### Basic sanity checks #################
-    include("./basics.jl")
+    include("./test_basics.jl")
     
     
     ########### Graph API #################
-    include("./graphapi.jl")
+    include("./test_graphapi.jl")
 
 
     ########## Contexts #####################
-    # include("./contexts.jl")
+    # include("./test_contexts.jl")
 end
 
 
