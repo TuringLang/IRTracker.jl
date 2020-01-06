@@ -4,13 +4,13 @@ import Base: parent
 mutable struct NodeInfo
     location::IRIndex
     # slot::Core.Slot
-    parent_ref::ParentRef  # because we can only set this from the parent!
+    parent_ref::NullableRef{RecursiveNode}  # because we can only set this from the parent!
     position::Union{Int, Nothing}
     metadata::Dict{Symbol, Any}
 end
 
-NodeInfo() = NodeInfo(NO_INDEX, no_parent, nothing, Dict{Symbol, Any}())
-NodeInfo(location) = NodeInfo(location, no_parent, nothing, Dict{Symbol, Any}())
+NodeInfo() = NodeInfo(NO_INDEX, NullableRef{RecursiveNode}(), nothing, Dict{Symbol, Any}())
+NodeInfo(location) = NodeInfo(location, NullableRef{RecursiveNode}(), nothing, Dict{Symbol, Any}())
 NodeInfo(location, parent) = NodeInfo(location, parent, nothing, Dict{Symbol, Any}())
 
 location(info::NodeInfo) = info.location

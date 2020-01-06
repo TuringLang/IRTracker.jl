@@ -20,7 +20,7 @@ end
 struct NestedCallNode <: RecursiveNode
     call::TapeCall
     children::Vector{AbstractNode}
-    original_ir::IRTools.IR
+    original_ir::NullableRef{IRTools.IR}
     info::NodeInfo
 end
 
@@ -36,7 +36,7 @@ end
 
 struct JumpNode <: ControlFlowNode
     target::Int
-    arguments::ArgumentTuple
+    arguments::ArgumentTuple{TapeValue}
     condition::TapeValue
     info::NodeInfo
 end

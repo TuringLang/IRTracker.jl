@@ -56,64 +56,82 @@ node, depending on whether the call was primitive or nested.
 Intrinsic functions cannot be tracked.
 """
 track(f, args...) = track(DEFAULT_CTX, f, args...)
-track(ctx::AbstractTrackingContext, f, args...) =
-    trackcall(ctx, f, TapeConstant(f), args, TapeConstant.(args), NodeInfo())
+
+function track(ctx::AbstractTrackingContext, f, args...)
+    f_repr, args_repr = TapeConstant(f), TapeConstant.(args)
+    recorder = GraphRecorder(ctx)
+    return trackcall(recorder, f_repr, args_repr, NO_INDEX)
+end
 
 
-"""
-    trackcall(ctx::AbstractTrackingContext, f, f_repr, args, args_repr, info)
 
-Return a node representing the call of `f` on `args`.
-"""
-function trackcall(ctx::AbstractTrackingContext, f, f_repr, args, args_repr, info)
-    # println("Tracking ", f, " with args ", args)
+function trackbranch(recorder::GraphRecorder, arg_repr::TapeExpr, location::IRIndex)
+    info = NodeInfo(location, recorder.rootnode)
+    return ReturnNode(arg_repr, info)
+end
 
-    if isbuiltin(f) || !canrecur(ctx, f, args...) 
-        trackprimitive(ctx, f, f_repr, args, args_repr, info)
+function trackjump(recorder::GraphRecorder, block::Int, args_repr::ArgumentTuple{TapeValue},
+                   cond_repr::TapeExpr, location::IRIndex)
+    info = NodeInfo(location, recorder.rootnode)
+    return JumpNode(block, args_repr, cond_repr, info)
+end
+
+function trackspecialcall(recorder::GraphRecorder, form_repr::TapeExpr, location::IRIndex)
+    info = NodeInfo(location, recorder.rootnode)
+    return SpecialCallNode(form_repr, info)
+end
+
+function trackconstant(recorder::GraphRecorder, const_repr::TapeExpr, location::IRIndex)
+    info = NodeInfo(location, recorder.rootnode)
+    return ConstantNode(const_repr, info)
+end
+
+function trackargument(recorder::GraphRecorder, arg_repr::TapeExpr,
+                       number::Int, location::IRIndex)
+    info = NodeInfo(location, recorder.rootnode)
+    return ArgumentNode(arg_repr, number, info)
+end
+
+function trackprimitive(recorder::GraphRecorder, f_repr::TapeExpr,
+                        args_repr::ArgumentTuple{TapeExpr}, location::IRIndex)
+    info = NodeInfo(location, recorder.rootnode)
+    call = apply(f_repr, args_repr)
+    return PrimitiveCallNode(call, info)
+end
+
+function tracknested(recorder::GraphRecorder, f_repr::TapeExpr,
+                     args_repr::ArgumentTuple{TapeValue}, location::IRIndex)
+    f, args = value(f_repr), value.(args_repr)
+    call = TapeCall(f_repr, args_repr)
+    info = NodeInfo(location, recorder.rootnode)
+    rootnode = NestedCallNode(call, Vector{RecursiveNode}(), recorder.original_ir, info)
+    
+    result, nestedrecorder = _recordnestedcall(GraphRecorder(recorder.context, rootnode), f, args...)
+    nestedrecorder.rootnode.call.value[] = result
+    return nestedrecorder.rootnode
+end
+
+function trackcall(recorder::GraphRecorder, f_repr::TapeExpr,
+                   args_repr::ArgumentTuple{TapeValue}, location::IRIndex)
+    f, args = value(f_repr), value.(args_repr)
+    
+    if isbuiltin(f) || !canrecur(recorder.context, f, args...) 
+        trackprimitive(recorder, f_repr, args_repr, location)
     else
-        tracknested(ctx, f, f_repr, args, args_repr, info)
+        tracknested(recorder, f_repr, args_repr, location)
     end
 end
 
 
 """
-    trackprimitive(ctx::AbstractTrackingContext, f, f_repr, args, args_repr, info)
-
-Track `f(args...)` as a primitive call within `ctx`.
-"""
-trackprimitive(ctx::AbstractTrackingContext, f, f_repr, args, args_repr, info) =
-    recordprimitive(ctx, f, f_repr, args, args_repr, info)
-
-
-"""
-    tracknested(ctx::AbstractTrackingContext, f, f_repr, args, args_repr, info)
-
-Track `f(args...)` as a nested call within `ctx`, recursively tracking calls within it.
-"""
-tracknested(ctx::AbstractTrackingContext, f, f_repr, args, args_repr, info) =
-    recordnested(ctx, f, f_repr, args, args_repr, info)
-
-
-"""
-    canrecur(ctx::AbstractTrackingContext, f, args...)
+    canrecur(recorder::GraphRecorder, f, args...)
 
 Decide whether `f(args...)` can be recursively tracked (within `ctx`).
 """
 canrecur(ctx::AbstractTrackingContext, f, args...) = !isbuiltin(f)
 
 
-"""Fallback implementation for `trackprimitive` -- don't overload this!"""
-function recordprimitive(ctx::AbstractTrackingContext, f, f_repr, args, args_repr, info)
-    result = f(args...)
-    tapecall = TapeCall(result, f_repr, args_repr)
-    return PrimitiveCallNode(tapecall, info)
-end
 
-"""Fallback implementation for `tracknested` -- don't overload this!"""
-function recordnested(ctx::AbstractTrackingContext, f, f_repr, args, args_repr, info)
-    result, recorder = _recordnestedcall(ctx, f, args...)
-    return finish_recording(recorder, result, f_repr, args_repr, info)
-end
 
 
 

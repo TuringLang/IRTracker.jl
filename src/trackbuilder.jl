@@ -124,25 +124,21 @@ nodeinfo(;location = inlined(NO_INDEX)) = DCGCall.NodeInfo(location)
 
 function returnrecord(builder::TrackBuilder, location, branch)
     argument_repr = tapevalue(builder, branch.args[1])
-    info = nodeinfo(location = location)
-    return DCGCall.ReturnNode(argument_repr, info)
+    return DCGCall.trackbranch(builder.recorder, argument_repr, location)
 end
 
 function jumprecord(builder::TrackBuilder, location, branch)
     condition_repr = tapevalue(builder, branch.condition)
     arguments_repr = tapevalues(builder, branch.args)
-    info = nodeinfo(location = location)
-    return DCGCall.JumpNode(branch.block, arguments_repr, condition_repr, info)
+    return DCGCall.trackjump(builder.recorder, branch.block, arguments_repr,
+                              condition_repr, location)
 end
 
 function callrecord(builder::TrackBuilder, location, call_expr)
     f_expr, arguments_expr = call_expr.args[1], call_expr.args[2:end]
-    f = substitute_variable(builder, f_expr)
-    arguments = xcall(:tuple, map(substitute_variable(builder), arguments_expr)...)
     f_repr = tapevalue(builder, f_expr)
     arguments_repr = tapevalues(builder, arguments_expr)
-    info = nodeinfo(location = location)
-    return DCGCall.trackcall(builder.context, f, f_repr, arguments, arguments_repr, info)
+    return DCGCall.trackcall(builder.recorder, f_repr, arguments_repr, location)
 end
 
 function specialrecord(builder::TrackBuilder, location, special_expr)
@@ -151,20 +147,17 @@ function specialrecord(builder::TrackBuilder, location, special_expr)
     form = Expr(head, args...)
     args_repr = tapevalues(builder, special_expr.args)
     form_repr = DCGCall.TapeSpecialForm(form, QuoteNode(head), args_repr)
-    info = nodeinfo(location = location)
-    return DCGCall.SpecialCallNode(form_repr, info)
+    return DCGCall.trackspecialcall(builder.recorder, form_expr, location)
 end
 
 function constantrecord(builder::TrackBuilder, location, constant_expr)
     constant_repr = tapevalue(builder, constant_expr)
-    info = nodeinfo(location = location)
-    return DCGCall.ConstantNode(constant_repr, info)
+    return DCGCall.trackconstant(builder.recorder, constant_repr, location)
 end
 
 function argumentrecord(builder::TrackBuilder, location, number, argument_expr)
     argument_repr = DCGCall.TapeConstant(substitute_variable(builder, argument_expr))
-    info = nodeinfo(location = location)
-    return DCGCall.ArgumentNode(argument_repr, number, info)
+    return DCGCall.trackargument(builder.recorder, argument_repr, number, location)
 end
 
 
@@ -236,12 +229,10 @@ function track_arguments!(builder::TrackBuilder, new_block::Block, old_block::Bl
         record_new_variable!(builder, argument, new_argument)
     end
 
-    # this is the first block, here we set up the recorder and the context argument
+    # this is the first block, here we set up the recorder argument
     if isfirst
-        builder.context = argument!(new_block, at = 1, insert = false)
-
-        recorder_expr = DCGCall.GraphRecorder(builder.context, copy(builder.original_ir))
-        builder.recorder = push!(new_block, recorder_expr)
+        builder.recorder = argument!(new_block, at = 1, insert = false)
+        push!(new_block, DCGCall.setir!(builder.recorder, builder.original_ir))
     end
     
     # record jumps to here, if there are any, by adding a new argument and recording it
