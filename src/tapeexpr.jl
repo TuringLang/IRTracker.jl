@@ -75,8 +75,3 @@ value(expr::TapeSpecialForm) = expr.value
 value(expr::TapeConstant) = expr.value
 value(expr::TapeReference) = value(expr[])
 
-
-apply(f_repr, args_repr) = let f = value(f_repr), args = value.(args_repr)
-    TapeCall(f(args...), f_repr, args_repr)
-end
-

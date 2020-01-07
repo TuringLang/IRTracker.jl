@@ -131,14 +131,16 @@ function jumprecord(builder::TrackBuilder, location, branch)
     condition_repr = tapevalue(builder, branch.condition)
     arguments_repr = tapevalues(builder, branch.args)
     return DCGCall.trackjump(builder.recorder, branch.block, arguments_repr,
-                              condition_repr, location)
+                             condition_repr, location)
 end
 
 function callrecord(builder::TrackBuilder, location, call_expr)
     f_expr, arguments_expr = call_expr.args[1], call_expr.args[2:end]
+    f = substitute_variable(builder, f_expr)
+    arguments = xcall(:tuple, map(substitute_variable(builder), arguments_expr)...)
     f_repr = tapevalue(builder, f_expr)
     arguments_repr = tapevalues(builder, arguments_expr)
-    return DCGCall.trackcall(builder.recorder, f_repr, arguments_repr, location)
+    return DCGCall.trackcall(builder.recorder, f, f_repr, arguments, arguments_repr, location)
 end
 
 function specialrecord(builder::TrackBuilder, location, special_expr)

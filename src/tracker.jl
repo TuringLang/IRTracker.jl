@@ -60,7 +60,7 @@ track(f, args...) = track(DEFAULT_CTX, f, args...)
 function track(ctx::AbstractTrackingContext, f, args...)
     f_repr, args_repr = TapeConstant(f), TapeConstant.(args)
     recorder = GraphRecorder(ctx)
-    return trackcall(recorder, f_repr, args_repr, NO_INDEX)
+    return trackcall(recorder, f, f_repr, args, args_repr, NO_INDEX)
 end
 
 
@@ -95,13 +95,14 @@ end
 function trackprimitive(recorder::GraphRecorder, f_repr::TapeExpr,
                         args_repr::ArgumentTuple{TapeExpr}, location::IRIndex)
     info = NodeInfo(location, recorder.rootnode)
-    call = apply(f_repr, args_repr)
+    f, args = value(f_repr), value.(args_repr)
+    call = TapeCall(f(args...), f_repr, args_repr)
     return PrimitiveCallNode(call, info)
 end
 
-function tracknested(recorder::GraphRecorder, f_repr::TapeExpr,
-                     args_repr::ArgumentTuple{TapeValue}, location::IRIndex)
-    f, args = value(f_repr), value.(args_repr)
+function tracknested(recorder::GraphRecorder, f, f_repr::TapeExpr,
+                     args, args_repr::ArgumentTuple{TapeValue}, location::IRIndex)
+    # f, args = value(f_repr), value.(args_repr)
     call = TapeCall(f_repr, args_repr)
     info = NodeInfo(location, recorder.rootnode)
     rootnode = NestedCallNode(call, Vector{RecursiveNode}(), recorder.original_ir, info)
@@ -111,14 +112,14 @@ function tracknested(recorder::GraphRecorder, f_repr::TapeExpr,
     return nestedrecorder.rootnode
 end
 
-function trackcall(recorder::GraphRecorder, f_repr::TapeExpr,
-                   args_repr::ArgumentTuple{TapeValue}, location::IRIndex)
-    f, args = value(f_repr), value.(args_repr)
+function trackcall(recorder::GraphRecorder, f, f_repr::TapeExpr,
+                   args, args_repr::ArgumentTuple{TapeValue}, location::IRIndex)
+    # f, args = value(f_repr), value.(args_repr)
     
     if isbuiltin(f) || !canrecur(recorder.context, f, args...) 
         trackprimitive(recorder, f_repr, args_repr, location)
     else
-        tracknested(recorder, f_repr, args_repr, location)
+        tracknested(recorder, f, f_repr, args, args_repr, location)
     end
 end
 
