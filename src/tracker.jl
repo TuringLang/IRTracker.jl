@@ -7,7 +7,7 @@ using IRTools: IR, @dynamo
 function transform_ir(old_ir::IR)
     IRTools.explicitbranch!(old_ir) # make implicit jumps explicit
     builder = TrackBuilder(old_ir)
-    return build_tracks!(builder)
+    return buildtracks!(builder)
 end
 
 
@@ -26,15 +26,16 @@ function error_ir(F, Args...)
     return ir
 end
 
+
 """
     _recordnestedcall(Ctx, F, Args...)
 
 The @dynamo/generated function actually calling the transformed IR.  Returns a tuple of return value
 and `GraphRecorder`.
 """
-function _recordnestedcall end
+function _recordnestedcall! end
 
-@dynamo function _recordnestedcall(Rec, F, Args...)
+@dynamo function _recordnestedcall!(Rec, F, Args...)
     ir = IR(F, Args...)
     
     if isnothing(ir)
@@ -44,6 +45,17 @@ function _recordnestedcall end
         # @coreshow new_ir
         return new_ir
     end
+end
+
+
+function recordnestedcall(parent_recorder::GraphRecorder, f_repr::TapeExpr,
+                          args_repr::ArgumentTuple{TapeValue}, info::NodeInfo)
+    f, args = value(f_repr), value.(args_repr)
+    call = TapeCall(f_repr, args_repr)
+    node = NestedCallNode(call, Vector{RecursiveNode}(), parent_recorder.original_ir, info)
+    result = _recordnestedcall!(GraphRecorder(parent_recorder.context, node), f, args...)
+    call.value[] = result
+    return node
 end
 
 
@@ -60,7 +72,7 @@ track(f, args...) = track(DEFAULT_CTX, f, args...)
 function track(ctx::AbstractTrackingContext, f, args...)
     f_repr, args_repr = TapeConstant(f), TapeConstant.(args)
     recorder = GraphRecorder(ctx)
-    return trackedcall(recorder, f, f_repr, args, args_repr, NO_INDEX)
+    return trackedcall(recorder, f_repr, args_repr, NO_INDEX)
 end
 
 
@@ -76,7 +88,7 @@ function trackedjump(recorder::GraphRecorder, block::Int, args_repr::ArgumentTup
     return JumpNode(block, args_repr, cond_repr, info)
 end
 
-function trackedspecialcall(recorder::GraphRecorder, form_repr::TapeExpr, location::IRIndex)
+function trackedspecial(recorder::GraphRecorder, form_repr::TapeExpr, location::IRIndex)
     info = NodeInfo(location, recorder.rootnode)
     return SpecialCallNode(form_repr, info)
 end
@@ -87,39 +99,33 @@ function trackedconstant(recorder::GraphRecorder, const_repr::TapeExpr, location
 end
 
 function trackedargument(recorder::GraphRecorder, arg_repr::TapeExpr,
-                       number::Int, location::IRIndex)
+                         number::Int, location::IRIndex)
     info = NodeInfo(location, recorder.rootnode)
     return ArgumentNode(arg_repr, number, info)
 end
 
 function trackedprimitive(recorder::GraphRecorder, f_repr::TapeExpr,
-                        args_repr::ArgumentTuple{TapeExpr}, location::IRIndex)
+                          args_repr::ArgumentTuple{TapeExpr}, location::IRIndex)
     info = NodeInfo(location, recorder.rootnode)
     f, args = value(f_repr), value.(args_repr)
     call = TapeCall(f(args...), f_repr, args_repr)
     return PrimitiveCallNode(call, info)
 end
 
-function trackednested(recorder::GraphRecorder, f, f_repr::TapeExpr,
-                     args, args_repr::ArgumentTuple{TapeValue}, location::IRIndex)
-    # f, args = value(f_repr), value.(args_repr)
-    call = TapeCall(f_repr, args_repr)
+function trackednested(recorder::GraphRecorder, f_repr::TapeExpr,
+                       args_repr::ArgumentTuple{TapeValue}, location::IRIndex)
     info = NodeInfo(location, recorder.rootnode)
-    rootnode = NestedCallNode(call, Vector{RecursiveNode}(), recorder.original_ir, info)
-    
-    result, nestedrecorder = _recordnestedcall(GraphRecorder(recorder.context, rootnode), f, args...)
-    nestedrecorder.rootnode.call.value[] = result
-    return nestedrecorder.rootnode
+    return recordnestedcall(recorder, f_repr, args_repr, info)
 end
 
-function trackedcall(recorder::GraphRecorder, f, f_repr::TapeExpr,
-                   args, args_repr::ArgumentTuple{TapeValue}, location::IRIndex)
-    # f, args = value(f_repr), value.(args_repr)
+function trackedcall(recorder::GraphRecorder, f_repr::TapeExpr,
+                     args_repr::ArgumentTuple{TapeValue}, location::IRIndex)
+    f, args = value(f_repr), value.(args_repr)
     
     if isbuiltin(f) || !canrecur(recorder.context, f, args...) 
         trackedprimitive(recorder, f_repr, args_repr, location)
     else
-        trackednested(recorder, f, f_repr, args, args_repr, location)
+        trackednested(recorder, f_repr, args_repr, location)
     end
 end
 

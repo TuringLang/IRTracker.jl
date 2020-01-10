@@ -56,7 +56,7 @@ record_variable_usage!(recorder::GraphRecorder, ::ControlFlowNode, ::Int) = reco
 # """Push `node` onto `recorder` and return its value."""
 record!(recorder::GraphRecorder, node::AbstractNode) = (push!(recorder, node); value(node))
 
-setir!(recorder::GraphRecorder, ir::IRTools.IR) = (recorder.original_ir[] = ir)
+saveir!(recorder::GraphRecorder, ir::IRTools.IR) = (recorder.original_ir[] = ir)
 
 
 @doc """

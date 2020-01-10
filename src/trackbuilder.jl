@@ -136,11 +136,9 @@ end
 
 function callrecord(builder::TrackBuilder, location, call_expr)
     f_expr, arguments_expr = call_expr.args[1], call_expr.args[2:end]
-    f = substitute_variable(builder, f_expr)
-    arguments = xcall(:tuple, map(substitute_variable(builder), arguments_expr)...)
     f_repr = tapevalue(builder, f_expr)
     arguments_repr = tapevalues(builder, arguments_expr)
-    return DCGCall.trackedcall(builder.recorder, f, f_repr, arguments, arguments_repr, location)
+    return DCGCall.trackedcall(builder.recorder, f_repr, arguments_repr, location)
 end
 
 function specialrecord(builder::TrackBuilder, location, special_expr)
@@ -149,7 +147,7 @@ function specialrecord(builder::TrackBuilder, location, special_expr)
     form = Expr(head, args...)
     args_repr = tapevalues(builder, special_expr.args)
     form_repr = DCGCall.TapeSpecialForm(form, QuoteNode(head), args_repr)
-    return DCGCall.trackedspecialcall(builder.recorder, form_repr, location)
+    return DCGCall.trackedspecial(builder.recorder, form_repr, location)
 end
 
 function constantrecord(builder::TrackBuilder, location, constant_expr)
@@ -178,7 +176,7 @@ function pushrecord!(builder::TrackBuilder, block::Block, record;
 end
 
 
-function track_branches!(builder::TrackBuilder, new_block::Block, branches)
+function trackbranches!(builder::TrackBuilder, new_block::Block, branches)
     # called only from within a non-primitive call
     for (i, branch) in enumerate(branches)
         location = inlined(BranchIndex(new_block.id, i))
@@ -201,7 +199,7 @@ function track_branches!(builder::TrackBuilder, new_block::Block, branches)
 end
 
 
-function track_statement!(builder::TrackBuilder, new_block::Block,
+function trackstatement!(builder::TrackBuilder, new_block::Block,
                           variable::Variable, statement::Statement)
     location = inlined(VarIndex(new_block.id, variable.id))
     expr = statement.expr
@@ -223,7 +221,7 @@ function track_statement!(builder::TrackBuilder, new_block::Block,
 end
 
 
-function track_arguments!(builder::TrackBuilder, new_block::Block, old_block::Block; isfirst = false)
+function trackarguments!(builder::TrackBuilder, new_block::Block, old_block::Block; isfirst = false)
     # copy over arguments from old block
     for argument in IRTools.arguments(old_block)
         # without `insert = false`, `nothing` gets added to branches pointing here
@@ -234,7 +232,7 @@ function track_arguments!(builder::TrackBuilder, new_block::Block, old_block::Bl
     # this is the first block, here we set up the recorder argument
     if isfirst
         builder.recorder = argument!(new_block, at = 1, insert = false)
-        push!(new_block, DCGCall.setir!(builder.recorder, builder.original_ir))
+        push!(new_block, DCGCall.saveir!(builder.recorder, builder.original_ir))
     end
     
     # record jumps to here, if there are any, by adding a new argument and recording it
@@ -255,17 +253,17 @@ function track_arguments!(builder::TrackBuilder, new_block::Block, old_block::Bl
 end
 
 
-function track_block!(builder::TrackBuilder, new_block::Block, old_block::Block; isfirst = false)
+function trackblock!(builder::TrackBuilder, new_block::Block, old_block::Block; isfirst = false)
     @assert isfirst || isdefined(builder, :recorder)
 
-    track_arguments!(builder, new_block, old_block, isfirst = isfirst)
+    trackarguments!(builder, new_block, old_block, isfirst = isfirst)
 
     for (v, stmt) in old_block
-        track_statement!(builder, new_block, v, stmt)
+        trackstatement!(builder, new_block, v, stmt)
     end
 
     # set up branch tracking
-    track_branches!(builder, new_block, branches(old_block))
+    trackbranches!(builder, new_block, branches(old_block))
 
     return new_block
 end
@@ -282,17 +280,18 @@ function insert_return_block!(builder::TrackBuilder)
     @assert return_block.id == builder.return_block
     
     return_value = argument!(return_block, insert = false)
-    pushrecord!(builder, return_block, argument!(return_block, insert = false))
-    return!(return_block, xcall(:tuple, return_value, builder.recorder))
+    branch_node = argument!(return_block, insert = false)
+    pushrecord!(builder, return_block, branch_node)
+    return!(return_block, return_value)
     return return_block
 end
 
 
 """Create new IR with tracking code from original IR in the builder, and return it."""
-function build_tracks!(builder::TrackBuilder)
+function buildtracks!(builder::TrackBuilder)
     for (i, old_block) in enumerate(blocks(builder.original_ir))
         new_block = block!(builder, i)
-        track_block!(builder, new_block, old_block, isfirst = i == 1)
+        trackblock!(builder, new_block, old_block, isfirst = i == 1)
     end
     
     # now we set up a block at the last position, to which all return statements redirect.
