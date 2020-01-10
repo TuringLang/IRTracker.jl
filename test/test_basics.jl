@@ -10,11 +10,11 @@
         @test call isa NestedCallNode
         @test value(call) ≅ 43
         
-        println("Trace of `f(42)` for visual inspection:")
-        printlevels(call, 3)
-        println("\n")
-        println(@code_ir f(42))
-        println("\n")
+        # println("Trace of `f(42)` for visual inspection:")
+        # printlevels(call, 3)
+        # println("\n")
+        # println(@code_ir f(42))
+        # println("\n")
     end
     
     geom(n, β) = rand() < β ? n : geom(n + 1, β)
@@ -22,11 +22,11 @@
         @test call isa NestedCallNode
         @test value(call) isa Int
         
-        println("Trace of `geom(3, 0.6)` for visual inspection:")
-        printlevels(call, 3)
-        println("\n")
-        println(@code_ir geom(3, 0.6))
-        println("\n")
+        # println("Trace of `geom(3, 0.6)` for visual inspection:")
+        # printlevels(call, 3)
+        # println("\n")
+        # println(@code_ir geom(3, 0.6))
+        # println("\n")
     end
 
     weird(n) = rand() < 1/(n + 1) ? n : weird(n + 1)
@@ -93,7 +93,7 @@
     
     function test7()
         p = rand(Beta(1, 1))
-        conj = rand(Bernoulli(p))
+        conj = rand(Bernoulli(p)) == 1
         if conj
             m = rand(Normal(0, 1))
         else
@@ -108,6 +108,7 @@
         @test value(call) isa Float64
     end
 
+    
     # direct test of  https://github.com/MikeInnes/IRTools.jl/issues/30
     @test_skip track(expm1, 1.0) isa NestedCallNode
 end
