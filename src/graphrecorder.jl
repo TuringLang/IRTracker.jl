@@ -2,7 +2,7 @@ using IRTools
 import Base: push!
 
 
-const VisitedVars = Dict{IRTools.Variable, TapeReference}
+const VariableUsages = Dict{IRTools.Variable, TapeReference}
 
 
 """Helper type to keep the data used for recording an extended Wengert list at runtime."""
@@ -20,13 +20,13 @@ struct GraphRecorder{Ctx<:AbstractTrackingContext}
     The mapping from original SSA variables to `TapeReference`es, used for substituting them
     in the recorded expressions.
     """
-    visited_vars::VisitedVars
+    variable_usages::VariableUsages
 end
 
 GraphRecorder(ctx::AbstractTrackingContext) = GraphRecorder(
-    ctx, nothing, NullableRef{IRTools.IR}(), VisitedVars())
+    ctx, nothing, NullableRef{IRTools.IR}(), VariableUsages())
 GraphRecorder(ctx::AbstractTrackingContext, root::RecursiveNode) = GraphRecorder(
-    ctx, root, NullableRef{IRTools.IR}(), VisitedVars())
+    ctx, root, NullableRef{IRTools.IR}(), VariableUsages())
 
 
 """
@@ -38,12 +38,19 @@ function push!(recorder::GraphRecorder, node::AbstractNode)
     node.info.position = current_position
     push!(recorder.rootnode.children, node)
     
-    # remember mapping this nodes variable to the respective tape reference
-    ref = TapeReference(recorder.rootnode, current_position)
-    push!(recorder.visited_vars, IRTools.var(location(node).line) => ref)
-    
+    # remember mapping this nodes variable to be mentioned last at the current position
+    record_variable_usage!(recorder, node, current_position)
     return recorder
 end
+
+function record_variable_usage!(recorder::GraphRecorder, node::DataFlowNode, current_position::Int)
+    current_reference = TapeReference(recorder.rootnode, current_position)
+    current_var = IRTools.var(location(node).line)
+    recorder.variable_usages[current_var] = current_reference
+    return recorder
+end
+
+record_variable_usage!(recorder::GraphRecorder, ::ControlFlowNode, ::Int) = recorder
 
 
 # """Push `node` onto `recorder` and return its value."""
@@ -53,11 +60,11 @@ setir!(recorder::GraphRecorder, ir::IRTools.IR) = (recorder.original_ir[] = ir)
 
 
 @doc """
-    tapeify(recorder, var)
+    trackedvariable(recorder, var)
 
 Convert SSA reference in `var` to the `TapeReference` where `var` has been used last.
 """
-tapeify(recorder::GraphRecorder, var::IRTools.Variable) = recorder.visited_vars[var]
+trackedvariable(recorder::GraphRecorder, var::IRTools.Variable) = recorder.variable_usages[var]
 
 
 

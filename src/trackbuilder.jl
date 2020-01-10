@@ -86,7 +86,7 @@ SSA statement into a `TapeValue` call, or an inlined `TapeValue`, if possible.
 """
 
 function tapevalue(builder::TrackBuilder, value::IRTools.Variable)
-    return DCGCall.tapeify(builder.recorder, inlined(value))
+    return DCGCall.trackedvariable(builder.recorder, inlined(value))
 end
 
 function tapevalue(builder::TrackBuilder, value::Any)
@@ -124,14 +124,14 @@ nodeinfo(;location = inlined(NO_INDEX)) = DCGCall.NodeInfo(location)
 
 function returnrecord(builder::TrackBuilder, location, branch)
     argument_repr = tapevalue(builder, branch.args[1])
-    return DCGCall.trackbranch(builder.recorder, argument_repr, location)
+    return DCGCall.trackedbranch(builder.recorder, argument_repr, location)
 end
 
 function jumprecord(builder::TrackBuilder, location, branch)
     condition_repr = tapevalue(builder, branch.condition)
     arguments_repr = tapevalues(builder, branch.args)
-    return DCGCall.trackjump(builder.recorder, branch.block, arguments_repr,
-                             condition_repr, location)
+    return DCGCall.trackedjump(builder.recorder, branch.block, arguments_repr,
+                               condition_repr, location)
 end
 
 function callrecord(builder::TrackBuilder, location, call_expr)
@@ -140,7 +140,7 @@ function callrecord(builder::TrackBuilder, location, call_expr)
     arguments = xcall(:tuple, map(substitute_variable(builder), arguments_expr)...)
     f_repr = tapevalue(builder, f_expr)
     arguments_repr = tapevalues(builder, arguments_expr)
-    return DCGCall.trackcall(builder.recorder, f, f_repr, arguments, arguments_repr, location)
+    return DCGCall.trackedcall(builder.recorder, f, f_repr, arguments, arguments_repr, location)
 end
 
 function specialrecord(builder::TrackBuilder, location, special_expr)
@@ -149,17 +149,17 @@ function specialrecord(builder::TrackBuilder, location, special_expr)
     form = Expr(head, args...)
     args_repr = tapevalues(builder, special_expr.args)
     form_repr = DCGCall.TapeSpecialForm(form, QuoteNode(head), args_repr)
-    return DCGCall.trackspecialcall(builder.recorder, form_repr, location)
+    return DCGCall.trackedspecialcall(builder.recorder, form_repr, location)
 end
 
 function constantrecord(builder::TrackBuilder, location, constant_expr)
     constant_repr = tapevalue(builder, constant_expr)
-    return DCGCall.trackconstant(builder.recorder, constant_repr, location)
+    return DCGCall.trackedconstant(builder.recorder, constant_repr, location)
 end
 
 function argumentrecord(builder::TrackBuilder, location, number, argument_expr)
     argument_repr = DCGCall.TapeConstant(substitute_variable(builder, argument_expr))
-    return DCGCall.trackargument(builder.recorder, argument_repr, number, location)
+    return DCGCall.trackedargument(builder.recorder, argument_repr, number, location)
 end
 
 

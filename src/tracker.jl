@@ -60,39 +60,39 @@ track(f, args...) = track(DEFAULT_CTX, f, args...)
 function track(ctx::AbstractTrackingContext, f, args...)
     f_repr, args_repr = TapeConstant(f), TapeConstant.(args)
     recorder = GraphRecorder(ctx)
-    return trackcall(recorder, f, f_repr, args, args_repr, NO_INDEX)
+    return trackedcall(recorder, f, f_repr, args, args_repr, NO_INDEX)
 end
 
 
 
-function trackbranch(recorder::GraphRecorder, arg_repr::TapeExpr, location::IRIndex)
+function trackedbranch(recorder::GraphRecorder, arg_repr::TapeExpr, location::IRIndex)
     info = NodeInfo(location, recorder.rootnode)
     return ReturnNode(arg_repr, info)
 end
 
-function trackjump(recorder::GraphRecorder, block::Int, args_repr::ArgumentTuple{TapeValue},
+function trackedjump(recorder::GraphRecorder, block::Int, args_repr::ArgumentTuple{TapeValue},
                    cond_repr::TapeExpr, location::IRIndex)
     info = NodeInfo(location, recorder.rootnode)
     return JumpNode(block, args_repr, cond_repr, info)
 end
 
-function trackspecialcall(recorder::GraphRecorder, form_repr::TapeExpr, location::IRIndex)
+function trackedspecialcall(recorder::GraphRecorder, form_repr::TapeExpr, location::IRIndex)
     info = NodeInfo(location, recorder.rootnode)
     return SpecialCallNode(form_repr, info)
 end
 
-function trackconstant(recorder::GraphRecorder, const_repr::TapeExpr, location::IRIndex)
+function trackedconstant(recorder::GraphRecorder, const_repr::TapeExpr, location::IRIndex)
     info = NodeInfo(location, recorder.rootnode)
     return ConstantNode(const_repr, info)
 end
 
-function trackargument(recorder::GraphRecorder, arg_repr::TapeExpr,
+function trackedargument(recorder::GraphRecorder, arg_repr::TapeExpr,
                        number::Int, location::IRIndex)
     info = NodeInfo(location, recorder.rootnode)
     return ArgumentNode(arg_repr, number, info)
 end
 
-function trackprimitive(recorder::GraphRecorder, f_repr::TapeExpr,
+function trackedprimitive(recorder::GraphRecorder, f_repr::TapeExpr,
                         args_repr::ArgumentTuple{TapeExpr}, location::IRIndex)
     info = NodeInfo(location, recorder.rootnode)
     f, args = value(f_repr), value.(args_repr)
@@ -100,7 +100,7 @@ function trackprimitive(recorder::GraphRecorder, f_repr::TapeExpr,
     return PrimitiveCallNode(call, info)
 end
 
-function tracknested(recorder::GraphRecorder, f, f_repr::TapeExpr,
+function trackednested(recorder::GraphRecorder, f, f_repr::TapeExpr,
                      args, args_repr::ArgumentTuple{TapeValue}, location::IRIndex)
     # f, args = value(f_repr), value.(args_repr)
     call = TapeCall(f_repr, args_repr)
@@ -112,14 +112,14 @@ function tracknested(recorder::GraphRecorder, f, f_repr::TapeExpr,
     return nestedrecorder.rootnode
 end
 
-function trackcall(recorder::GraphRecorder, f, f_repr::TapeExpr,
+function trackedcall(recorder::GraphRecorder, f, f_repr::TapeExpr,
                    args, args_repr::ArgumentTuple{TapeValue}, location::IRIndex)
     # f, args = value(f_repr), value.(args_repr)
     
     if isbuiltin(f) || !canrecur(recorder.context, f, args...) 
-        trackprimitive(recorder, f_repr, args_repr, location)
+        trackedprimitive(recorder, f_repr, args_repr, location)
     else
-        tracknested(recorder, f, f_repr, args, args_repr, location)
+        trackednested(recorder, f, f_repr, args, args_repr, location)
     end
 end
 
