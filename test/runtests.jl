@@ -13,7 +13,7 @@ using ChainRules
 
 @testset "DynamicComputationGraphs" begin
     ########### Basic sanity checks #################
-    include("./test_basics.jl")
+    # include("./test_basics.jl")
     
     
     ########### Graph API #################
@@ -21,7 +21,7 @@ using ChainRules
 
 
     ########## Contexts #####################
-    # include("./test_contexts.jl")
+    include("./test_contexts.jl")
 end
 
 

@@ -17,7 +17,8 @@ DepthLimitContext(maxlevel) = DepthLimitContext(1, maxlevel)
 
 canrecur(ctx::DepthLimitContext, f, args...) = ctx.level < ctx.maxlevel
 
-function tracknested(ctx::DepthLimitContext, node::NestedCallNode)
+function trackednested(ctx::DepthLimitContext, f_repr::TapeExpr,
+                       args_repr::ArgumentTuple{TapeValue}, info::NodeInfo)
     ctx.level += 1
-    return node
+    return recordnestedcall(ctx, f_repr, args_repr, info)
 end
