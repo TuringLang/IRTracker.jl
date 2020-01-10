@@ -1,17 +1,18 @@
+import IRTools
 import Base: parent
 
 """Extra (optional) data and metadata associated with every node (mostly locations & parent node)."""
 mutable struct NodeInfo
+    original_ir::Union{IRTools.IR, Nothing}
     location::IRIndex
-    # slot::Core.Slot
     parent_ref::NullableRef{RecursiveNode}  # because we can only set this from the parent!
     position::Union{Int, Nothing}
     metadata::Dict{Symbol, Any}
 end
 
-NodeInfo() = NodeInfo(NO_INDEX, NullableRef{RecursiveNode}(), nothing, Dict{Symbol, Any}())
-NodeInfo(location) = NodeInfo(location, NullableRef{RecursiveNode}(), nothing, Dict{Symbol, Any}())
-NodeInfo(location, parent) = NodeInfo(location, parent, nothing, Dict{Symbol, Any}())
+# NodeInfo(ir, ) = NodeInfo(ir, NO_INDEX, NullableRef{RecursiveNode}(), nothing, Dict{Symbol, Any}())
+# NodeInfo(ir, location) = NodeInfo(ir, location, NullableRef{RecursiveNode}(), nothing, Dict{Symbol, Any}())
+NodeInfo(ir, location, parent) = NodeInfo(ir, location, parent, nothing, Dict{Symbol, Any}())
 
 location(info::NodeInfo) = info.location
 parent(info::NodeInfo) = info.parent_ref[]

@@ -6,7 +6,7 @@ const VariableUsages = Dict{IRTools.Variable, TapeReference}
 
 
 """Helper type to keep the data used for recording an extended Wengert list at runtime."""
-struct GraphRecorder{Ctx<:AbstractTrackingContext}
+mutable struct GraphRecorder{Ctx<:AbstractTrackingContext}
     """`AbstractTrackingContext` used during tracking."""
     context::Ctx
 
@@ -14,7 +14,7 @@ struct GraphRecorder{Ctx<:AbstractTrackingContext}
     rootnode::Union{RecursiveNode, Nothing}
     
     """IR on which the recorder is run."""
-    original_ir::NullableRef{IRTools.IR}
+    original_ir::Union{IRTools.IR, Nothing}
     
     """
     The mapping from original SSA variables to `TapeReference`es, used for substituting them
@@ -24,9 +24,9 @@ struct GraphRecorder{Ctx<:AbstractTrackingContext}
 end
 
 GraphRecorder(ctx::AbstractTrackingContext) = GraphRecorder(
-    ctx, nothing, NullableRef{IRTools.IR}(), VariableUsages())
+    ctx, nothing, nothing, VariableUsages())
 GraphRecorder(ctx::AbstractTrackingContext, root::RecursiveNode) = GraphRecorder(
-    ctx, root, NullableRef{IRTools.IR}(), VariableUsages())
+    ctx, root, nothing, VariableUsages())
 
 
 """
@@ -56,7 +56,7 @@ record_variable_usage!(recorder::GraphRecorder, ::ControlFlowNode, ::Int) = reco
 # """Push `node` onto `recorder` and return its value."""
 record!(recorder::GraphRecorder, node::AbstractNode) = (push!(recorder, node); value(node))
 
-saveir!(recorder::GraphRecorder, ir::IRTools.IR) = (recorder.original_ir[] = ir)
+saveir!(recorder::GraphRecorder, ir::IRTools.IR) = (recorder.original_ir = ir)
 
 
 @doc """

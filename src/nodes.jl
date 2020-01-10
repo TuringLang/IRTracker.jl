@@ -20,7 +20,6 @@ end
 struct NestedCallNode <: RecursiveNode
     call::TapeCall
     children::Vector{AbstractNode}
-    original_ir::NullableRef{IRTools.IR}
     info::NodeInfo
 end
 

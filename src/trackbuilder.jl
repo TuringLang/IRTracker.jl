@@ -115,9 +115,6 @@ function tapevalues(builder::TrackBuilder, values)
 end
 
 
-nodeinfo(;location = inlined(NO_INDEX)) = DCGCall.NodeInfo(location)
-
-
 # The XYZrecord functions all record a complex `Expr` creating a node for tracking (at runtime)
 # the respective kind of SSA statement.  This `Expr` can then be pushed to the IR, followed by an
 # `Expr` calling `pushrecord!` on it, to actually track it on the `GraphRecorder`.
