@@ -105,7 +105,7 @@ This, together with the original IR, while being a bit cryptic, contains the fol
 
 - Every executed statement, linked to the original.  Corresponding SSA values in the original code
   are annotated in [brackets], by their block and variable id (`§s:%i`).  Arguments, having no
-  associated expressions, are prefixed with `Argument`.
+  associated expressions, are prefixed with `Arg:`.
 - All intermediate values on the data path. They are, as all nodes, numbered as `@i`. These are
   referred to in expressions recorded, to that a backward pass is trivial.
 - The branching instructions actually taken, written in literal form `goto label`.  Blocks are
@@ -131,85 +131,69 @@ The data structure used for this is an abstract `AbstractNode` type, with subtyp
 ## Implementation
 
 Constructing this kind of trace should be possible by extending the original IR by inserting a
-constant number of statements before or after each original statement (and some at the beginning of
+constant number of statements before and after each original statement (and some at the beginning of
 each block), somehow like this:
 
 ```
 julia> @code_tracked geom(1, 0.5)
 1: (%4, %1, %2, %3)
-  %5 = GraphRecorder(1: (%1, %2, %3)
-  %4 = rand()
-  %5 = %4 < %3
-  br 2 unless %5
-  return %2
-2:
-  %6 = %2 + 1
-  %7 = geom(%6, %3)
-  return %7, %4)
-  %6 = getfield(%5, :incomplete_node)
-  %7 = TapeConstant(%1)
-  %8 = NodeInfo($(QuoteNode(§1:%1)), %6)
-  %9 = ArgumentNode(%7, $(QuoteNode(1)), %8)
-  %10 = record!(%5, %9)
-  %11 = TapeConstant(%2)
-  %12 = NodeInfo($(QuoteNode(§1:%2)), %6)
-  %13 = ArgumentNode(%11, $(QuoteNode(2)), %12)
-  %14 = record!(%5, %13)
-  %15 = TapeConstant(%3)
-  %16 = NodeInfo($(QuoteNode(§1:%3)), %6)
-  %17 = ArgumentNode(%15, $(QuoteNode(3)), %16)
-  %18 = record!(%5, %17)
-  %19 = TapeConstant(rand)
-  %20 = tuple()
-  %21 = tuple()
-  %22 = NodeInfo($(QuoteNode(§1:%4)), %6)
-  %23 = trackcall(%4, rand, %19, %20, %21, %22)
-  %24 = record!(%5, %23)
-  %25 = TapeConstant(:<)
-  %26 = tuple(%24, %3)
-  %27 = tapeify(%5, $(QuoteNode(%4)))
-  %28 = tapeify(%5, $(QuoteNode(%3)))
-  %29 = tuple(%27, %28)
-  %30 = NodeInfo($(QuoteNode(§1:%5)), %6)
-  %31 = trackcall(%4, <, %25, %26, %29, %30)
-  %32 = record!(%5, %31)
-  %33 = tuple()
-  %34 = tapeify(%5, $(QuoteNode(%5)))
-  %35 = NodeInfo($(QuoteNode(§1:&1)), %6)
-  %36 = JumpNode(2, %33, %34, %35)
-  %37 = tapeify(%5, $(QuoteNode(%2)))
-  %38 = NodeInfo($(QuoteNode(§1:&2)), %6)
-  %39 = ReturnNode(%37, %38)
-  br 2 (%36) unless %32
-  br 3 (%2, %39)
-2: (%40)
-  %41 = record!(%5, %40)
-  %42 = TapeConstant(+)
-  %43 = tuple(%2, 1)
-  %44 = tapeify(%5, $(QuoteNode(%2)))
-  %45 = tuple(%44, $(QuoteNode(⟨1⟩)))
-  %46 = NodeInfo($(QuoteNode(§2:%6)), %6)
-  %47 = trackcall(%4, +, %42, %43, %45, %46)
-  %48 = record!(%5, %47)
-  %49 = TapeConstant(geom)
-  %50 = tuple(%48, %3)
-  %51 = tapeify(%5, $(QuoteNode(%6)))
-  %52 = tapeify(%5, $(QuoteNode(%3)))
-  %53 = tuple(%51, %52)
-  %54 = NodeInfo($(QuoteNode(§2:%7)), %6)
-  %55 = trackcall(%4, geom, %49, %50, %53, %54)
-  %56 = record!(%5, %55)
-  %57 = tapeify(%5, $(QuoteNode(%7)))
-  %58 = NodeInfo($(QuoteNode(§2:&1)), %6)
-  %59 = ReturnNode(%57, %58)
-  br 3 (%56, %59)
-3: (%60, %61)
-  %62 = record!(%5, %61)
-  %63 = tuple(%60, %5)
-  return %63
+  %5 = saveir!(%4, 1: (%1, %2, %3)
+                     %4 = rand()
+                     %5 = %4 < %3
+                     br 2 unless %5
+                     return %2
+                   2:
+                     %6 = %2 + 1
+                     %7 = geom(%6, %3)
+                     return %7)
+  %6 = TapeConstant(%1)
+  %7 = trackedargument(%4, %6, $(QuoteNode(1)), $(QuoteNode(§1:%1)))
+  %8 = record!(%4, %7)
+  %9 = TapeConstant(%2)
+  %10 = trackedargument(%4, %9, $(QuoteNode(2)), $(QuoteNode(§1:%2)))
+  %11 = record!(%4, %10)
+  %12 = TapeConstant(%3)
+  %13 = trackedargument(%4, %12, $(QuoteNode(3)), $(QuoteNode(§1:%3)))
+  %14 = record!(%4, %13)
+  %15 = TapeConstant(rand)
+  %16 = tuple()
+  %17 = trackedcall(%4, %15, %16, $(QuoteNode(§1:%4)))
+  %18 = record!(%4, %17)
+  %19 = TapeConstant(:<)
+  %20 = trackedvariable(%4, $(QuoteNode(%4)))
+  %21 = trackedvariable(%4, $(QuoteNode(%3)))
+  %22 = tuple(%20, %21)
+  %23 = trackedcall(%4, %19, %22, $(QuoteNode(§1:%5)))
+  %24 = record!(%4, %23)
+  %25 = tuple()
+  %26 = trackedvariable(%4, $(QuoteNode(%5)))
+  %27 = trackedjump(%4, 2, %25, %26, $(QuoteNode(§1:&1)))
+  %28 = trackedvariable(%4, $(QuoteNode(%2)))
+  %29 = trackedreturn(%4, %28, $(QuoteNode(§1:&2)))
+  br 2 (%27) unless %24
+  br 3 (%2, %29)
+2: (%30)
+  %31 = record!(%4, %30)
+  %32 = TapeConstant(:+)
+  %33 = trackedvariable(%4, $(QuoteNode(%2)))
+  %34 = tuple(%33, $(QuoteNode(⟨1⟩)))
+  %35 = trackedcall(%4, %32, %34, $(QuoteNode(§2:%6)))
+  %36 = record!(%4, %35)
+  %37 = TapeConstant(geom)
+  %38 = trackedvariable(%4, $(QuoteNode(%6)))
+  %39 = trackedvariable(%4, $(QuoteNode(%3)))
+  %40 = tuple(%38, %39)
+  %41 = trackedcall(%4, %37, %40, $(QuoteNode(§2:%7)))
+  %42 = record!(%4, %41)
+  %43 = trackedvariable(%4, $(QuoteNode(%7)))
+  %44 = trackedreturn(%4, %43, $(QuoteNode(§2:&1)))
+  br 3 (%42, %44)
+3: (%45, %46)
+  %47 = record!(%4, %46)
+  return %45
 ```
 
-The function `trackcall` then recursively does the same kind of thing to the nested calls.
+The extra argument, `%4`, is a `GraphRecorder` object where all statements are recorded onto using `record!`.  Each kind of statement is reified by a call to `tracked<whatever>`, and finally replaced by `record!`, which returns its original value. The function `trackcall` then recursively does the same kind of thing to the nested calls.
 
 This can be achieved by using an `IRTools`
 [dynamo](https://mikeinnes.github.io/IRTools.jl/latest/dynamo/), which in essence is just a fancier
@@ -221,14 +205,10 @@ There’s some things to note:
 - Branches are recorded by first creating a node for each branch in a block, then passing this as an
   extra argument to the actual branch.  The actual recording is done in the target block.  For this
   reason, all return branches are replaced by jumps to an extra “return block” at the end. 
-- `trackcall`’s many arguments are just all the information needed to construct a full call node out
-  of the list of recursively called nodes: the called function as value and in reified form, the
-  arguments as values and in reified form, and the `NodeInfo` containing the original location and
-  the parent node.
 - There’s some additional runtime logic in the `trackcall` function, which determines how to
   differentiate between “primitive” and “non-primitive” calls (serving as the stopping case for the
   recursive tracking).
-- The purpose of `tapeify` is to make tape references (`@i` in the output) that actually point to
+- The purpose of `trackedvariable` is to make sure that tape references (`@i` in the output) actually point to
   the last usage of a SSA variable (since that can happen multiple times in a loop).
 - There are some splice-in `QuoteNode`s.  These result from inlined literal values known at the time
   of the transformation (either because they are statically determined, such as IR
@@ -237,10 +217,11 @@ There’s some things to note:
 
 ## Contexts
 
-You may have noticed that there is an additional, fourth argument occuring in the transformed IR
-shown above.  This is the additional context that gets passed down the transformed functions, and is
+You may have noticed that all `tracked<whatever>` functions above take the `GraphRecorder` as their first 
+argument.  Through this, a context object gets passed down the transformed functions, and is
 used for dispatch in in the internal functions (mostly `trackcall`).  These context arguments work
-similar to the contexts in Cassette.jl, and let you overload the behaviour of how tracking works.
+similar to the contexts in Cassette.jl, and let you overload the behaviour of how tracking works by providing
+custom implementations of a method of the tracker functions.
 
 The main parts of customizable behaviour are 1) to change what is considered a primitive (e.g., a
 “primitively” differentiable function is primitive in an AD application – no need to recurse
@@ -265,13 +246,14 @@ them, you can use `printlevels`:
 
 ```
 julia> f(x) = sin(x) + x
+f (generic function with 1 method)
 
 julia> node = track(f, 1.0);
 
 julia> printlevels(node, 2)
 ⟨f⟩(⟨1.0⟩) = 1.8414709848078965
-  @1: [Argument §1:%1] = f
-  @2: [Argument §1:%2] = 1.0
+  @1: [Arg:§1:%1] f	
+  @2: [Arg:§1:%2] 1.0	
   @3: [§1:%3] ⟨sin⟩(@2) = 0.8414709848078965
   @4: [§1:%4] ⟨+⟩(@3, @2) = 1.8414709848078965
   @5: [§1:&1] return @4 = 1.8414709848078965
@@ -282,11 +264,11 @@ Nodes in general may have `children` and a `parent`:
 ```
 julia> children(node)
 5-element Array{AbstractNode,1}:
- [Argument §1:%1] = f                    
- [Argument §1:%2] = 1.0                  
- [§1:%3] ⟨sin⟩(@2) = 0.8414709848078965  
- [§1:%4] ⟨+⟩(@3, @2) = 1.8414709848078965
- [§1:&1] return @4 = 1.8414709848078965 
+ @1: f	                               
+ @2: 1.0	                             
+ @3: ⟨sin⟩(@2) = 0.8414709848078965	  
+ @4: ⟨+⟩(@3, @2) = 1.8414709848078965	
+ @5: return @4 = 1.841470984807896
  
 julia> parent(node[4]) === node
 true
@@ -296,23 +278,23 @@ As you can see, normal indexing can also be used to access the children of a nes
 also has a `location`, which can be used to as an index into the original IR:
 
 ```
-julia> printlevels(node[4], 1)   # this node is huge…
-[§1:%4] ⟨+⟩(@3, @2) = 1.8414709848078965
+julia> printlevels(node[4], 1)  # this node is huge...
+@4: [§1:%4] ⟨+⟩(@3, @2) = 1.8414709848078965
 
 julia> location(node[4])
 §1:%4
 
-julia> node.original_ir[location(node[4])]
+julia> node[4].info.original_ir[location(node[4])]
 IRTools.Inner.Statement(:(%1 + %3), Any, 1)
 ```
 
-To inspect the dependencies in the code, we can use `ancestors`:
+To inspect the dependencies in the code, we can use `backward`:
 
 ```
-julia> ancestors(node[4])
-2-element Array{DataFlowNode,1}:
- [§1:%3] ⟨sin⟩(@2) = 0.8414709848078965
- [Argument §1:%2] = 1.0 
+julia> backward(node[4])
+2-element Array{AbstractNode,1}:
+ @3: ⟨sin⟩(@2) = 0.8414709848078965	
+ @2: 1.0
 ```
 
 We can also inspect the various contents of each node:
@@ -367,28 +349,30 @@ import DynamicComputationGraphs: canrecur, tracknested
 canrecur(ctx::DepthLimitContext, f, args...) = ctx.level < ctx.maxlevel
 
 # and if we recur into a nested function, we need to update the level in the context:
-function tracknested(ctx::DepthLimitContext, f, f_repr, args, args_repr, info)
+function trackednested(ctx::DepthLimitContext, f_repr::TapeExpr,
+                       args_repr::ArgumentTuple{TapeValue}, info::NodeInfo)
     new_ctx = increase_level(ctx)
-    return recordnested(new_ctx, f, f_repr, args, args_repr, info)
+    return recordnestedcall(new_ctx, f_repr, args_repr, info)
 end
 ```
 
-`recordnested` is the fallback implementation, like `recurse` in Cassette.jl.
+`recordnestedcall` is the fallback implementation, like `recurse` in Cassette.jl, and
+returns a `NestedCallNode` with the recorded children.
 
 Once we have a custom context, we can just pass it as the first argument to `track`:
 
 ```
 julia> call = track(DepthLimitContext(2), geom, 1, 0.5)
-⟨geom⟩(⟨1⟩, ⟨0.5⟩) = 2
-  @1: [Argument §1:%1] = geom
-  @2: [Argument §1:%2] = 1
-  @3: [Argument §1:%3] = 0.5
-  @4: [§1:%4] ⟨rand⟩() = 0.7382990026907705
-  @5: [§1:%5] ⟨<⟩(@4, @3) = false
-  @6: [§1:&1] goto §2 since @5 == false
-  @7: [§2:%6] ⟨+⟩(@2, ⟨1⟩) = 2
-  @8: [§2:%7] ⟨geom⟩(@7, @3) = 2
-  @9: [§2:&1] return @8 = 2
+⟨geom⟩(⟨1⟩, ⟨0.5⟩) = 3
+  @1: [Arg:§1:%1] geom	
+  @2: [Arg:§1:%2] 1	
+  @3: [Arg:§1:%3] 0.5	
+  @4: [§1:%4] ⟨rand⟩() = 0.6323441648826984	
+  @5: [§1:%5] ⟨<⟩(@4, @3) = false	
+  @6: [§1:&1] goto §2 since @5 == false 
+  @7: [§2:%6] ⟨+⟩(@2, ⟨1⟩) = 2	
+  @8: [§2:%7] ⟨geom⟩(@7, @3) = 3	
+  @9: [§2:&1] return @8 = 3
 ```
 
 Note that here, all the nodes at level 2 are `PrimitiveNode`s!
@@ -397,8 +381,9 @@ If no context is provided, the constant `DEFAULT_CTX::DefaultTrackingContext` wi
 tracks everything down to primitive/intrinsic functions (see `isbuiltin`), and records no additional
 metadata.  `DepthLimitContext` is also provided by the library, in case you need it.
 
-At the moment, the overloadable methods are `canrecur`, `trackprimitive`, `tracknested`, and
-`trackcall`.  Their fallbacks are `recordnested`, `recordprimitive`, and `isbuiltin` (you are not
+At the moment, the overloadable methods are `canrecur`, `trackedargument`, `trackedcall`, `trackedconstant`, 
+`trackedjump`, `trackednested`, `trackedprimitive`, `trackedreturn`, and `trackedspecial`.  Provided 
+fallbacks are `recordnestedcall`, as explained, and `isbuiltin` for `canrecur` (you are not
 forced to use these, but otherwise, you’d have to manually construct the node structures to return.)
 
 
