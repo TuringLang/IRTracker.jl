@@ -17,11 +17,11 @@ using ChainRules
     
     
     ########### Graph API #################
-    include("./test_graphapi.jl")
+    # include("./test_graphapi.jl")
 
 
     ########## Contexts #####################
-    # include("./test_contexts.jl")
+    include("./test_contexts.jl")
 end
 
 

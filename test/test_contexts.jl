@@ -1,5 +1,3 @@
-import DynamicComputationGraphs: canrecur, trackednested, trackedprimitive
-
 @testset "contexts" begin
     f(x) = sin(x) + 1
     # julia> printlevels(track(f, 42), 3)
@@ -22,23 +20,7 @@ import DynamicComputationGraphs: canrecur, trackednested, trackedprimitive
     #   @5: [§1:1] return @4 = 0.08347845208436622
 
 
-    # Limit recording to a maximum layer
-    mutable struct DepthLimitContext <: AbstractTrackingContext
-        level::Int
-        maxlevel::Int
-    end
-
-    DepthLimitContext(maxlevel) = DepthLimitContext(1, maxlevel)
-
-    canrecur(ctx::DepthLimitContext, f, args...) = ctx.level < ctx.maxlevel
-
-    function trackednested(ctx::DepthLimitContext, f_repr::TapeExpr,
-                           args_repr::ArgumentTuple{TapeValue}, info::NodeInfo)
-        ctx.level += 1
-        return recordnestedcall(ctx, f_repr, args_repr, info)
-        ctx.level -= 1
-    end
-
+    # Limit recording to a maximum layer -- see implementation in src/trackingcontext.jl
     let ctx = DepthLimitContext(2), call = track(ctx, f, 42)
         @test length(children(call)) == 5
         @test call[3] isa PrimitiveCallNode
@@ -47,7 +29,10 @@ import DynamicComputationGraphs: canrecur, trackednested, trackedprimitive
         metadata(call)[:blub] = nothing
         metadata(call[3])[:value] = "sdfd"
         metadata(call[4])[:∂] = 1.234234
-        println(call)
+    end
+
+    let ctx = DepthLimitContext(2), call = track(ctx, union!, [1], [2])
+        @test all(!(c isa NestedCallNode) for c in children(call))
     end
 
     
