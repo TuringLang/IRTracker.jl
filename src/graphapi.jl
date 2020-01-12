@@ -19,7 +19,7 @@ struct Ancestor <: Reverse end
 struct Descendant <: Forward end
 
 
-query(node::AbstractNode, ::Type{Parent}) = parent(parent)
+query(node::AbstractNode, ::Type{Parent}) = parent(node.info)
 
 query(node::AbstractNode, ::Type{Child}) = Vector{AbstractNode}()
 query(node::NestedCallNode, ::Type{Child}) = node.children
