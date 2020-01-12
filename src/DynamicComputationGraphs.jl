@@ -22,8 +22,8 @@ export TapeCall, TapeConstant, TapeExpr, TapeReference, TapeSpecialForm, TapeVal
 
 # graphapi.jl
 export getmetadata, getmetadata!, metadata, location, setmetadata!, value
-export ancestors, children, parent, descendants, query
 export Ancestor, Child, Descendant, Following, Parent, Preceding
+export ancestors, children, parent, descendants, query
 export backward, dependents, forward, referenced
 
 # trackingcontext.jl
@@ -33,8 +33,9 @@ export AbstractTrackingContext, DefaultTrackingContext, DepthLimitContext
 export printlevels
 
 # tracker.jl
-export track, trackcall, tracknested, trackprimitive
-export canrecur, recordnested, recordprimitive
+export track, recordnestedcall
+export canrecur, trackedargument, trackedcall, trackedconstant, trackedjump, trackednested,
+    trackedprimitive, trackedreturn, trackedspecial
 export @code_tracked
 
 # runtime_functions.jl
