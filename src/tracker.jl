@@ -77,13 +77,13 @@ end
 
 
 
-function trackedbranch(recorder::GraphRecorder, arg_repr::TapeExpr, location::IRIndex)
+function trackedreturn(recorder::GraphRecorder, arg_repr::TapeExpr, location::IRIndex)
     info = NodeInfo(recorder.original_ir, location, recorder.rootnode)
-    node = trackedbranch(recorder.context, ReturnNode(arg_repr, info))
+    node = trackedreturn(recorder.context, ReturnNode(arg_repr, info))
     return node::ReturnNode
 end
 
-trackedbranch(::AbstractTrackingContext, node::ReturnNode) = node
+trackedreturn(::AbstractTrackingContext, node::ReturnNode) = node
 
 
 function trackedjump(recorder::GraphRecorder, block::Int, args_repr::ArgumentTuple{TapeValue},

@@ -121,7 +121,7 @@ end
 
 function returnrecord(builder::TrackBuilder, location, branch)
     argument_repr = tapevalue(builder, branch.args[1])
-    return DCGCall.trackedbranch(builder.recorder, argument_repr, location)
+    return DCGCall.trackedreturn(builder.recorder, argument_repr, location)
 end
 
 function jumprecord(builder::TrackBuilder, location, branch)
