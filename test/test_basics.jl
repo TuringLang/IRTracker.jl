@@ -1,3 +1,8 @@
+# typed equality comparison with `\cong`
+≅(x::T, y::T) where {T} = x == y
+≅(x, y) = false
+
+
 @testset "sanity checks" begin
     let call = track(Core.Intrinsics.add_int, 1, 2)
         @test call isa PrimitiveCallNode
