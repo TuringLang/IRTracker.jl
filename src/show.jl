@@ -2,15 +2,8 @@ import Base: show
 
 
 # INTERNAL STUFF
-printlevels(io::IO, mime::MIME, value, levels::Integer) =
-    show(IOContext(io, :maxlevel => levels), mime, value)
-printlevels(io::IO, value, levels::Integer) =
-    show(IOContext(io, :maxlevel => levels), MIME"text/plain"(), value)
-printlevels(value, levels::Integer) = printlevels(stdout, value, levels)
-
 showvalue(io::IO, value) = show(IOContext(io, :limit => true), value)
 showvalue(io::IO, value::Nothing) = show(io, value)
-# showvalue(io::IO, value) = repr(value, context = IOContext(io, :limit => true, :compact => true))
 
 function joindelimited(io::IO, values, delim)
     L = length(values)
@@ -30,11 +23,11 @@ annotation(node::ArgumentNode) = "Arg"
 
 
 function showpretext(io::IO, node::AbstractNode, postfix...)
-    !isnothing(position(node)) && print("@", position(node), ":", postfix...)
+    !isnothing(position(node)) && print(io, "@", position(node), ":", postfix...)
 end
 
 function showpretext(io::IO, ::MIME"text/plain", node::AbstractNode, postfix...)
-    !isnothing(position(node)) > 0 && print("@", position(node), ": ")
+    !isnothing(position(node)) > 0 && print(io, "@", position(node), ": ")
     
     if !isempty(annotation(node))
         if location(node) !== NO_INDEX
