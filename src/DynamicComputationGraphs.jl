@@ -23,7 +23,7 @@ export TapeCall, TapeConstant, TapeExpr, TapeReference, TapeSpecialForm, TapeVal
 # graphapi.jl
 export getmetadata, getmetadata!, metadata, location, setmetadata!, value
 export Ancestor, Child, Descendant, Following, Parent, Preceding
-export ancestors, children, parent, descendants, query
+export children, parent, query
 export backward, dependents, forward, referenced
 
 # trackingcontext.jl
