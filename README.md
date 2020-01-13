@@ -259,10 +259,10 @@ julia> printlevels(node, 2)
   @5: [§1:&1] return @4 = 1.8414709848078965
 ```
 
-Nodes in general may have `children` and a `parent`:
+Nodes in general may have children and a parent:
 
 ```
-julia> children(node)
+julia> getchildren(node)
 5-element Array{AbstractNode,1}:
  @1: f
  @2: 1.0
@@ -270,7 +270,7 @@ julia> children(node)
  @4: ⟨+⟩(@3, @2) = 1.8414709848078965	
  @5: return @4 = 1.8414709848078965
  
-julia> parent(node[4]) === node
+julia> getparent(node[4]) === node
 true
 ```
 
@@ -323,32 +323,32 @@ Finally, we can also inspect the various contents of each node:
 julia> typeof(node[3])
 NestedCallNode
 
-julia> value(node[3])
+julia> getvalue(node[3])
 0.8414709848078965
 
 julia> node[3].call.f
 ⟨sin⟩
 
-julia> value(node[3].call.f)
+julia> getvalue(node[3].call.f)
 sin (generic function with 12 methods)
 
 julia> node[3].call.arguments
 (@2,)
 
-julia> value.(node[3].call.arguments)
+julia> getvalue.(node[3].call.arguments)
 (1.0,)
 ```
 
-Each node also has a `location`, which can be used to as an index into the original IR:
+Each node also has a location, which can be used to as an index into the original IR:
 
 ```
 julia> printlevels(node[4], 1)  # this node is huge...
 @4: [§1:%4] ⟨+⟩(@3, @2) = 1.8414709848078965
 
-julia> location(node[4])
+julia> getlocation(node[4])
 §1:%4
 
-julia> node[4].info.original_ir[location(node[4])]
+julia> getir(node[4])[getlocation(node[4])]
 IRTools.Inner.Statement(:(%1 + %3), Any, 1)
 ```
 

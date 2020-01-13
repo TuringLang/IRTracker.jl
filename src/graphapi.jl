@@ -1,5 +1,4 @@
 using IRTools
-import Base: parent
 
 
 ####################################################################################################
@@ -19,17 +18,17 @@ struct Ancestor <: Reverse end
 struct Descendant <: Forward end
 
 
-query(node::AbstractNode, ::Type{Parent}) = parent(node.info)
+query(node::AbstractNode, ::Type{Parent}) = getparent(node)
 
 query(node::AbstractNode, ::Type{Child}) = Vector{AbstractNode}()
-query(node::NestedCallNode, ::Type{Child}) = node.children
+query(node::NestedCallNode, ::Type{Child}) = getchildren(node)
 
 function query(node::AbstractNode, ::Type{Following})
     parent = query(node, Parent)
     if isnothing(parent)
         return Vector{AbstractNode}()
     else
-        return @view parent.children[(position(node) + 1):end]
+        return @view parent.children[(getposition(node) + 1):end]
     end
 end
 
@@ -38,7 +37,7 @@ function query(node::AbstractNode, ::Type{Preceding})
     if isnothing(parent)
         return Vector{AbstractNode}()
     else
-        return @view parent.children[1:(position(node) - 1)]
+        return @view parent.children[1:(getposition(node) - 1)]
     end
 end
 
@@ -69,29 +68,65 @@ end
 
 
 ####################################################################################################
-# Accessor functions based on Query API, and specialized queries
+# Accessor functions based on Query API, and specialized queries; node properties and metadata
 
 """
-    children(node) -> Vector{<:AbstractNode}
+    getchildren(node) -> Vector{<:AbstractNode}
 
 Return all sub-nodes of this node (only none-empty if `node` is a `NestedCallNode`).
 """
-children(node::NestedCallNode) = query(node, Child)
+getchildren(node::NestedCallNode) = node.children
+getchildren(node::AbstractNode) = Vector{AbstractNode}()
 
 """
-    parent(node) -> Union{Nothing, NestedCallNode}
+    getparent(node) -> Union{Nothing, NestedCallNode}
 
 Return the `NestedNode` `node` is a child of (the root call has no parent).
 """
-parent(node::AbstractNode) = query(node, Parent)
+getparent(node::AbstractNode) = getparent(node.info)
 
 
 """
-    arguments(node) -> Vector{ArgumentNode}
+    getarguments(node) -> Vector{ArgumentNode}
 
 Return the sub-nodes representing the arguments of a nested call.
 """
-arguments(node::AbstractNode) = [child for child in query(node, Child) if child isa ArgumentNode]
+getarguments(node::AbstractNode) = [child for child in node.children if child isa ArgumentNode]
+
+
+# Make child nodes accessible by indexing
+getindex(node::NestedCallNode, i) = node.children[i]
+firstindex(node::NestedCallNode) = firstindex(node.children)
+lastindex(node::NestedCallNode) = lastindex(node.children)
+
+
+"""Return the IR index into the original IR statement, which `node` was recorded from."""
+getlocation(node::AbstractNode) = getlocation(node.info)
+
+"""Return the index of `node` in its parent node."""
+getposition(node::AbstractNode) = getposition(node.info)
+
+"""
+Return the original IR this node was recorded from.  `original_ir(node)[location(node)]` will
+return the precise statement.
+"""
+getir(node::AbstractNode) = getir(node.info)
+
+getvalue(::JumpNode) = nothing
+getvalue(::ReturnNode) = nothing
+getvalue(node::SpecialCallNode) = getvalue(node.form)
+getvalue(node::NestedCallNode) = getvalue(node.call)
+getvalue(node::PrimitiveCallNode) = getvalue(node.call)
+getvalue(node::ConstantNode) = getvalue(node.value)
+getvalue(node::ArgumentNode) = getvalue(node.value)
+
+getmetadata(node::AbstractNode) = getmetadata(node.info)
+
+getmetadata(node::AbstractNode, key::Symbol) = getmetadata(node)[key]
+getmetadata(node::AbstractNode, key::Symbol, default) = get(getmetadata(node), key, default)
+getmetadata!(node::AbstractNode, key::Symbol, default) = get!(getmetadata(node), key, default)
+getmetadata!(f, node::AbstractNode, key::Symbol) = get!(f, getmetadata(node), key)
+setmetadata!(node::AbstractNode, key::Symbol, value) = getmetadata(node)[key] = value
 
 
 ####################################################################################################
@@ -117,9 +152,9 @@ referenced(node::AbstractNode, ::Type{Parent}) = AbstractNode[]
 function referenced(node::ArgumentNode, ::Type{Parent})
     # first argument is always the function itself -- need to treat this separately
     if node.number == 1
-        return getindex.(references(parent(node).call.f))
+        return getindex.(references(getparent(node).call.f))
     else
-        return getindex.(references(parent(node).call.arguments[node.number - 1]))
+        return getindex.(references(getparent(node).call.arguments[node.number - 1]))
     end
 end
 

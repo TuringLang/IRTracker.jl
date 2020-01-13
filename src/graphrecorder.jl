@@ -34,9 +34,10 @@ Track a node on the `GraphRecorder`, taking care to remember this as the current
 SSA variable, and setting it's parent and position as a child.
 """
 function push!(recorder::GraphRecorder, node::AbstractNode)
-    current_position = length(recorder.rootnode.children) + 1
-    node.info.position = current_position
-    push!(recorder.rootnode.children, node)
+    children = getchildren(recorder.rootnode)
+    current_position = length(children) + 1
+    setposition!(node.info, current_position)
+    push!(children, node)
     
     # remember mapping this nodes variable to be mentioned last at the current position
     record_variable_usage!(recorder, node, current_position)
@@ -45,7 +46,7 @@ end
 
 function record_variable_usage!(recorder::GraphRecorder, node::DataFlowNode, current_position::Int)
     current_reference = TapeReference(recorder.rootnode, current_position)
-    current_var = IRTools.var(location(node).line)
+    current_var = IRTools.var(getlocation(node).line)
     recorder.variable_usages[current_var] = current_reference
     return recorder
 end
@@ -54,7 +55,7 @@ record_variable_usage!(recorder::GraphRecorder, ::ControlFlowNode, ::Int) = reco
 
 
 # """Push `node` onto `recorder` and return its value."""
-record!(recorder::GraphRecorder, node::AbstractNode) = (push!(recorder, node); value(node))
+record!(recorder::GraphRecorder, node::AbstractNode) = (push!(recorder, node); getvalue(node))
 
 saveir!(recorder::GraphRecorder, ir::IRTools.IR) = (recorder.original_ir = ir)
 

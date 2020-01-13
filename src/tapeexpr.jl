@@ -39,21 +39,15 @@ struct TapeCall <: TapeExpr
 end
 
 
-
-
-
 """Representation of special expression (i.e., anything other than `Expr(:call, ...)`)."""
 struct TapeSpecialForm <: TapeExpr
     value::Any
     head::Symbol
     arguments::ArgumentTuple{TapeValue}
-
-    # TapeSpecialForm(value, head::Symbol, arguments::Vector{TapeValue}) = new{head}(value, head, arguments)
 end
 
 
 
-# getindex(expr::TapeReference) = expr.parent_ref[].children[expr.index]
 getindex(expr::TapeReference) = expr.parent.children[expr.index]
 
 
@@ -70,8 +64,8 @@ references(expr::TapeConstant) = TapeReference[]
 references(expr::TapeReference) = TapeReference[expr]
 
 
-value(expr::TapeCall) = expr.value[]
-value(expr::TapeSpecialForm) = expr.value
-value(expr::TapeConstant) = expr.value
-value(expr::TapeReference) = value(expr[])
+getvalue(expr::TapeCall) = expr.value[]
+getvalue(expr::TapeSpecialForm) = expr.value
+getvalue(expr::TapeConstant) = expr.value
+getvalue(expr::TapeReference) = getvalue(expr[])
 

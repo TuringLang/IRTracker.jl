@@ -29,21 +29,24 @@ annotation(node::ArgumentNode) = "Arg"
 
 
 function showpretext(io::IO, node::AbstractNode, postfix...)
-    !isnothing(position(node)) && print(io, "@", position(node), ":", postfix...)
+    position = getposition(node)
+    !isnothing(position) && print(io, "@", position, ":", postfix...)
 end
 
 function showpretext(io::IO, ::MIME"text/plain", node::AbstractNode, postfix...)
-    !isnothing(position(node)) > 0 && print(io, "@", position(node), ": ")
+    position = getposition(node)
+    location = getlocation(node)
+    !isnothing(position) && print(io, "@", position, ":", postfix...)
     
     if !isempty(annotation(node))
-        if location(node) !== NO_INDEX
-            print(io, "[", annotation(node), ":", location(node), "]", postfix...)
+        if location !== NO_INDEX
+            print(io, "[", annotation(node), ":", location, "]", postfix...)
         else
             print(io, "[", annotation(node), "]", postfix...)
         end
     else
-        if location(node) !== NO_INDEX
-            print(io, "[", location(node), "]", postfix...)
+        if location !== NO_INDEX
+            print(io, "[", location, "]", postfix...)
         end
     end
 end
@@ -62,7 +65,7 @@ showcall(io::IO, node::SpecialCallNode, postfix...) =
 function showcall(io::IO, node::ReturnNode, postfix...)
     if node.argument isa TapeReference
         print(io, "return ", node.argument, " = ")
-        showvalue(io, value(node.argument))
+        showvalue(io, getvalue(node.argument))
     else
         print(io, "return ", node.argument)
     end
@@ -84,11 +87,11 @@ function showcall(io::IO, node::JumpNode, postfix...)
     end
 
     reason = node.condition
-    if !isnothing(value(reason))
+    if !isnothing(getvalue(reason))
         print(io, " since ", reason)
         if reason isa TapeReference
             print(io, " == ")
-            showvalue(io, value(reason))
+            showvalue(io, getvalue(reason))
         end
     end
 
@@ -97,21 +100,21 @@ end
 
 
 showresult(io::IO, node::AbstractNode, postfix...) =
-    (showvalue(io, value(node)); print(io, postfix...))
+    (showvalue(io, getvalue(node)); print(io, postfix...))
 showresult(io::IO, node::ControlFlowNode, postfix...) = nothing
 
 
 showmetadata(io::IO, node::AbstractNode) = nothing
 
 function showmetadata(io::IO, ::MIME"text/plain", node::AbstractNode)
-    meta = metadata(node)
-    !isempty(meta) && print(io, "[")
-    for (i, (k, v)) in enumerate(meta)
+    metadata = getmetadata(node)
+    !isempty(metadata) && print(io, "[")
+    for (i, (k, v)) in enumerate(metadata)
         print(io, k, " = ")
         showvalue(io, v)
-        i < length(meta) && print(io, ", ")
+        i < length(metadata) && print(io, ", ")
     end
-    !isempty(meta) && print(io, "]")
+    !isempty(metadata) && print(io, "]")
     return nothing
 end
 
@@ -140,11 +143,11 @@ function show(io::IO, mime::MIME"text/plain", node::NestedCallNode, level = 1)
     maxlevel = get(io, :maxlevel, typemax(level))
     if level < maxlevel
         print(io, "\n") # prevent double newlines
-        kids = children(node)
-        for (i, child) in enumerate(kids)
+        children = getchildren(node)
+        for (i, child) in enumerate(children)
             print(io, "  " ^ level)
             show(io, mime, child, level + 1)
-            i < length(kids) && print(io, "\n")
+            i < length(children) && print(io, "\n")
         end
     end
 

@@ -6,14 +6,14 @@
 @testset "sanity checks" begin
     let call = track(Core.Intrinsics.add_int, 1, 2)
         @test call isa PrimitiveCallNode
-        @test value(call) ≅ 3
+        @test getvalue(call) ≅ 3
     end
     
     f(x) = x + 1
     let call = track(f, 42)
         # @test node.valu isa Tuple{Int, GraphTape}
         @test call isa NestedCallNode
-        @test value(call) ≅ 43
+        @test getvalue(call) ≅ 43
         
         # println("Trace of `f(42)` for visual inspection:")
         # printlevels(call, 3)
@@ -25,7 +25,7 @@
     geom(n, β) = rand() < β ? n : geom(n + 1, β)
     let call = track(geom, 3, 0.5)
         @test call isa NestedCallNode
-        @test value(call) isa Int
+        @test getvalue(call) isa Int
         
         # println("Trace of `geom(3, 0.6)` for visual inspection:")
         # printlevels(call, 3)
@@ -37,7 +37,7 @@
     weird(n) = rand() < 1/(n + 1) ? n : weird(n + 1)
     let call = track(weird, 3)
         @test call isa NestedCallNode
-        @test value(call) isa Int
+        @test getvalue(call) isa Int
     end
 
     function test1(x)
@@ -46,7 +46,7 @@
     end
     let call = track(test1, 42)
         @test call isa NestedCallNode
-        @test value(call) ≅ 43
+        @test getvalue(call) ≅ 43
     end
 
     function test2(x)
@@ -58,7 +58,7 @@
     end
     let call = track(test2, 42)
         @test call isa NestedCallNode
-        @test value(call) ≅ 41
+        @test getvalue(call) ≅ 41
     end
 
     function test3(x)
@@ -72,19 +72,19 @@
     end
     let call = track(test3, 42)
         @test call isa NestedCallNode
-        @test value(call) ≅ 42
+        @test getvalue(call) ≅ 42
     end
     
     test4(x) = [x, x]
     let call = track(test4, 42)
         @test call isa NestedCallNode
-        @test value(call) ≅ [42, 42]
+        @test getvalue(call) ≅ [42, 42]
     end
 
     test5() = ccall(:rand, Cint, ())
     let call = track(test5)
         @test call isa NestedCallNode
-        @test value(call) isa Cint
+        @test getvalue(call) isa Cint
     end
 
     # this can fail due to https://github.com/MikeInnes/IRTools.jl/issues/30
@@ -93,7 +93,7 @@
     test6() = rand(Random.GLOBAL_RNG, sampler)
     let call = track(test6)
         @test call isa NestedCallNode
-        @test value(call) isa Float64
+        @test getvalue(call) isa Float64
     end
     
     function test7()
@@ -110,7 +110,7 @@
     end
     let call = track(test7)
         @test call isa NestedCallNode
-        @test value(call) isa Float64
+        @test getvalue(call) isa Float64
     end
 
     

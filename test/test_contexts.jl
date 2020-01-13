@@ -22,17 +22,17 @@
 
     # Limit recording to a maximum layer -- see implementation in src/trackingcontext.jl
     let ctx = DepthLimitContext(2), call = track(ctx, f, 42)
-        @test length(children(call)) == 5
+        @test length(getchildren(call)) == 5
         @test call[3] isa PrimitiveCallNode
         @test call[4] isa PrimitiveCallNode
-        metadata(call)[:bla] = 1
-        metadata(call)[:blub] = nothing
-        metadata(call[3])[:value] = "sdfd"
-        metadata(call[4])[:∂] = 1.234234
+        getmetadata(call)[:bla] = 1
+        getmetadata(call)[:blub] = nothing
+        getmetadata(call[3])[:value] = "sdfd"
+        getmetadata(call[4])[:∂] = 1.234234
     end
 
     let ctx = DepthLimitContext(2), call = track(ctx, union!, [1], [2])
-        @test all(!(c isa NestedCallNode) for c in children(call))
+        @test all(!(c isa NestedCallNode) for c in getchildren(call))
     end
 
     
