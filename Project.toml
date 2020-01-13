@@ -1,7 +1,7 @@
 name = "DynamicComputationGraphs"
 uuid = "591544fa-5de1-11e9-31f7-cbfeeb0dfc0e"
 authors = ["Philipp Gabler <phipsgabler@users.noreply.github.com>"]
-version = "0.2.0"
+version = "0.3.0"
 
 [deps]
 IRTools = "7869d1d1-7146-5819-86e3-90919afe41df"
