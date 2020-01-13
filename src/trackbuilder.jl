@@ -229,7 +229,7 @@ function trackarguments!(builder::TrackBuilder, new_block::Block, old_block::Blo
     # this is the first block, here we set up the recorder argument
     if isfirst
         builder.recorder = argument!(new_block, at = 1, insert = false)
-        push!(new_block, DCGCall.saveir!(builder.recorder, builder.original_ir))
+        push!(new_block, DCGCall.saveir!(builder.recorder, inlined(copy(builder.original_ir))))
     end
     
     # record jumps to here, if there are any, by adding a new argument and recording it

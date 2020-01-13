@@ -14,6 +14,7 @@ end
 # NodeInfo(ir, location) = NodeInfo(ir, location, NullableRef{RecursiveNode}(), nothing, Dict{Symbol, Any}())
 NodeInfo(ir, location, parent) = NodeInfo(ir, location, parent, nothing, Dict{Symbol, Any}())
 
+original_ir(info::NodeInfo) = info.original_ir
 location(info::NodeInfo) = info.location
 parent(info::NodeInfo) = info.parent_ref[]
 position(info::NodeInfo) = info.position

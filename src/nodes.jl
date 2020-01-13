@@ -64,6 +64,12 @@ location(node::AbstractNode) = location(node.info)
 """Return the index of `node` in its parent node."""
 position(node::AbstractNode) = position(node.info)
 
+"""
+Return the original IR this node was recorded from.  `original_ir(node)[location(node)]` will
+return the precise statement.
+"""
+original_ir(node::AbstractNode) = original_ir(node.info)
+
 value(::JumpNode) = nothing
 value(::ReturnNode) = nothing
 value(node::SpecialCallNode) = value(node.form)
