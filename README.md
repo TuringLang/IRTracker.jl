@@ -215,7 +215,7 @@ There’s some things to note:
   indices/locations, or because they result from literals in the original code).
   
 
-## Contexts
+### Contexts
 
 You may have noticed that all `tracked<whatever>` functions above take the `GraphRecorder` as their first 
 argument.  Through this, a context object gets passed down the transformed functions, and is
@@ -264,40 +264,60 @@ Nodes in general may have `children` and a `parent`:
 ```
 julia> children(node)
 5-element Array{AbstractNode,1}:
- @1: f	                               
- @2: 1.0	                             
- @3: ⟨sin⟩(@2) = 0.8414709848078965	  
+ @1: f
+ @2: 1.0
+ @3: ⟨sin⟩(@2) = 0.8414709848078965
  @4: ⟨+⟩(@3, @2) = 1.8414709848078965	
- @5: return @4 = 1.841470984807896
+ @5: return @4 = 1.8414709848078965
  
 julia> parent(node[4]) === node
 true
 ```
 
-As you can see, normal indexing can also be used to access the children of a nested node.  Each node
-also has a `location`, which can be used to as an index into the original IR:
+As you can see, normal indexing can also be used to access the children of a nested node.
+
+There are provided several functions to inspect the dependencies in the code.  `referenced` results
+in the parent nodes which a node directly references, and `backwards` follows back these references
+transitively (within the current `NestedCallNode`):
 
 ```
-julia> printlevels(node[4], 1)  # this node is huge...
-@4: [§1:%4] ⟨+⟩(@3, @2) = 1.8414709848078965
-
-julia> location(node[4])
-§1:%4
-
-julia> node[4].info.original_ir[location(node[4])]
-IRTools.Inner.Statement(:(%1 + %3), Any, 1)
-```
-
-To inspect the dependencies in the code, we can use `backward`:
-
-```
-julia> backward(node[4])
-2-element Array{AbstractNode,1}:
- @3: ⟨sin⟩(@2) = 0.8414709848078965	
+julia> printlevels(node, 2)
+⟨f⟩(⟨1.0⟩) = 1.8414709848078965
+  @1: [Arg:§1:%1] f	
+  @2: [Arg:§1:%2] 1.0	
+  @3: [§1:%3] ⟨sin⟩(@2) = 0.8414709848078965
+  @4: [§1:%4] ⟨+⟩(@3, @2) = 1.8414709848078965
+  @5: [§1:&1] return @4 = 1.8414709848078965
+  
+julia> referenced(node[5])
+1-element Array{NestedCallNode,1}:
+ @4: ⟨+⟩(@3, @2) = 1.8414709848078965
+ 
+julia> backward(node[5])
+3-element Array{AbstractNode,1}:
+ @4: ⟨+⟩(@3, @2) = 1.8414709848078965	
+ @3: ⟨sin⟩(@2) = 0.8414709848078965
  @2: 1.0
 ```
 
-We can also inspect the various contents of each node:
+`dependents` and `forward` are the corresponding query functions in the other direction:
+
+```
+julia> dependents(node[2])
+2-element Array{NestedCallNode,1}:
+ @3: ⟨sin⟩(@2) = 0.8414709848078965
+ @4: ⟨+⟩(@3, @2) = 1.8414709848078965	
+
+julia> forward(node[2])
+3-element Array{AbstractNode,1}:
+ @3: ⟨sin⟩(@2) = 0.8414709848078965
+ @4: ⟨+⟩(@3, @2) = 1.8414709848078965	
+ @5: return @4 = 1.8414709848078965
+```
+
+See also the `query` function for a more detailed, internal iterface to the node hierarchy.
+
+Finally, we can also inspect the various contents of each node:
 
 ```
 julia> typeof(node[3])
@@ -317,6 +337,19 @@ julia> node[3].call.arguments
 
 julia> value.(node[3].call.arguments)
 (1.0,)
+```
+
+Each node also has a `location`, which can be used to as an index into the original IR:
+
+```
+julia> printlevels(node[4], 1)  # this node is huge...
+@4: [§1:%4] ⟨+⟩(@3, @2) = 1.8414709848078965
+
+julia> location(node[4])
+§1:%4
+
+julia> node[4].info.original_ir[location(node[4])]
+IRTools.Inner.Statement(:(%1 + %3), Any, 1)
 ```
 
 See `graphapi.jl`, `nodes.jl`, and `tapeexpr.jl` for more functionality.
