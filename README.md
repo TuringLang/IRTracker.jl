@@ -91,7 +91,7 @@ julia> printlevels(track(geom, 1, 0.5), 3)
   @9: [§2:&1] return @8 = 3
 ```
 
-or in a simplified graphical form: 
+or in a simplified graphical form:
 
 ![Graph extracted from the example function](paper/graph.png)
 
@@ -111,13 +111,13 @@ This, together with the original IR, while being a bit cryptic, contains the fol
 - The branching instructions actually taken, written in literal form `goto label`.  Blocks are
   referred to by paragraph signs: `§b`.  They are annotated as well with the block they come from,
   and the position among all branch statements within that block: `[§b:&position]`.
-- Nested function calls and their arguments (note that the argument `%1` stands for the function itself and
-  is not used most of the time).
+- Nested function calls and their arguments (note that the argument `%1` stands for the function
+  itself and is not used most of the time).
 - Constants (literals in the expressions) are written in ⟨angle brackets⟩ (this makes debugging the
   transformed code easier).
 
-In this form, a backward pass is as trivial as following back the references from the last `return` and adding 
-adjoint values in the metadata.
+In this form, a backward pass is as trivial as following back the references from the last `return`
+and adding adjoint values in the metadata.
 
 The data structure used for this is an abstract `AbstractNode` type, with subtypes for:
 
@@ -193,7 +193,10 @@ julia> @code_tracked geom(1, 0.5)
   return %45
 ```
 
-The extra argument, `%4`, is a `GraphRecorder` object where all statements are recorded onto using `record!`.  Each kind of statement is reified by a call to `tracked<whatever>`, and finally replaced by `record!`, which returns its original value. The function `trackcall` then recursively does the same kind of thing to the nested calls.
+The extra argument, `%4`, is a `GraphRecorder` object where all statements are recorded onto using
+`record!`.  Each kind of statement is reified by a call to `tracked<whatever>`, and finally replaced
+by `record!`, which returns its original value. The function `trackcall` then recursively does the
+same kind of thing to the nested calls.
 
 This can be achieved by using an `IRTools`
 [dynamo](https://mikeinnes.github.io/IRTools.jl/latest/dynamo/), which in essence is just a fancier
@@ -208,8 +211,9 @@ There’s some things to note:
 - There’s some additional runtime logic in the `trackcall` function, which determines how to
   differentiate between “primitive” and “non-primitive” calls (serving as the stopping case for the
   recursive tracking).
-- The purpose of `trackedvariable` is to make sure that tape references (`@i` in the output) actually point to
-  the last usage of a SSA variable (since that can happen multiple times in a loop).
+- The purpose of `trackedvariable` is to make sure that tape references (`@i` in the output)
+  actually point to the last usage of a SSA variable (since that can happen multiple times in a
+  loop).
 - There are some splice-in `QuoteNode`s.  These result from inlined literal values known at the time
   of the transformation (either because they are statically determined, such as IR
   indices/locations, or because they result from literals in the original code).
@@ -317,7 +321,7 @@ julia> forward(node[2])
 
 See also the `query` function for a more detailed, internal iterface to the node hierarchy.
 
-Finally, we can also inspect the various contents of each node:
+Finally, we can also inspect various properties of each node:
 
 ```
 julia> typeof(node[3])
@@ -339,7 +343,7 @@ julia> getvalue.(node[3].call.arguments)
 (1.0,)
 ```
 
-Each node also has a location, which can be used to as an index into the original IR:
+Each node also has a location in the original IR:
 
 ```
 julia> printlevels(node[4], 1)  # this node is huge...
@@ -347,9 +351,19 @@ julia> printlevels(node[4], 1)  # this node is huge...
 
 julia> getlocation(node[4])
 §1:%4
+```
+
+The original IR from which a node was recorded is available, and can be indexed by the location:
+
+```
+julia> getir(node[4])
+1: (%1, %2)
+  %3 = Main.sin(%2)
+  %4 = %3 + %2
+  return %4
 
 julia> getir(node[4])[getlocation(node[4])]
-IRTools.Inner.Statement(:(%1 + %3), Any, 1)
+IRTools.Inner.Statement(:(%3 + %2), Any, 1)
 ```
 
 See `graphapi.jl`, `nodes.jl`, and `tapeexpr.jl` for more functionality.
@@ -414,10 +428,11 @@ If no context is provided, the constant `DEFAULT_CTX::DefaultTrackingContext` wi
 tracks everything down to primitive/intrinsic functions (see `isbuiltin`), and records no additional
 metadata.  `DepthLimitContext` is also provided by the library, in case you need it.
 
-At the moment, the overloadable methods are `canrecur`, `trackedargument`, `trackedcall`, `trackedconstant`, 
-`trackedjump`, `trackednested`, `trackedprimitive`, `trackedreturn`, and `trackedspecial`.  Provided 
-fallbacks are `recordnestedcall`, as explained, and `isbuiltin` for `canrecur` (you are not
-forced to use these, but otherwise, you’d have to manually construct the node structures to return.)
+At the moment, the overloadable methods are `canrecur`, `trackedargument`, `trackedcall`,
+`trackedconstant`, `trackedjump`, `trackednested`, `trackedprimitive`, `trackedreturn`, and
+`trackedspecial`.  Provided fallbacks are `recordnestedcall`, as explained, and `isbuiltin` for
+`canrecur` (you are not forced to use these, but otherwise, you’d have to manually construct the
+node structures to return.)
 
 
 
