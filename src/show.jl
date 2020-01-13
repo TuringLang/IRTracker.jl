@@ -1,5 +1,11 @@
 import Base: show
 
+printlevels(io::IO, mime::MIME, value, levels::Integer) =
+    show(IOContext(io, :maxlevel => levels), mime, value)
+printlevels(io::IO, value, levels::Integer) =
+    show(IOContext(io, :maxlevel => levels), MIME"text/plain"(), value)
+printlevels(value, levels::Integer) = printlevels(stdout, value, levels)
+
 
 # INTERNAL STUFF
 showvalue(io::IO, value) = show(IOContext(io, :limit => true), value)
