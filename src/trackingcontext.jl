@@ -67,13 +67,13 @@ trackedconstant(composed::ComposedContext, const_repr::TapeExpr, info::NodeInfo)
 trackedargument(composed::ComposedContext, arg_repr::TapeExpr, number::Int, info::NodeInfo) =
     foldcontexts(composed, arg_repr, number, info)
 
-trackedprimitive(trackedprimitive(composed::AbstractTrackingContext, f_repr::TapeExpr,
-                                  args_repr::ArgumentTuple{TapeExpr}, info::NodeInfo)) =
-                                      foldcontexts(composed, f_repr, args_repr, info)
+trackedprimitive(composed::ComposedContext, f_repr::TapeExpr,
+                 args_repr::ArgumentTuple{TapeExpr}, info::NodeInfo) =
+                     foldcontexts(composed, f_repr, args_repr, info)
 
-trackednested(trackedprimitive(composed::AbstractTrackingContext, f_repr::TapeExpr,
-                               args_repr::ArgumentTuple{TapeExpr}, info::NodeInfo)) =
-                                   foldcontexts(composed, f_repr, args_repr, info)
+trackednested(composed::ComposedContext, f_repr::TapeExpr,
+              args_repr::ArgumentTuple{TapeExpr}, info::NodeInfo) =
+                  foldcontexts(composed, f_repr, args_repr, info)
 
 canrecur(composed::ComposedContext, f, args...) =
     any(canrecur(ctx, f, args...) for ctx in composed.contexts)
