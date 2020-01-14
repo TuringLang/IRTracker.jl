@@ -49,7 +49,7 @@ end
 
 
 function recordnestedcall(ctx::AbstractTrackingContext, f_repr::TapeExpr,
-               args_repr::ArgumentTuple{TapeValue}, info::NodeInfo)
+                          args_repr::ArgumentTuple{TapeValue}, info::NodeInfo)
     f, args = getvalue(f_repr), getvalue.(args_repr)
     call = TapeCall(f_repr, args_repr)
     node = NestedCallNode(call, Vector{RecursiveNode}(), info)
@@ -165,6 +165,12 @@ function trackedprimitive(::AbstractTrackingContext, f_repr::TapeExpr,
                           args_repr::ArgumentTuple{TapeExpr}, info::NodeInfo)
     f, args = getvalue(f_repr), getvalue.(args_repr)
     call = TapeCall(f(args...), f_repr, args_repr)
+    return PrimitiveCallNode(call, info)
+end
+
+function trackedprimitive(::AbstractTrackingContext, result, f_repr::TapeExpr,
+                          args_repr::ArgumentTuple{TapeExpr}, info::NodeInfo)
+    call = TapeCall(result, f_repr, args_repr)
     return PrimitiveCallNode(call, info)
 end
 
