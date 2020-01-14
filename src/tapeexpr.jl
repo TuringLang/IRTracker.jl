@@ -58,7 +58,8 @@ Get the list of tape references in a `TapeExpr`, i.e., the parents in the call g
 """
 function references end
 
-references(expr::TapeCall) = TapeReference[e for e in expr.arguments if e isa TapeReference]
+references(expr::TapeCall) = append!(expr.f isa TapeReference ? [expr.f] : TapeReference[],
+                                     (e for e in expr.arguments if e isa TapeReference))
 references(expr::TapeSpecialForm) = TapeReference[e for e in expr.arguments if e isa TapeReference]
 references(expr::TapeConstant) = TapeReference[]
 references(expr::TapeReference) = TapeReference[expr]
