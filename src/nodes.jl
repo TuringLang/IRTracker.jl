@@ -1,12 +1,6 @@
 import Base: firstindex, getindex, lastindex, push!
 
 
-struct ArgumentNode <: DataFlowNode
-    value::TapeConstant
-    number::Int
-    info::NodeInfo
-end
-
 struct ConstantNode <: DataFlowNode
     value::TapeConstant
     info::NodeInfo
@@ -37,5 +31,12 @@ struct JumpNode <: ControlFlowNode
     target::Int
     arguments::ArgumentTuple{TapeValue}
     condition::TapeValue
+    info::NodeInfo
+end
+
+struct ArgumentNode <: DataFlowNode
+    value::TapeConstant
+    call_source::Union{JumpNode, Nothing}
+    number::Int
     info::NodeInfo
 end

@@ -54,13 +54,22 @@ end
 
 
 showcall(io::IO, node::ConstantNode, postfix...) = nothing
-showcall(io::IO, node::ArgumentNode, postfix...) = nothing
 showcall(io::IO, node::PrimitiveCallNode, postfix...) =
     print(io, node.call, " =", postfix...)
 showcall(io::IO, node::NestedCallNode, postfix...) =
     print(io, node.call, " =", postfix...)
 showcall(io::IO, node::SpecialCallNode, postfix...) =
     print(io, node.form, " =", postfix...)
+
+function showcall(io::IO, node::ArgumentNode, postfix...)
+    call_source = node.call_source
+    if !isnothing(call_source) && !isnothing(position)
+        call_position = getposition(call_source)
+        if !isnothing(call_position)
+            print(io, "@", call_position, "#", node.number, " =", postfix...)
+        end
+    end
+end
 
 function showcall(io::IO, node::ReturnNode, postfix...)
     if node.argument isa TapeReference
