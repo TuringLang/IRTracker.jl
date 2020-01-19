@@ -1,3 +1,7 @@
+using Distributions
+using Random
+
+
 # typed equality comparison with `\cong`
 ≅(x::T, y::T) where {T} = x == y
 ≅(x, y) = false

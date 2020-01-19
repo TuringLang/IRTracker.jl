@@ -1,18 +1,14 @@
 using Test
 using DynamicComputationGraphs
-using IRTools: @code_ir, explicitbranch!
-using Distributions
-using Random
-using ChainRules
 
 
 @testset "DynamicComputationGraphs" begin
     ########### Basic sanity checks #################
-    include("./test_basics.jl")
+    # include("./test_basics.jl")
     
     
     ########### Graph API #################
-    include("./test_graphapi.jl")
+    # include("./test_graphapi.jl")
 
 
     ########## Contexts #####################

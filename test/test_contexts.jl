@@ -1,5 +1,9 @@
-@testset "contexts" begin
-    f(x) = sin(x) + 1
+using ChainRules
+import DynamicComputationGraphs: trackedcall
+
+
+# @testset "contexts" begin
+    # f(x) = sin(x) + 1
     # julia> printlevels(track(f, 42), 3)
     # f(42) = 0.08347845208436622
     #   @1: [Argument §1:%1] = f
@@ -20,67 +24,113 @@
     #   @5: [§1:1] return @4 = 0.08347845208436622
 
 
-    # Limit recording to a maximum layer -- see implementation in src/trackingcontext.jl
-    let ctx = DepthLimitContext(2), call = track(ctx, f, 42)
-        @test length(getchildren(call)) == 5
-        @test call[3] isa PrimitiveCallNode
-        @test call[4] isa PrimitiveCallNode
-        getmetadata(call)[:bla] = 1
-        getmetadata(call)[:blub] = nothing
-        getmetadata(call[3])[:value] = "sdfd"
-        getmetadata(call[4])[:∂] = 1.234234
-    end
-
-    let ctx = DepthLimitContext(2), call = track(ctx, union!, [1], [2])
-        @test all(!(c isa NestedCallNode) for c in getchildren(call))
-    end
-
-    
-    # # Backward differentiation
-    # struct BDiffContext <: AbstractTrackingContext end
-
-    # function adjoint(call)
-    #     ir = IRTools.empty(call.original_ir)
-    #     self = IRTools.argument!(ir)
-    #     Δ = IRTools.argument!(ir)
-
-        
-    #     for child in Iterators.reverse(call)
-            
-    #     end
-        
-    #     backward!(nested_call) do node, ancestors
-    #         # @show node
-    #         # adjoint = get!(metadata(node), :adjoint, 1.0)
-    #         pullback = Δ -> sum(pb(Δ) for pb in getmetadata(node, :pullback))
-    #         for ancestor in ancestors
-    #             push!(getmetadata!(() -> [], node, :pullbacks), pullback)
-    #             setmetadata!(node, :pullback, Δ -> pullback(Δ) + old_pullback(Δ))
-    #         end
-    #     end
-        
-    #     argument_adjoints = extern.(get.(arguments(nested_call), :adjoint)...)
-    #     accumulate!(metadata(nested_call), argument_adjoints)
-    # end
-    
-    # function DynamicComputationGraphs.trackedcall(
-    #     ctx::BDiffContext, f, f_repr, args, args_repr, info
-    # )
-    #     rule = rrule(f, args...)
-    #     if !isnothing(rule)
-    #         result, pullback = rule        # we can reuse the result from the rrule!
-    #         primitive_call = recordprimitive(ctx, result, f, f_repr, args, args_repr, info)
-    #         setmetadata!(primitive_call, :pullback, pullback)
-    #         return primitive_call
-    #     else # this cannot be a primitive, anyway
-    #         nested_call = recordnested(ctx, f, f_repr, args, args_repr, info)
-    #         pullback = IRTools.func(adjoint(nested_call))
-    #         setmetadata!(nested_call, :pullback, pullback)
-    #         return nested_call
-    #     end
+    # # Limit recording to a maximum layer -- see implementation in src/trackingcontext.jl
+    # let ctx = DepthLimitContext(2), call = track(ctx, f, 42)
+    #     @test length(getchildren(call)) == 5
+    #     @test call[3] isa PrimitiveCallNode
+    #     @test call[4] isa PrimitiveCallNode
+    #     getmetadata(call)[:bla] = 1
+    #     getmetadata(call)[:blub] = nothing
+    #     getmetadata(call[3])[:value] = "sdfd"
+    #     getmetadata(call[4])[:∂] = 1.234234
     # end
 
-    # grad(f, args...) = getmetadata(track(BDiffContext(), f, args...), :pullback)(1)
+    # let ctx = DepthLimitContext(2), call = track(ctx, union!, [1], [2])
+    #     @test all(!(c isa NestedCallNode) for c in getchildren(call))
+    # end
+
+    
+    # Backward differentiation
+    struct BDiffContext <: AbstractTrackingContext end
+
+    function refs(node::Union{NestedCallNode, PrimitiveCallNode})
+        f_ref = node.call.f isa TapeReference ?
+            Pair{Int, AbstractNode}[1 => node.call.f[]] :
+            Pair{Int, AbstractNode}[]
+        arg_refs = (i+1 => e[] for (i, e) in enumerate(node.call.arguments) if e isa TapeReference)
+        return append!(f_ref, arg_refs)
+    end
+
+    function refs(node::SpecialCallNode)
+        arg_refs = (i+1 => e[] for (i, e) in enumerate(node.form.arguments) if e isa TapeReference)
+        return append!(f_ref, arg_refs)
+    end
+
+    function refs(node::ReturnNode)
+        return node.argument isa TapeReference ?
+            Pair{Int, AbstractNode}[1 => node.argument[]] :
+            Pair{Int, AbstractNode}[]
+    end
+
+    function refs(node::JumpNode)
+        cond_ref = node.condition isa TapeReference ?
+            Pair{Int, AbstractNode}[1 => node.condition[]] :
+            Pair{Int, AbstractNode}[]
+        arg_refs = (i+1 => e[] for (i, e) in enumerate(node.arguments) if e isa TapeReference)
+        return append!(cond_ref, arg_refs)
+    end
+
+    refs(::AbstractNode) = Pair{Int, AbstractNode}[]
+
+    accumulate!(node, x̄) = setmetadata!(node, :Ω̄, getmetadata(node, :Ω̄, Zero()) .+ x̄)
+
+    function pullback!(node::PrimitiveCallNode, Ω̄)
+        x̄ = getmetadata(node, :pullback)(Ω̄)
+        for (i, ref) in refs(node)
+            accumulate!(ref, x̄[i])
+        end
+
+        return node
+    end
+
+    function pullback!(node::AbstractNode, Ω̄)
+        for (i, ref) in refs(node)
+            accumulate!(ref, Ω̄)
+        end
+
+        return node
+    end
+
+    function pullback!(node::NestedCallNode, Ω̄)
+        setmetadata!(node[end], :Ω̄, Ω̄)
+        pullback!(node[end], Ω̄)
+        
+        for child in backward(node[end])
+            Ω̄ = getmetadata!(child, :Ω̄, Zero())
+            pullback!(child, Ω̄)
+        end
+
+        args = getarguments(node)
+        for (i, ref) in refs(node)
+            accumulate!(ref, getmetadata(args[i], :Ω̄, Zero()))
+        end
+
+        return node
+    end
+    
+    function trackedcall(ctx::BDiffContext, f_repr::TapeExpr,
+                         args_repr::ArgumentTuple{TapeValue}, info::NodeInfo)
+        f, args = getvalue(f_repr), getvalue.(args_repr)
+        rule = rrule(f, args...)
+        
+        if !isnothing(rule)                # `f` is primitively differentiable wrt. `args`
+            result, pullback = rule        # we can reuse the result from the rrule!
+            primitive_call = trackedprimitive(ctx, result, f_repr, args_repr, info)
+            setmetadata!(primitive_call, :pullback, pullback)
+            return primitive_call
+        elseif isbuiltin(f)
+            return trackedprimitive(ctx, f(args...), f_repr, args_repr, info)
+        else
+            nested_call = recordnestedcall(ctx, f_repr, args_repr, info)
+            return nested_call
+        end
+    end
+
+    function grad(f, args...)
+        call = track(BDiffContext(), f, args...)
+        pullback!(call, 1)
+        return [getmetadata(arg, :Ω̄, Zero()) for arg in getarguments(call)]
+    end
     
     # let ctx = BDiffContext(), call = track(ctx, f, 42)
     #     ∇f = metadata(call)[:adjoint]
@@ -88,4 +138,4 @@
     #     @test call[3] isa PrimitiveCallNode
     #     @test call[4] isa PrimitiveCallNode
     # end
-end
+# end
