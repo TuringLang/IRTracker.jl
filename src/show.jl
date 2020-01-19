@@ -138,7 +138,8 @@ function show(io::IO, mime::MIME"text/plain", node::NestedCallNode, level = 1)
     # Special case: recursive printing for display purposes
     showpretext(io, mime, node, " ")
     showcall(io, node, " ")
-    showresult(io, node)
+    showresult(io, node, "\t")
+    showmetadata(io, mime, node)
 
     maxlevel = get(io, :maxlevel, typemax(level))
     if level < maxlevel
@@ -151,7 +152,6 @@ function show(io::IO, mime::MIME"text/plain", node::NestedCallNode, level = 1)
         end
     end
 
-    showmetadata(io, mime, node)
 end
 
 
