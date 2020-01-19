@@ -1,4 +1,4 @@
-import Base: getindex
+import Base: convert, getindex
 
 """
 Representation of an expression in an IR statement when tracked in a node.  Contains a 
@@ -50,6 +50,9 @@ end
 
 getindex(expr::TapeReference) = expr.parent.children[expr.index]
 
+convert(::Type{TapeReference}, node::AbstractNode) =
+    TapeReference(node.info.parent_ref[], node.info.position)
+
 
 """
     references(expr::TapeExpr) -> Vector{TapeReference}
@@ -69,4 +72,6 @@ getvalue(expr::TapeCall) = expr.value[]
 getvalue(expr::TapeSpecialForm) = expr.value
 getvalue(expr::TapeConstant) = expr.value
 getvalue(expr::TapeReference) = getvalue(expr[])
+
+
 

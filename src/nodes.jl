@@ -36,7 +36,7 @@ end
 
 struct ArgumentNode <: DataFlowNode
     value::TapeConstant
-    call_source::Union{JumpNode, Nothing}
+    call_source::Union{TapeReference, Nothing}
     number::Int
     info::NodeInfo
 end

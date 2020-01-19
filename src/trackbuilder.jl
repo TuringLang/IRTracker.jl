@@ -239,7 +239,9 @@ function trackarguments!(builder::TrackBuilder, new_block::Block, old_block::Blo
         pushrecord!(builder, new_block, branch_argument)
         
         # this is stored in argument nodes to point back to the variables they come from
-        !isfirst && (call_source = branch_argument)
+        if !isfirst && length(IRTools.arguments(old_block)) > 0
+            call_source = push!(new_block, xcall(:convert, TapeReference, branch_argument))
+        end
     end
 
     # track rest of the arguments from the old block
