@@ -124,8 +124,11 @@ getmetadata(node::AbstractNode) = getmetadata(node.info)
 
 getmetadata(node::AbstractNode, key::Symbol) = getmetadata(node)[key]
 getmetadata(node::AbstractNode, key::Symbol, default) = get(getmetadata(node), key, default)
+getmetadata(f, node::AbstractNode, key::Symbol) = get(f, getmetadata(node), key)
+
 getmetadata!(node::AbstractNode, key::Symbol, default) = get!(getmetadata(node), key, default)
 getmetadata!(f, node::AbstractNode, key::Symbol) = get!(f, getmetadata(node), key)
+
 setmetadata!(node::AbstractNode, key::Symbol, value) = getmetadata(node)[key] = value
 
 
@@ -145,11 +148,18 @@ referenced(node::ReturnNode, ::Type{Preceding}) = getindex.(references(node.argu
 referenced(node::SpecialCallNode, ::Type{Preceding}) = getindex.(references(node.form))
 referenced(node::NestedCallNode, ::Type{Preceding}) = getindex.(references(node.call))
 referenced(node::PrimitiveCallNode, ::Type{Preceding}) = getindex.(references(node.call))
+referenced(node::ArgumentNode, ::Type{Preceding}) = if isnothing(node.call_source)
+    AbstractNode[]
+else
+    getindex.(references(node.call_source[].arguments[node.number]))
+end
 referenced(::ConstantNode, ::Type{Preceding}) = AbstractNode[]
-referenced(::ArgumentNode, ::Type{Preceding}) = AbstractNode[]
 
 referenced(node::AbstractNode, ::Type{Parent}) = AbstractNode[]
 function referenced(node::ArgumentNode, ::Type{Parent})
+    # branch arguments have no parent references
+    !isnothing(node.call_source) && return AbstractNode[]
+    
     # first argument is always the function itself -- need to treat this separately
     if node.number == 1
         return getindex.(references(getparent(node).call.f))
