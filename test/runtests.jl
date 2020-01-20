@@ -12,7 +12,10 @@ using DynamicComputationGraphs
 
 
     ########## Contexts #####################
-    # include("./test_contexts.jl")
+    @testset "contexts" begin
+        include("test_contexts.jl")
+        include("test_backward_ad.jl")
+    end
 end
 
 

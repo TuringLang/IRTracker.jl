@@ -91,7 +91,8 @@ getparent(node::AbstractNode) = getparent(node.info)
 
 Return the sub-nodes representing the arguments of a nested call.
 """
-getarguments(node::AbstractNode) = [child for child in node.children if child isa ArgumentNode]
+getarguments(node::AbstractNode) =
+    [child for child in node.children if child isa ArgumentNode && isnothing(child.call_source)]
 
 
 # Make child nodes accessible by indexing
