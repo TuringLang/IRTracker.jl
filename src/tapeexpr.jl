@@ -55,17 +55,39 @@ convert(::Type{TapeReference}, node::AbstractNode) =
 
 
 """
-    references(expr::TapeExpr) -> Vector{TapeReference}
+    references(expr::TapeExpr; numbered = false) -> Vector{TapeReference}
 
 Get the list of tape references in a `TapeExpr`, i.e., the parents in the call graph.
+
+If `numbered` is `true`, will return `Pair{Int, TapeReference}` for each reference with its
+position within the expression.
 """
 function references end
 
-references(expr::TapeCall) = append!(expr.f isa TapeReference ? [expr.f] : TapeReference[],
-                                     (e for e in expr.arguments if e isa TapeReference))
-references(expr::TapeSpecialForm) = TapeReference[e for e in expr.arguments if e isa TapeReference]
-references(expr::TapeConstant) = TapeReference[]
-references(expr::TapeReference) = TapeReference[expr]
+
+_contents(expr::TapeCall) = append!(TapeValue[expr.f], expr.arguments)
+_contents(expr::TapeSpecialForm) = collect(expr.arguments)
+_contents(expr::TapeConstant) = TapeValue[expr]
+_contents(expr::TapeReference) = TapeValue[expr]
+
+unnumbered_references(expr::TapeExpr) =
+    TapeReference[e for e in _contents(expr) if e isa TapeReference]
+numbered_references(expr::TapeExpr) =
+    Pair{Int, TapeReference}[i => e for (i, e) in enumerate(_contents(expr)) if e isa TapeReference]
+function references(expr::TapeExpr; numbered::Bool = false)
+    if numbered
+        return numbered_references(expr)
+    else
+        return unnumbered_references(expr)
+    end
+end
+
+
+# references(expr::TapeCall) = append!(expr.f isa TapeReference ? [expr.f] : TapeReference[],
+                                     # (e for e in expr.arguments if e isa TapeReference))
+# references(expr::TapeSpecialForm) = TapeReference[e for e in expr.arguments if e isa TapeReference]
+# references(expr::TapeConstant) = TapeReference[]
+# references(expr::TapeReference) = TapeReference[expr]
 
 
 getvalue(expr::TapeCall) = expr.value[]

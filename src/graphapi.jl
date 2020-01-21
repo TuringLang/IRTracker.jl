@@ -136,41 +136,65 @@ setmetadata!(node::AbstractNode, key::Symbol, value) = getmetadata(node)[key] = 
 ####################################################################################################
 # Data dependency analysis
 
+_contents(node::JumpNode) = push!(collect(node.arguments), node.condition)
+_contents(node::ReturnNode) = TapeValue[node.argument]
+_contents(node::SpecialCallNode) = _contents(node.form)
+_contents(node::NestedCallNode) = _contents(node.call)
+_contents(node::PrimitiveCallNode) = _contents(node.call)
+_contents(node::ConstantNode) = _contents(node.value)
+_contents(node::ArgumentNode) =
+    isnothing(node.call_source) ? TapeValue[] : _contents(node.call_source[])
+
+
+_dereference(ix_ref::Pair{Int, TapeReference}) = ix_ref.first => ix_ref.second[]
+_dereference(ref::TapeReference) = ref[]
+
 """
     referenced(node[, axis]) -> Vector{<:AbstractNode}
 
 Return all nodes that `node` references; i.e., all data it immediately depends on.
 """
-referenced(node::AbstractNode) = referenced(node, Preceding)
+referenced(node::AbstractNode; numbered::Bool = false) =
+    referenced(node, Preceding; numbered = numbered)
 
-referenced(node::JumpNode, ::Type{Preceding}) =
-    getindex.(reduce(append!, references.(node.arguments), init = references(node.condition)))
-referenced(node::ReturnNode, ::Type{Preceding}) = getindex.(references(node.argument))
-referenced(node::SpecialCallNode, ::Type{Preceding}) = getindex.(references(node.form))
-referenced(node::NestedCallNode, ::Type{Preceding}) = getindex.(references(node.call))
-referenced(node::PrimitiveCallNode, ::Type{Preceding}) = getindex.(references(node.call))
-referenced(node::ArgumentNode, ::Type{Preceding}) = if isnothing(node.call_source)
-    AbstractNode[]
-else
-    getindex.(references(node.call_source[].arguments[node.number]))
+referenced(node::JumpNode, ::Type{Preceding}; numbered::Bool = false) =
+    mapfoldl(_dereference, append!, references.(node.arguments, numbered = numbered),
+             init = references(node.condition, numbered = numbered))
+referenced(node::ReturnNode, ::Type{Preceding}; numbered::Bool = false) =
+    _dereference.(references(node.argument; numbered = numbered))
+referenced(node::SpecialCallNode, ::Type{Preceding}; numbered::Bool = false) =
+    _dereference.(references(node.form; numbered = numbered))
+referenced(node::NestedCallNode, ::Type{Preceding}; numbered::Bool = false) =
+    _dereference.(references(node.call; numbered = numbered))
+referenced(node::PrimitiveCallNode, ::Type{Preceding}; numbered::Bool = false) =
+    _dereference.(references(node.call; numbered = numbered))
+referenced(::ConstantNode, ::Type{Preceding}; numbered::Bool = false) = AbstractNode[]
+function referenced(node::ArgumentNode, ::Type{Preceding}; numbered::Bool = false)
+    if isnothing(node.call_source)
+        return AbstractNode[]
+    else
+        return _dereference.(
+            references(node.call_source[].arguments[node.number]; numbered = numbered))
+    end
 end
-referenced(::ConstantNode, ::Type{Preceding}) = AbstractNode[]
 
-referenced(node::AbstractNode, ::Type{Parent}) = AbstractNode[]
-function referenced(node::ArgumentNode, ::Type{Parent})
-    # branch arguments have no parent references
-    !isnothing(node.call_source) && return AbstractNode[]
-    
-    # first argument is always the function itself -- need to treat this separately
-    if node.number == 1
+referenced(node::AbstractNode, ::Type{Parent}; numbered::Bool = false) = AbstractNode[]
+function referenced(node::ArgumentNode, ::Type{Parent}; numbered::Bool = false)
+    if !isnothing(node.call_source)
+        # branch arguments have no parent references
+        return AbstractNode[]
+    elseif node.number == 1
+        # first argument is always the function itself -- need to treat this separately
         return getindex.(references(getparent(node).call.f))
     else
         return getindex.(references(getparent(node).call.arguments[node.number - 1]))
     end
 end
 
-referenced(node::AbstractNode, ::Type{Union{Preceding, Parent}}) = referenced(node, Preceding)
-referenced(node::ArgumentNode, ::Type{Union{Preceding, Parent}}) = referenced(node, Parent)
+referenced(node::AbstractNode, ::Type{Union{Preceding, Parent}}; numbered::Bool = false) =
+    referenced(node, Preceding; numbered = numbered)
+referenced(node::ArgumentNode, ::Type{Union{Preceding, Parent}}; numbered::Bool = false) =
+    referenced(node, Parent; numbered = numbered)
 
 
 """
@@ -210,7 +234,7 @@ Return all nodes that reference `node`; i.e., all data that immediately depends 
 """
 function dependents(node::AbstractNode)
     return [f for f in query(node, Following) if node in referenced(f, Preceding)]
-    # or: filter(f -> (node in referenced(f, Preceding))::Bool, query(node, Following))
+    # or: filter(f -> (node in references(f, Preceding))::Bool, query(node, Following))
     # an instance of https://github.com/JuliaLang/julia/issues/28889
 end
 

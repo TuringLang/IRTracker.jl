@@ -3,48 +3,6 @@ using Zygote: gradient
 import DynamicComputationGraphs: trackedcall
 
 
-####################################################################################
-# This should soon be moved to graphapi.jl
-
-function refs(node::Union{NestedCallNode, PrimitiveCallNode})
-    f_ref = node.call.f isa TapeReference ?
-        Pair{Int, AbstractNode}[1 => node.call.f[]] :
-        Pair{Int, AbstractNode}[]
-    arg_refs = (i+1 => e[] for (i, e) in enumerate(node.call.arguments) if e isa TapeReference)
-    return append!(f_ref, arg_refs)
-end
-
-function refs(node::SpecialCallNode)
-    arg_refs = (i+1 => e[] for (i, e) in enumerate(node.form.arguments) if e isa TapeReference)
-    return append!(f_ref, arg_refs)
-end
-
-function refs(node::ReturnNode)
-    return node.argument isa TapeReference ?
-        Pair{Int, AbstractNode}[1 => node.argument[]] :
-        Pair{Int, AbstractNode}[]
-end
-
-function refs(node::JumpNode)
-    cond_ref = node.condition isa TapeReference ?
-        Pair{Int, AbstractNode}[1 => node.condition[]] :
-        Pair{Int, AbstractNode}[]
-    arg_refs = (i+1 => e[] for (i, e) in enumerate(node.arguments) if e isa TapeReference)
-    return append!(cond_ref, arg_refs)
-end
-
-refs(node::ArgumentNode) = if isnothing(node.call_source)
-    Pair{Int, AbstractNode}[]
-else
-    Pair.(1, getindex.(DynamicComputationGraphs.references(node.call_source[].arguments[node.number])))
-end
-
-refs(::AbstractNode) = Pair{Int, AbstractNode}[]
-
-
-####################################################################################
-# Now the implementation of the differentiation context
-
 struct BDiffContext <: AbstractTrackingContext end
 
 accumulate!(node, x̄) = setmetadata!(node, :Ω̄, getmetadata(node, :Ω̄, Zero()) .+ x̄)
@@ -56,7 +14,7 @@ function pullback!(node::PrimitiveCallNode, Ω̄)
 
     x̄ = pullback(Ω̄)
     
-    for (i, ref) in refs(node)
+    for (i, ref) in referenced(node; numbered = true)
         accumulate!(ref, x̄[i])
     end
 
@@ -64,7 +22,7 @@ function pullback!(node::PrimitiveCallNode, Ω̄)
 end
 
 function pullback!(node::AbstractNode, Ω̄)
-    for (i, ref) in refs(node)
+    for (i, ref) in referenced(node; numbered = true)
         accumulate!(ref, Ω̄)
     end
 
@@ -81,7 +39,7 @@ function pullback!(node::NestedCallNode, Ω̄)
     end
 
     args = getarguments(node)
-    for (i, ref) in refs(node)
+    for (i, ref) in referenced(node; numbered = true)
         accumulate!(ref, getmetadata(args[i], :Ω̄, Zero()))
     end
 
