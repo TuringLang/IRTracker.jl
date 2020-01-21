@@ -57,38 +57,40 @@ first time and less the second time:
     
 ```
 julia> printlevels(track(geom, 1, 0.5), 3)
-⟨geom⟩(⟨1⟩, ⟨0.5⟩) = 3
-  @1: [Argument §1:%1] = geom
-  @2: [Argument §1:%2] = 1
-  @3: [Argument §1:%3] = 0.5
-  @4: [§1:%4] ⟨rand⟩() = 0.5649805445318339
-    @1: [Argument §1:%1] = rand
-    @2: [§1:%2] @1(⟨some huge Mersenne twister constant⟩, ⟨Float64⟩) = 0.5649805445318339
-    @3: [§1:&1] return @2 = 0.5649805445318339
-  @5: [§1:%5] ⟨<⟩(@4, @3) = false
-    @1: [Argument §1:%1] = <
-    @2: [Argument §1:%2] = 0.5649805445318339
-    @3: [Argument §1:%3] = 0.5
-    @4: [§1:%4] ⟨lt_float⟩(@2, @3) = false
-    @5: [§1:&1] return @4 = false
-  @6: [§1:&1] goto §2 since @5 == false
-  @7: [§2:%6] ⟨+⟩(@2, ⟨1⟩) = 2
-    @1: [Argument §1:%1] = +
-    @2: [Argument §1:%2] = 1
-    @3: [Argument §1:%3] = 1
-    @4: [§1:%4] ⟨add_int⟩(@2, @3) = 2
-    @5: [§1:&1] return @4 = 2
-  @8: [§2:%7] ⟨geom⟩(@7, @3) = 3
-    @1: [Argument §1:%1] = geom
-    @2: [Argument §1:%2] = 2
-    @3: [Argument §1:%3] = 0.5
-    @4: [§1:%4] ⟨rand⟩() = 0.9938271839338844
-    @5: [§1:%5] ⟨<⟩(@4, @3) = false
-    @6: [§1:&1] goto §2 since @5 == false
-    @7: [§2:%6] ⟨+⟩(@2, ⟨1⟩) = 3
-    @8: [§2:%7] ⟨geom⟩(@7, @3) = 3
-    @9: [§2:&1] return @8 = 3
-  @9: [§2:&1] return @8 = 3
+⟨geom⟩(⟨1⟩, ⟨0.5⟩) = 3	
+  @1: [Arg:§1:%1] geom	
+  @2: [Arg:§1:%2] 1	
+  @3: [Arg:§1:%3] 0.5	
+  @4: [§1:%4] ⟨rand⟩() = 0.7595635877474407	
+    @1: [Arg:§1:%1] rand	
+    @2: [§1:%2] ⟨Random.default_rng⟩() = (…some huge Mersenne twister constant)
+    @3: [§1:%3] @1(@2, ⟨Float64⟩) = 0.7595635877474407	
+    @4: [§1:&1] return @3 = 0.7595635877474407 
+  @5: [§1:%5] ⟨<⟩(@4, @3) = false	
+    @1: [Arg:§1:%1] <	
+    @2: [Arg:§1:%2] 0.7595635877474407	
+    @3: [Arg:§1:%3] 0.5	
+    @4: [§1:%4] ⟨lt_float⟩(@2, @3) = false	
+    @5: [§1:&1] return @4 = false 
+  @6: [§1:&1] goto §2 since @5 == false 
+  @7: [§2:%6] ⟨+⟩(@2, ⟨1⟩) = 2	
+    @1: [Arg:§1:%1] +	
+    @2: [Arg:§1:%2] 1	
+    @3: [Arg:§1:%3] 1	
+    @4: [§1:%4] ⟨add_int⟩(@2, @3) = 2	
+    @5: [§1:&1] return @4 = 2 
+  @8: [§2:%7] ⟨geom⟩(@7, @3) = 3	
+    @1: [Arg:§1:%1] geom	
+    @2: [Arg:§1:%2] 2	
+    @3: [Arg:§1:%3] 0.5	
+    @4: [§1:%4] ⟨rand⟩() = 0.8639835284162187	
+    @5: [§1:%5] ⟨<⟩(@4, @3) = false	
+    @6: [§1:&1] goto §2 since @5 == false 
+    @7: [§2:%6] ⟨+⟩(@2, ⟨1⟩) = 3	
+    @8: [§2:%7] ⟨geom⟩(@7, @3) = 3	
+    @9: [§2:&1] return @8 = 3 
+  @9: [§2:&1] return @8 = 3 
+
 ```
 
 or in a simplified graphical form:
@@ -116,6 +118,51 @@ This, together with the original IR, while being a bit cryptic, contains the fol
 - Constants (literals in the expressions) are written in ⟨angle brackets⟩ (this makes debugging the
   transformed code easier).
 
+Furthermore, argument assignments in blocks jumped to by branches are linked back to the respective
+arguments by using the notation `@i#j = value`:
+
+```
+julia> function h(x, n)
+           r = zero(x)
+           i = 0
+           while i < n
+               r += x^i
+               i += 1
+           end
+           return r
+       end
+h (generic function with 1 method)
+
+julia> printlevels(track(h, 2.0, 2), 2)
+⟨h⟩(⟨2.0⟩, ⟨2⟩) = 3.0	
+  @1: [Arg:§1:%1] h	
+  @2: [Arg:§1:%2] 2.0	
+  @3: [Arg:§1:%3] 2	
+  @4: [§1:%4] ⟨zero⟩(@2) = 0.0	
+  @5: [§1:&1] goto §2 (⟨0⟩, @4) 
+  @6: [Arg:§2:%5] @5#1 = 0	
+  @7: [Arg:§2:%6] @5#2 = 0.0	
+  @8: [§2:%7] ⟨<⟩(@6, @3) = true	
+  @9: [§2:&2] goto §3 
+  @10: [§3:%8] ⟨^⟩(@2, @6) = 1.0	
+  @11: [§3:%9] ⟨+⟩(@7, @10) = 1.0	
+  @12: [§3:%10] ⟨+⟩(@6, ⟨1⟩) = 1	
+  @13: [§3:&1] goto §2 (@12, @11) 
+  @14: [Arg:§2:%5] @13#1 = 1	
+  @15: [Arg:§2:%6] @13#2 = 1.0	
+  @16: [§2:%7] ⟨<⟩(@14, @3) = true	
+  @17: [§2:&2] goto §3 
+  @18: [§3:%8] ⟨^⟩(@2, @14) = 2.0	
+  @19: [§3:%9] ⟨+⟩(@15, @18) = 3.0	
+  @20: [§3:%10] ⟨+⟩(@14, ⟨1⟩) = 2	
+  @21: [§3:&1] goto §2 (@20, @19) 
+  @22: [Arg:§2:%5] @21#1 = 2	
+  @23: [Arg:§2:%6] @21#2 = 3.0	
+  @24: [§2:%7] ⟨<⟩(@22, @3) = false	
+  @25: [§2:&1] goto §4 since @24 == false 
+  @26: [§4:&1] return @23 = 3.0 
+```
+
 In this form, a backward pass is as trivial as following back the references from the last `return`
 and adding adjoint values in the metadata.
 
@@ -137,29 +184,29 @@ each block), somehow like this:
 ```
 julia> @code_tracked geom(1, 0.5)
 1: (%4, %1, %2, %3)
-  %5 = saveir!(%4, 1: (%1, %2, %3)
-                     %4 = rand()
-                     %5 = %4 < %3
-                     br 2 unless %5
-                     return %2
-                   2:
-                     %6 = %2 + 1
-                     %7 = geom(%6, %3)
-                     return %7)
+  %5 = saveir!(%4, $(QuoteNode(1: (%1, %2, %3)
+  %4 = Main.rand()
+  %5 = %4 < %3
+  br 2 unless %5
+  return %2
+2:
+  %6 = %2 + 1
+  %7 = Main.geom(%6, %3)
+  return %7)))
   %6 = TapeConstant(%1)
-  %7 = trackedargument(%4, %6, $(QuoteNode(1)), $(QuoteNode(§1:%1)))
+  %7 = trackedargument(%4, %6, nothing, $(QuoteNode(1)), $(QuoteNode(§1:%1)))
   %8 = record!(%4, %7)
   %9 = TapeConstant(%2)
-  %10 = trackedargument(%4, %9, $(QuoteNode(2)), $(QuoteNode(§1:%2)))
+  %10 = trackedargument(%4, %9, nothing, $(QuoteNode(2)), $(QuoteNode(§1:%2)))
   %11 = record!(%4, %10)
   %12 = TapeConstant(%3)
-  %13 = trackedargument(%4, %12, $(QuoteNode(3)), $(QuoteNode(§1:%3)))
+  %13 = trackedargument(%4, %12, nothing, $(QuoteNode(3)), $(QuoteNode(§1:%3)))
   %14 = record!(%4, %13)
-  %15 = TapeConstant(rand)
+  %15 = TapeConstant(Main.rand)
   %16 = tuple()
   %17 = trackedcall(%4, %15, %16, $(QuoteNode(§1:%4)))
   %18 = record!(%4, %17)
-  %19 = TapeConstant(:<)
+  %19 = TapeConstant(Main.:<)
   %20 = trackedvariable(%4, $(QuoteNode(%4)))
   %21 = trackedvariable(%4, $(QuoteNode(%3)))
   %22 = tuple(%20, %21)
@@ -174,12 +221,12 @@ julia> @code_tracked geom(1, 0.5)
   br 3 (%2, %29)
 2: (%30)
   %31 = record!(%4, %30)
-  %32 = TapeConstant(:+)
+  %32 = TapeConstant(Main.:+)
   %33 = trackedvariable(%4, $(QuoteNode(%2)))
   %34 = tuple(%33, $(QuoteNode(⟨1⟩)))
   %35 = trackedcall(%4, %32, %34, $(QuoteNode(§2:%6)))
   %36 = record!(%4, %35)
-  %37 = TapeConstant(geom)
+  %37 = TapeConstant(Main.geom)
   %38 = trackedvariable(%4, $(QuoteNode(%6)))
   %39 = trackedvariable(%4, $(QuoteNode(%3)))
   %40 = tuple(%38, %39)
@@ -191,14 +238,16 @@ julia> @code_tracked geom(1, 0.5)
 3: (%45, %46)
   %47 = record!(%4, %46)
   return %45
+
 ```
 
 The extra argument, `%4`, is a `GraphRecorder` object where all statements are recorded onto using
-`record!`.  Each kind of statement is reified by a call to `tracked<whatever>`, and finally replaced
-by `record!`, which returns its original value. The function `trackcall` then recursively does the
-same kind of thing to the nested calls.
+`record!`.  Each kind of statement is reified by a call to `tracked<whatever>` (plus some
+preparations), and finally replaced by `record!`, which returns its original value. The function
+`trackcall` recursively does the same kind of thing to the nested calls (depending the current
+notion of “primitive” calls, that is – see below under “Contexts” for more about this).
 
-This can be achieved by using an `IRTools`
+This transformation is implemented using an `IRTools`
 [dynamo](https://mikeinnes.github.io/IRTools.jl/latest/dynamo/), which in essence is just a fancier
 generated function, allowing one to operate with `IRTools.IR` instead of "raw" `CodeInfo`s.  In this
 dynamo, the original IR is completely rebuilt to insert all necessary tracking statements.
@@ -231,8 +280,7 @@ The main parts of customizable behaviour are 1) to change what is considered a p
 “primitively” differentiable function is primitive in an AD application – no need to recurse
 further), and 2) to record custom metadata.
 
-This system is basically working, but still a bit under construction (mostly in that there will be
-more points provided that can be overloaded, and documentation given).
+For examples, see the end of the readme or the context test cases.
 
 
 ## Trying it out
@@ -303,6 +351,22 @@ julia> backward(node[5])
  @3: ⟨sin⟩(@2) = 0.8414709848078965
  @2: 1.0
 ```
+
+For special cases, such as when implementing AD, we can also require the references to be numbered
+according to their position in calls:
+
+```
+julia> referenced(node[5], numbered = true)
+1-element Array{Pair{Int64,NestedCallNode},1}:
+ 1 => @4: ⟨+⟩(@3, @2) = 1.8414709848078965	
+
+julia> referenced(node[4], numbered = true)
+2-element Array{Pair{Int64,_A} where _A,1}:
+ 2 => @3: ⟨sin⟩(@2) = 0.8414709848078965	
+ 3 => @2: 1.0
+```
+
+Constant arguments are left out.  For function calls, `1` corresponds to the function itself.
 
 `dependents` and `forward` are the corresponding query functions in the other direction:
 
@@ -433,6 +497,8 @@ At the moment, the overloadable methods are `canrecur`, `trackedargument`, `trac
 `trackedspecial`.  Provided fallbacks are `recordnestedcall`, as explained, and `isbuiltin` for
 `canrecur` (you are not forced to use these, but otherwise, you’d have to manually construct the
 node structures to return.)
+
+For something more complex, you can have a look at the AD implementation in the test folder.
 
 
 
