@@ -8,6 +8,7 @@ IRTools = "7869d1d1-7146-5819-86e3-90919afe41df"
 
 [compat]
 julia = "1.2"
+IRTools = "0.3"
 
 [extras]
 ChainRules = "082447d4-558c-5d27-93f4-14fc19e9eca2"
