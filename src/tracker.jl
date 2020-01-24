@@ -56,7 +56,7 @@ function recordnestedcall(ctx::AbstractTrackingContext, f_repr::TapeExpr,
     call = TapeCall(result, f_repr, args_repr)
     node = NestedCallNode(call, recorder.children, info)
     recorder.rootnode[] = node  # this will set the parent node of all recorded children
-    return node
+    return node::NestedCallNode{typeof(result)}
 end
 
 
@@ -117,10 +117,11 @@ Construct a node tracking a special call (e.g., `Expr(:inline, ...)`).  Overload
 trackedspecial(::AbstractTrackingContext, form_repr::TapeExpr, info::NodeInfo) =
     SpecialCallNode(form_repr, info)
 
-function trackedspecial(recorder::GraphRecorder, form_repr::TapeExpr, location::IRIndex)
+function trackedspecial(
+    recorder::GraphRecorder, form_repr::TapeExpr{T}, location::IRIndex) where {T}
     info = NodeInfo(recorder.original_ir, location, recorder.rootnode)
     node = trackedspecial(recorder.context, form_repr, info)
-    return node::DataFlowNode
+    return node::DataFlowNode{T}
 end
 
 
@@ -132,10 +133,11 @@ Construct a node tracking a constant value.  Overloadable.
 trackedconstant(::AbstractTrackingContext, const_repr::TapeExpr, info::NodeInfo) =
     ConstantNode(const_repr, info)
 
-function trackedconstant(recorder::GraphRecorder, const_repr::TapeExpr, location::IRIndex)
+function trackedconstant(
+    recorder::GraphRecorder, const_repr::TapeExpr{T}, location::IRIndex) where {T}
     info = NodeInfo(recorder.original_ir, location, recorder.rootnode)
     node = trackedconstant(recorder.context, const_repr, info)
-    return node::DataFlowNode
+    return node::DataFlowNode{T}
 end
 
 
@@ -148,12 +150,12 @@ trackedargument(::AbstractTrackingContext, arg_repr::TapeExpr,
                 call_source::Union{ControlFlowNode, Nothing}, number::Int, info::NodeInfo) =
     ArgumentNode(arg_repr, call_source, number, info)
 
-function trackedargument(recorder::GraphRecorder, arg_repr::TapeExpr,
+function trackedargument(recorder::GraphRecorder, arg_repr::TapeExpr{T},
                          call_source::Union{ControlFlowNode, Nothing}, number::Int,
-                         location::IRIndex)
+                         location::IRIndex) where {T}
     info = NodeInfo(recorder.original_ir, location, recorder.rootnode)
     node = trackedargument(recorder.context, arg_repr, call_source, number, info)
-    return node::DataFlowNode
+    return node::DataFlowNode{T}
 end
 
 
