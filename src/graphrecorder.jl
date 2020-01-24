@@ -45,7 +45,7 @@ function push!(recorder::GraphRecorder, node::AbstractNode)
 end
 
 function record_variable_usage!(recorder::GraphRecorder, node::DataFlowNode, current_position::Int)
-    current_reference = TapeReference(recorder.rootnode, current_position)
+    current_reference = TapeReference(node, current_position)
     current_var = IRTools.var(getlocation(node).line)
     recorder.variable_usages[current_var] = current_reference
     return recorder

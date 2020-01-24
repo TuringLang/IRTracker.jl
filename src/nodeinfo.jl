@@ -1,5 +1,5 @@
 import IRTools
-import Base: parent
+
 
 """Extra (optional) data and metadata associated with every node (mostly locations & parent node)."""
 mutable struct NodeInfo

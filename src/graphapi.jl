@@ -1,4 +1,5 @@
 using IRTools
+import Base: firstindex, getindex, lastindex
 
 
 ####################################################################################################
@@ -143,7 +144,7 @@ _contents(node::NestedCallNode) = _contents(node.call)
 _contents(node::PrimitiveCallNode) = _contents(node.call)
 _contents(node::ConstantNode) = _contents(node.value)
 _contents(node::ArgumentNode) =
-    isnothing(node.call_source) ? TapeValue[] : _contents(node.call_source[])
+    isnothing(node.call_source) ? TapeValue[] : _contents(node.call_source)
 
 
 _dereference(ix_ref::Pair{Int, TapeReference}) = ix_ref.first => ix_ref.second[]
@@ -174,7 +175,7 @@ function referenced(node::ArgumentNode, ::Type{Preceding}; numbered::Bool = fals
         return AbstractNode[]
     else
         return _dereference.(
-            references(node.call_source[].arguments[node.number]; numbered = numbered))
+            references(node.call_source.arguments[node.number]; numbered = numbered))
     end
 end
 

@@ -32,9 +32,9 @@ getindex(ir::IRTools.IR, ix::NoIndex) = throw(DomainError(ix, "Can't use `NoInde
 abstract type AbstractNode end
 
 """Representats a SSA statement in tracked IR in a `GraphTape`."""
-abstract type DataFlowNode <: AbstractNode end
+abstract type DataFlowNode{T} <: AbstractNode end
 
-abstract type RecursiveNode <: DataFlowNode end
+abstract type RecursiveNode{T} <: DataFlowNode{T} end
 
 """Representats a branch in tracked IR in a `GraphTape`."""
 abstract type ControlFlowNode <: AbstractNode end

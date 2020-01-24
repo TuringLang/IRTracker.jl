@@ -145,11 +145,11 @@ end
 Construct a node tracking a function argument.  Overloadable.
 """
 trackedargument(::AbstractTrackingContext, arg_repr::TapeExpr,
-                call_source::Union{TapeReference, Nothing}, number::Int, info::NodeInfo) =
+                call_source::Union{ControlFlowNode, Nothing}, number::Int, info::NodeInfo) =
     ArgumentNode(arg_repr, call_source, number, info)
 
 function trackedargument(recorder::GraphRecorder, arg_repr::TapeExpr,
-                         call_source::Union{TapeReference, Nothing}, number::Int,
+                         call_source::Union{ControlFlowNode, Nothing}, number::Int,
                          location::IRIndex)
     info = NodeInfo(recorder.original_ir, location, recorder.rootnode)
     node = trackedargument(recorder.context, arg_repr, call_source, number, info)
@@ -159,10 +159,13 @@ end
 
 """
     trackedprimitive(ctx, f_repr, args_repr, info)
+    trackedprimitive(ctx, result, f_repr, args_repr, info)
 
-Construct a node tracking a primitive function call.  Overloadable.
+Construct a node tracking a primitive function call.  Overloadable.  The second version allows to
+provide the result of `f(args)` to avoid calling `f` twice, if that has already been done in
+`trackedcall`.
 
-See also: [`trackedcall`](@ref),
+See also: [`trackedcall`](@ref)
 """
 function trackedprimitive(::AbstractTrackingContext, f_repr::TapeExpr,
                           args_repr::ArgumentTuple{TapeExpr}, info::NodeInfo)
@@ -173,7 +176,7 @@ end
 
 function trackedprimitive(::AbstractTrackingContext, result::T, f_repr::TapeExpr,
                           args_repr::ArgumentTuple{TapeExpr}, info::NodeInfo) where {T}
-    call = TapeCall{T}(result, f_repr, args_repr)
+    call = TapeCall(result, f_repr, args_repr)
     return PrimitiveCallNode(call, info)
 end
 

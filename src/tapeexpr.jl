@@ -14,10 +14,12 @@ abstract type TapeForm{T} <: TapeExpr{T} end
 Representation of an SSA variable.  References a child node of a `NestedCallNode`; like the indices
 of a Wengert list.  Behaves like `Ref` (i.e., you can get the referenced node of `r` by `r[]`).
 """
-struct TapeReference <: TapeValue{Any}
-    parent::RecursiveNode
+struct TapeReference{T} <: TapeValue{T}
+    referenced::DataFlowNode{T}
     index::Int
 end
+
+getindex(expr::TapeReference) = expr.referenced
 
 
 """Representation of a constant value."""
@@ -47,11 +49,6 @@ struct TapeSpecialForm{T} <: TapeExpr{T}
 end
 
 
-
-getindex(expr::TapeReference) = expr.parent.children[expr.index]
-
-convert(::Type{TapeReference}, node::AbstractNode) =
-    TapeReference(node.info.parent_ref[], node.info.position)
 
 
 """

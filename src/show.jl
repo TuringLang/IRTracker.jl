@@ -64,7 +64,9 @@ showcall(io::IO, node::SpecialCallNode, postfix...) =
 function showcall(io::IO, node::ArgumentNode, postfix...)
     call_source = node.call_source
     if !isnothing(call_source)
-        print(io, call_source, "#", node.number, " =", postfix...)
+        print(io, "@", call_source.info.position,
+              "#", node.number,
+              " =", postfix...)
     end
 end
 
