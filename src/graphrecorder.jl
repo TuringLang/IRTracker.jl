@@ -10,8 +10,8 @@ mutable struct GraphRecorder{Ctx<:AbstractTrackingContext}
     """`AbstractTrackingContext` used during tracking."""
     context::Ctx
 
-    """Node used as \"forward reference\" in `TapeReference`s."""
-    rootnode::Union{RecursiveNode, Nothing}
+    """Recorded child nodes."""
+    children::Vector{AbstractNode}
     
     """IR on which the recorder is run."""
     original_ir::Union{IRTools.IR, Nothing}
@@ -21,12 +21,13 @@ mutable struct GraphRecorder{Ctx<:AbstractTrackingContext}
     in the recorded expressions.
     """
     variable_usages::VariableUsages
+
+    """Reference to be filled later with the node resulting from this recording."""
+    rootnode::NullableRef{RecursiveNode}
 end
 
 GraphRecorder(ctx::AbstractTrackingContext) = GraphRecorder(
-    ctx, nothing, nothing, VariableUsages())
-GraphRecorder(ctx::AbstractTrackingContext, root::RecursiveNode) = GraphRecorder(
-    ctx, root, nothing, VariableUsages())
+    ctx, Vector{AbstractNode}(), nothing, VariableUsages(), NullableRef{RecursiveNode}())
 
 
 """
@@ -34,10 +35,9 @@ Track a node on the `GraphRecorder`, taking care to remember this as the current
 SSA variable, and setting it's parent and position as a child.
 """
 function push!(recorder::GraphRecorder, node::AbstractNode)
-    children = getchildren(recorder.rootnode)
-    current_position = length(children) + 1
+    current_position = length(recorder.children) + 1
     setposition!(node.info, current_position)
-    push!(children, node)
+    push!(recorder.children, node)
     
     # remember mapping this nodes variable to be mentioned last at the current position
     record_variable_usage!(recorder, node, current_position)

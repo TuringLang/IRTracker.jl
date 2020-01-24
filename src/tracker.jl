@@ -51,11 +51,11 @@ end
 function recordnestedcall(ctx::AbstractTrackingContext, f_repr::TapeExpr,
                           args_repr::ArgumentTuple{TapeValue}, info::NodeInfo)
     f, args = getvalue(f_repr), getvalue.(args_repr)
-    T = get(Base.return_types(typeof(f), typeof.(args)), 1, Any)
-    call = TapeCall{T}(f_repr, args_repr)
-    node = NestedCallNode(call, Vector{AbstractNode}(), info)
-    result = _recordnestedcall!(GraphRecorder(ctx, node), f, args...)
-    call.value[] = result
+    recorder = GraphRecorder(ctx)
+    result = _recordnestedcall!(recorder, f, args...)
+    call = TapeCall(result, f_repr, args_repr)
+    node = NestedCallNode(call, recorder.children, info)
+    recorder.rootnode[] = node  # this will set the parent node of all recorded children
     return node
 end
 

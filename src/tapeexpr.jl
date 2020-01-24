@@ -30,14 +30,9 @@ end
 
 """Representation of a normal function call."""
 struct TapeCall{T} <: TapeExpr{T}
-    value::NullableRef{T}
+    value::T
     f::TapeValue
     arguments::ArgumentTuple{TapeValue}
-
-    TapeCall(value::T, f::TapeValue, arguments::ArgumentTuple{TapeValue}) where {T} =
-        new{T}(NullableRef{T}(value), f, arguments)
-    TapeCall{T}(f::TapeValue, arguments::ArgumentTuple{TapeValue}) where {T} =
-        new{T}(NullableRef{T}(), f, arguments)
 end
 
 
@@ -87,7 +82,7 @@ end
 # references(expr::TapeReference) = TapeReference[expr]
 
 
-getvalue(expr::TapeCall) = expr.value[]
+getvalue(expr::TapeCall) = expr.value
 getvalue(expr::TapeSpecialForm) = expr.value
 getvalue(expr::TapeConstant) = expr.value
 getvalue(expr::TapeReference) = getvalue(expr[])
