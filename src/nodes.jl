@@ -1,24 +1,24 @@
 import Base: firstindex, getindex, lastindex, push!
 
 
-struct ConstantNode <: DataFlowNode
-    value::TapeConstant
+struct ConstantNode{T} <: DataFlowNode
+    value::TapeConstant{T}
     info::NodeInfo
 end
 
-struct PrimitiveCallNode <: DataFlowNode
-    call::TapeCall
+struct PrimitiveCallNode{T} <: DataFlowNode
+    call::TapeCall{T}
     info::NodeInfo
 end
 
-struct NestedCallNode <: RecursiveNode
-    call::TapeCall
-    children::Vector{AbstractNode}
+struct NestedCallNode{T} <: RecursiveNode
+    call::TapeCall{T}
+    children::Vector{<:AbstractNode}
     info::NodeInfo
 end
 
-struct SpecialCallNode <: DataFlowNode
-    form::TapeSpecialForm
+struct SpecialCallNode{T} <: DataFlowNode
+    form::TapeSpecialForm{T}
     info::NodeInfo
 end
 
@@ -34,8 +34,8 @@ struct JumpNode <: ControlFlowNode
     info::NodeInfo
 end
 
-struct ArgumentNode <: DataFlowNode
-    value::TapeConstant
+struct ArgumentNode{T} <: DataFlowNode
+    value::TapeConstant{T}
     call_source::Union{TapeReference, Nothing}
     number::Int
     info::NodeInfo
