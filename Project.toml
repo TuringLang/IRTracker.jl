@@ -5,10 +5,12 @@ version = "0.3.1"
 
 [deps]
 IRTools = "7869d1d1-7146-5819-86e3-90919afe41df"
+LightGraphs = "093fc24a-ae57-5d10-9952-331d41423f4d"
+MetaGraphs = "626554b9-1ddb-594c-aa3c-2596fe9399a5"
 
 [compat]
-julia = "1.2"
 IRTools = "0.3"
+julia = "1.2"
 
 [extras]
 ChainRules = "082447d4-558c-5d27-93f4-14fc19e9eca2"
