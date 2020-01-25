@@ -59,6 +59,13 @@ record!(recorder::GraphRecorder, node::AbstractNode) = (push!(recorder, node); g
 
 saveir!(recorder::GraphRecorder, ir::IRTools.IR) = (recorder.original_ir = ir)
 
+function finalize!(recorder::GraphRecorder, result, f_repr, args_repr, info)
+    call = TapeCall(result, f_repr, args_repr)
+    node = NestedCallNode(call, recorder.children, info)
+    recorder.rootnode[] = node  # this will set the parent node of all recorded children
+    return node
+end
+
 
 @doc """
     trackedvariable(recorder, var)

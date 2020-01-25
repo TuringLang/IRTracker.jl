@@ -53,9 +53,7 @@ function recordnestedcall(ctx::AbstractTrackingContext, f_repr::TapeExpr,
     f, args = getvalue(f_repr), getvalue.(args_repr)
     recorder = GraphRecorder(ctx)
     result = _recordnestedcall!(recorder, f, args...)
-    call = TapeCall(result, f_repr, args_repr)
-    node = NestedCallNode(call, recorder.children, info)
-    recorder.rootnode[] = node  # this will set the parent node of all recorded children
+    node = finalize!(recorder, result, f_repr, args_repr, info)
     return node::NestedCallNode{typeof(result)}
 end
 
@@ -102,7 +100,7 @@ trackedjump(::AbstractTrackingContext, target::Int, args_repr::ArgumentTuple{Tap
                 JumpNode(target, args_repr, cond_repr, info)
 
 function trackedjump(recorder::GraphRecorder, target::Int, args_repr::ArgumentTuple{TapeValue},
-                   cond_repr::TapeExpr, location::IRIndex)
+                     cond_repr::TapeExpr, location::IRIndex)
     info = NodeInfo(recorder.original_ir, location, recorder.rootnode)
     node = trackedjump(recorder.context, target, args_repr, cond_repr, info)
     return node::JumpNode
