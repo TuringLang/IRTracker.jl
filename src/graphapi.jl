@@ -147,56 +147,85 @@ _contents(node::ArgumentNode) =
     isnothing(node.call_source) ? TapeValue[] : _contents(node.call_source)
 
 
-_dereference(ix_ref::Pair{Int, TapeReference}) = ix_ref.first => ix_ref.second[]
-_dereference(ref::TapeReference) = ref[]
-
 """
-    referenced(node[, axis]) -> Vector{<:AbstractNode}
+    referenced(node[, axis]; numbered = false) -> Vector{<:AbstractNode}
 
 Return all nodes that `node` references; i.e., all data it immediately depends on.
 """
-referenced(node::AbstractNode; numbered::Bool = false) =
-    referenced(node, Preceding; numbered = numbered)
-
-referenced(node::JumpNode, ::Type{Preceding}; numbered::Bool = false) =
-    mapfoldl(_dereference, append!, references.(node.arguments, numbered = numbered),
-             init = references(node.condition, numbered = numbered))
-referenced(node::ReturnNode, ::Type{Preceding}; numbered::Bool = false) =
-    _dereference.(references(node.argument; numbered = numbered))
-referenced(node::SpecialCallNode, ::Type{Preceding}; numbered::Bool = false) =
-    _dereference.(references(node.form; numbered = numbered))
-referenced(node::NestedCallNode, ::Type{Preceding}; numbered::Bool = false) =
-    _dereference.(references(node.call; numbered = numbered))
-referenced(node::PrimitiveCallNode, ::Type{Preceding}; numbered::Bool = false) =
-    _dereference.(references(node.call; numbered = numbered))
-referenced(::ConstantNode, ::Type{Preceding}; numbered::Bool = false) = AbstractNode[]
-function referenced(node::ArgumentNode, ::Type{Preceding}; numbered::Bool = false)
-    if isnothing(node.call_source)
-        return AbstractNode[]
+function referenced(node::AbstractNode, ::Type{T} = Preceding;
+                    numbered::Bool = false) where {T<:Reverse}
+    if numbered
+        return numbered_referenced(node, T)
     else
-        return _dereference.(
-            references(node.call_source.arguments[node.number]; numbered = numbered))
+        return unnumbered_referenced(node, T)
     end
 end
 
-referenced(node::AbstractNode, ::Type{Parent}; numbered::Bool = false) = AbstractNode[]
-function referenced(node::ArgumentNode, ::Type{Parent}; numbered::Bool = false)
-    if !isnothing(node.call_source)
-        # branch arguments have no parent references
-        return AbstractNode[]
-    elseif node.number == 1
-        # first argument is always the function itself -- need to treat this separately
-        return _dereference.(references(getparent(node).call.f, numbered = numbered))
+
+for variant in (:numbered, :unnumbered)
+    referenced_variant = Symbol(variant, "_referenced")
+    references_variant = Symbol(variant, "_references")
+
+    # deref is a hack to get type inference right here -- if we factor it out into a function
+    # and broadcast it, the result is Vector{Union{}}.
+    
+    local Result_variant, deref
+    if variant == :numbered
+        Result_variant = :(Pair{Int, AbstractNode})
+        deref = :(ref.first => ref.second[])
     else
-        return _dereference.(references(getparent(node).call.arguments[node.number - 1],
-                                        numbered = numbered))
+        Result_variant = :(AbstractNode)
+        deref = :(ref[])
+    end
+
+    
+    @eval begin
+        # PRECEDING
+        $referenced_variant(node::JumpNode, ::Type{Preceding}) =
+            mapfoldl(ref -> $deref::$Result_variant, append!, $references_variant.(node.arguments),
+                     init = $references_variant(node.condition))::Vector{$Result_variant}
+        $referenced_variant(node::ReturnNode, ::Type{Preceding}) =
+            [$deref for ref in $references_variant(node.argument)]
+        $referenced_variant(node::SpecialCallNode, ::Type{Preceding}) =
+            [$deref for ref in $references_variant(node.form)]
+        $referenced_variant(node::NestedCallNode, ::Type{Preceding}) =
+            [$deref for ref in $references_variant(node.call)]
+        $referenced_variant(node::PrimitiveCallNode, ::Type{Preceding}) =
+            [$deref for ref in $references_variant(node.call)]
+        $referenced_variant(::ConstantNode, ::Type{Preceding}) = Vector{$Result_variant}()
+        function $referenced_variant(node::ArgumentNode, ::Type{Preceding})
+            if isnothing(node.call_source)
+                return Vector{$Result_variant}()
+            else
+                refs = $references_variant(node.call_source.arguments[node.number])
+                return [$deref for ref in refs]
+            end
+        end
+
+        # UNION{PRECEDING, PARENT}}
+        $referenced_variant(node::AbstractNode, ::Type{Union{Preceding, Parent}}) =
+            $referenced_variant(node, Preceding)
+        $referenced_variant(node::ArgumentNode, ::Type{Union{Preceding, Parent}}) =
+            $referenced_variant(node, Parent)
+
+        # PARENT
+        $referenced_variant(node::AbstractNode, ::Type{Parent}) = Vector{$Result_variant}()
+        function $referenced_variant(node::ArgumentNode, ::Type{Parent}; numbered::Bool = false)
+            if !isnothing(node.call_source)
+                # branch arguments have no parent references
+                return Vector{$Result_variant}()
+            elseif node.number == 1
+                # first argument is always the function itself -- need to treat this separately
+                refst = $references_variant(getparent(node).call.f)
+                return [$deref for ref in refs]
+            else
+                refs = $references_variant(getparent(node).call.arguments[node.number - 1])
+                return [$deref for ref in refs]
+            end
+        end
     end
 end
 
-referenced(node::AbstractNode, ::Type{Union{Preceding, Parent}}; numbered::Bool = false) =
-    referenced(node, Preceding; numbered = numbered)
-referenced(node::ArgumentNode, ::Type{Union{Preceding, Parent}}; numbered::Bool = false) =
-    referenced(node, Parent; numbered = numbered)
 
 
 """

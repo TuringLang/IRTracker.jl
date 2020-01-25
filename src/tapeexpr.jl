@@ -19,7 +19,7 @@ struct TapeReference{T} <: TapeValue{T}
     index::Int
 end
 
-getindex(expr::TapeReference) = expr.referenced
+getindex(expr::TapeReference{T}) where {T} = expr.referenced::DataFlowNode{T}
 
 
 """Representation of a constant value."""
@@ -73,13 +73,6 @@ function references(expr::TapeExpr; numbered::Bool = false)
         return unnumbered_references(expr)
     end
 end
-
-
-# references(expr::TapeCall) = append!(expr.f isa TapeReference ? [expr.f] : TapeReference[],
-                                     # (e for e in expr.arguments if e isa TapeReference))
-# references(expr::TapeSpecialForm) = TapeReference[e for e in expr.arguments if e isa TapeReference]
-# references(expr::TapeConstant) = TapeReference[]
-# references(expr::TapeReference) = TapeReference[expr]
 
 
 getvalue(expr::TapeCall) = expr.value
