@@ -18,12 +18,19 @@ function convert(::Type{MetaDiGraph}, root::NestedCallNode)
     
     for node in query(root, Descendant)
         node_vertex = add_node!(node)
-        
-        for (arg, dependency) in referenced(node; numbered = true)
-            @show dependency
-            parent_vertex = mg[dependency, :node]
-            add_edge!(mg, node_vertex, parent_vertex, :arg, arg)
+
+        for (arg, referenced) in rs
+            referenced_vertex = mg[referenced, :node]
+            add_edge!(mg, node_vertex, referenced_vertex,
+                      Dict(:type => :reference, :arg => arg))
         end
+
+        parent = getparent(node)
+        if !isnothing(parent)
+            parent_vertex = mg[parent, :node]
+            add_edge!(mg, node_vertex, parent_vertex, Dict(:type => :parent))
+        end
+        
     end
 
     return mg

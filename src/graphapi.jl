@@ -186,9 +186,10 @@ function referenced(node::ArgumentNode, ::Type{Parent}; numbered::Bool = false)
         return AbstractNode[]
     elseif node.number == 1
         # first argument is always the function itself -- need to treat this separately
-        return getindex.(references(getparent(node).call.f))
+        return _dereference.(references(getparent(node).call.f, numbered = numbered))
     else
-        return getindex.(references(getparent(node).call.arguments[node.number - 1]))
+        return _dereference.(references(getparent(node).call.arguments[node.number - 1],
+                                        numbered = numbered))
     end
 end
 
