@@ -19,6 +19,9 @@ function convert(::Type{MetaDiGraph}, root::NestedCallNode)
     for node in query(root, Descendant)
         node_vertex = add_node!(node)
 
+        @show node
+        rs = referenced(node, Union{Preceding, Parent}; numbered = true)
+        @show rs
         for (arg, referenced) in rs
             referenced_vertex = mg[referenced, :node]
             add_edge!(mg, node_vertex, referenced_vertex,
