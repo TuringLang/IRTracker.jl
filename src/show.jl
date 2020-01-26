@@ -53,34 +53,32 @@ end
 
 
 
-showcall(io::IO, node::ConstantNode, postfix...) = nothing
-showcall(io::IO, node::PrimitiveCallNode, postfix...) =
-    print(io, node.call, " =", postfix...)
-showcall(io::IO, node::NestedCallNode, postfix...) =
-    print(io, node.call, " =", postfix...)
-showcall(io::IO, node::SpecialCallNode, postfix...) =
-    print(io, node.form, " =", postfix...)
+showcall(io::IO, node::ConstantNode) = nothing
+showcall(io::IO, node::PrimitiveCallNode) =
+    (print(io, node.call, " = "); showvalue(io, getvalue(node)))
+showcall(io::IO, node::NestedCallNode) =
+    (print(io, node.call, " = "); showvalue(io, getvalue(node)))
+showcall(io::IO, node::SpecialCallNode) =
+    (print(io, node.form, " = "); showvalue(io, getvalue(node)))
 
-function showcall(io::IO, node::ArgumentNode, postfix...)
+function showcall(io::IO, node::ArgumentNode)
     call_source = node.call_source
     if !isnothing(call_source)
-        print(io, "@", call_source.info.position,
-              "#", node.number,
-              " =", postfix...)
+        print(io, "@", call_source.info.position, "#", node.number, " = ")
     end
+    showvalue(io, getvalue(node))
 end
 
-function showcall(io::IO, node::ReturnNode, postfix...)
+function showcall(io::IO, node::ReturnNode)
     if node.argument isa TapeReference
         print(io, "return ", node.argument, " = ")
         showvalue(io, getvalue(node.argument))
     else
         print(io, "return ", node.argument)
     end
-    print(io, postfix...)
 end
 
-function showcall(io::IO, node::JumpNode, postfix...)
+function showcall(io::IO, node::JumpNode)
     print(io, "goto §", node.target)
     
     L = length(node.arguments)
@@ -102,21 +100,16 @@ function showcall(io::IO, node::JumpNode, postfix...)
             showvalue(io, getvalue(reason))
         end
     end
-
-    print(io, postfix...)
 end
 
 
-showresult(io::IO, node::AbstractNode, postfix...) =
-    (showvalue(io, getvalue(node)); print(io, postfix...))
-showresult(io::IO, node::ControlFlowNode, postfix...) = nothing
+showmetadata(io::IO, prefix, node::AbstractNode) = nothing
 
-
-showmetadata(io::IO, node::AbstractNode) = nothing
-
-function showmetadata(io::IO, ::MIME"text/plain", node::AbstractNode)
+function showmetadata(io::IO, ::MIME"text/plain", prefix, node::AbstractNode)
     metadata = getmetadata(node)
-    !isempty(metadata) && print(io, "[")
+    isempty(metadata) && return nothing
+
+    print(io, prefix, "[")
     for (i, (k, v)) in enumerate(metadata)
         print(io, k, " = ")
         showvalue(io, v)
@@ -130,24 +123,21 @@ end
 # ACTUAL SHOW METHODS
 function show(io::IO, node::AbstractNode, level = 1)
     showpretext(io, node, " ")
-    showcall(io, node, " ")
-    showresult(io, node, "\t")
-    showmetadata(io, node)
+    showcall(io, node)
+    showmetadata(io, "\t", node)
 end
 
 function show(io::IO, mime::MIME"text/plain", node::AbstractNode, level = 1)
     showpretext(io, mime, node, " ")
-    showcall(io, node, " ")
-    showresult(io, node, "\t")
-    showmetadata(io, mime, node)
+    showcall(io, node)
+    showmetadata(io, mime, "\t", node)
 end
 
 function show(io::IO, mime::MIME"text/plain", node::NestedCallNode, level = 1)
     # Special case: recursive printing for display purposes
     showpretext(io, mime, node, " ")
-    showcall(io, node, " ")
-    showresult(io, node, "\t")
-    showmetadata(io, mime, node)
+    showcall(io, node)
+    showmetadata(io, mime, "\t", node)
 
     maxlevel = get(io, :maxlevel, typemax(level))
     if level < maxlevel
