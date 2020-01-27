@@ -181,9 +181,11 @@ for variant in (:numbered, :unnumbered)
     
     @eval begin
         # PRECEDING
-        $referenced_variant(node::JumpNode, ::Type{Preceding}) =
-            mapfoldl(ref -> $deref::$Result_variant, append!, $references_variant.(node.arguments),
-                     init = $references_variant(node.condition))::Vector{$Result_variant}
+        function $referenced_variant(node::JumpNode, ::Type{Preceding})
+            refs = foldl(append!, $references_variant.(node.arguments),
+                         init = $references_variant(node.condition))
+            return [$deref for ref in refs]
+        end
         $referenced_variant(node::ReturnNode, ::Type{Preceding}) =
             [$deref for ref in $references_variant(node.argument)]
         $referenced_variant(node::SpecialCallNode, ::Type{Preceding}) =
