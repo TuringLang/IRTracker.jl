@@ -47,12 +47,16 @@ end
 function convert(::Type{MetaDiGraph}, root::NestedCallNode, ::DOTFormat)
     mg = MetaDiGraph(SimpleDiGraph(), 0)
     last_vertex = 0
+    node_indices = Dict{AbstractNode, Int}()
 
     function add_node!(node::AbstractNode)
         add_vertex!(mg)
         last_vertex += 1
+        node_indices[node] = last_vertex
         set_prop!(mg, last_vertex, :shape, :plaintext)
-        set_indexing_prop!(mg, last_vertex, :label, node)
+        label = escape_string(string(node))
+        # truncation = collect(Iterators.take(eachindex(label), 20))
+        set_prop!(mg, last_vertex, :label, split(label, " =")[1])
         return last_vertex
     end
 
@@ -63,7 +67,8 @@ function convert(::Type{MetaDiGraph}, root::NestedCallNode, ::DOTFormat)
 
         rs = referenced(node, Union{Preceding, Parent}; numbered = true)
         for (arg, referenced) in rs
-            referenced_vertex = mg[referenced, :label]
+            referenced_vertex = node_indices[referenced]
+
             add_edge!(mg, node_vertex, referenced_vertex,
                       Dict(:style => :solid, :label => arg,
                            :constraint => false))
@@ -71,7 +76,7 @@ function convert(::Type{MetaDiGraph}, root::NestedCallNode, ::DOTFormat)
 
         parent = getparent(node)
         if !isnothing(parent)
-            parent_vertex = mg[parent, :label]
+            parent_vertex = node_indices[parent]
             add_edge!(mg, node_vertex, parent_vertex,
                       Dict(:style => :dotted))
         end
