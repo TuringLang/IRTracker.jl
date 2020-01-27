@@ -216,7 +216,7 @@ for variant in (:numbered, :unnumbered)
                 return Vector{$Result_variant}()
             elseif node.number == 1
                 # first argument is always the function itself -- need to treat this separately
-                refst = $references_variant(getparent(node).call.f)
+                refs = $references_variant(getparent(node).call.f)
                 return [$deref for ref in refs]
             else
                 refs = $references_variant(getparent(node).call.arguments[node.number - 1])
