@@ -59,10 +59,20 @@ record!(recorder::GraphRecorder, node::AbstractNode) = (push!(recorder, node); g
 
 saveir!(recorder::GraphRecorder, ir::IRTools.IR) = (recorder.original_ir = ir)
 
+
+
 function finalize!(recorder::GraphRecorder, result, f_repr, args_repr, info)
-    call = TapeCall(result, f_repr, args_repr)
+    f, args = getvalue(f_repr), getvalue.(args_repr)
+    ax, vx = _split_va(f, args)
+
+    if isnothing(vx)
+        call = TapeCall(result, f_repr, args_repr[ax])
+    else
+        call = TapeCall(result, f_repr, args_repr[ax], args_repr[vx])
+    end
+    
     node = NestedCallNode(call, recorder.children, info)
-    recorder.rootnode[] = node  # this will set the parent node of all recorded children
+    recorder.rootnode[] = node  # set the parent node of all recorded children
     return node
 end
 
@@ -77,3 +87,22 @@ trackedvariable(recorder::GraphRecorder, var::IRTools.Variable) = recorder.varia
 
 
 
+_inferred_params(signature::UnionAll) = _inferred_params(signature.body)
+_inferred_params(signature) = signature.parameters
+
+_split_va(@nospecialize(f::Core.Builtin), @nospecialize(arguments)) =
+    eachindex(arguments), nothing
+
+function _split_va(@nospecialize(f), @nospecialize(arguments))
+    ArgTypes = Tuple{Core.Typeof.(arguments)...}
+    m = which(f, ArgTypes)
+    L = length(arguments)
+    
+    if m.isva
+        inferred_parameters = _inferred_params(m.sig)
+        I = length(inferred_parameters) - 1 # remove self parameter
+        return 1:(I - 1), I:L
+    else
+        return 1:L, nothing
+    end
+end

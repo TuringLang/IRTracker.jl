@@ -164,6 +164,14 @@ show(io::IO, expr::TapeConstant) = (print(io, "⟨"); showvalue(io, expr.value);
 function show(io::IO, expr::TapeCall)
     print(io, expr.f, "(")
     joindelimited(io, expr.arguments, ", ")
+
+    va = expr.varargs
+    if !isnothing(va)
+        print(io, ", (")
+        joindelimited(io, expr.varargs, ", ")
+        print(io, ")...")
+    end
+    
     print(io, ")")
 end
 

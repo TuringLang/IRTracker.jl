@@ -1,5 +1,7 @@
 import Base: convert, getindex
 
+
+
 """
 Representation of an expression in an IR statement when tracked in a node.  Contains a 
 reified form of the original and the value obtained during execution (i.e., forward mode).
@@ -33,7 +35,11 @@ struct TapeCall{T} <: TapeExpr{T}
     value::T
     f::TapeValue
     arguments::ArgumentTuple{TapeValue}
+    varargs::Union{ArgumentTuple{TapeValue}, Nothing}
 end
+
+TapeCall(value::T, f::TapeValue, arguments::ArgumentTuple{TapeValue}) where {T} =
+    TapeCall{T}(value, f, arguments, nothing)
 
 
 """Representation of special expression (i.e., anything other than `Expr(:call, ...)`)."""
