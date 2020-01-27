@@ -216,13 +216,22 @@ for variant in (:numbered, :unnumbered)
             if !isnothing(node.call_source)
                 # branch arguments have no parent references
                 return Vector{$Result_variant}()
-            elseif node.number == 1
-                # first argument is always the function itself -- need to treat this separately
-                refs = $references_variant(getparent(node).call.f)
-                return [$deref for ref in refs]
+
             else
-                refs = $references_variant(getparent(node).call.arguments[node.number - 1])
-                return [$deref for ref in refs]
+                contents = _contents(getparent(node))
+                if node.number > length(contents)
+                    return Vector{$Result_variant}()
+                else
+                    refs = $references_variant(contents[node.number])
+                    return [$deref for ref in refs]
+                end
+            # elseif node.number == 1
+                # first argument is always the function itself -- need to treat this separately
+                # refs = $references_variant(getparent(node).call.f)
+                # return [$deref for ref in refs]
+            # else
+                # refs = $references_variant(getparent(node).call.arguments[node.number - 1])
+                # return [$deref for ref in refs]
             end
         end
     end
