@@ -93,7 +93,7 @@ getparent(node::AbstractNode) = getparent(node.info)
 Return the sub-nodes representing the arguments of a nested call.
 """
 getarguments(node::AbstractNode) =
-    [child for child in node.children if child isa ArgumentNode && isnothing(child.call_source)]
+    [child for child in node.children if child isa ArgumentNode && isnothing(child.branch_node)]
 
 
 # Make child nodes accessible by indexing
@@ -134,6 +134,8 @@ getmetadata!(f, node::AbstractNode, key::Symbol) = get!(f, getmetadata(node), ke
 setmetadata!(node::AbstractNode, key::Symbol, value) = getmetadata(node)[key] = value
 
 
+parentbranch(node::ArgumentNode) = isnothing(node.branch_node) ? getparent(node) : node.branch_node
+
 ####################################################################################################
 # Data dependency analysis
 
@@ -143,8 +145,7 @@ _contents(node::SpecialCallNode) = _contents(node.form)
 _contents(node::NestedCallNode) = _contents(node.call)
 _contents(node::PrimitiveCallNode) = _contents(node.call)
 _contents(node::ConstantNode) = _contents(node.value)
-_contents(node::ArgumentNode) =
-    isnothing(node.call_source) ? TapeValue[] : _contents(node.call_source)
+_contents(node::ArgumentNode) = TapeValue[]
 
 
 function _branchargument(branch::JumpNode, argument_number::Int)
@@ -164,6 +165,7 @@ function _parentarguments(parent::NestedCallNode, argument_number::Int)
     end
 end
 
+
 """
     referenced(node[, axis]; numbered = false) -> Vector{<:AbstractNode}
 
@@ -177,9 +179,6 @@ function referenced(node::AbstractNode, ::Type{T} = Preceding;
         return unnumbered_referenced(node, T)
     end
 end
-
-
-
 
 for variant in (:numbered, :unnumbered)
     referenced_variant = Symbol(variant, "_referenced")
@@ -215,13 +214,28 @@ for variant in (:numbered, :unnumbered)
             $Result_variant[$deref for ref in $references_variant(node.call)]
         $referenced_variant(::ConstantNode, ::Type{Preceding}) = Vector{$Result_variant}()
         function $referenced_variant(node::ArgumentNode, ::Type{Preceding})
-            if isnothing(node.call_source)
+            parent_branch = parentbranch(node)
+            if parent_branch isa NestedCallNode
                 # non-branch arguments have no preceding nodes
                 return Vector{$Result_variant}()
             else
-                branch_argument = _branchargument(node.call_source, node.number)
+                branch_argument = _branchargument(node.branch_node, node.number)
                 refs = $references_variant(branch_argument)
                 return $Result_variant[$deref for ref in refs]
+            end
+        end
+
+        # PARENT
+        $referenced_variant(node::AbstractNode, ::Type{Parent}) = Vector{$Result_variant}()
+        function $referenced_variant(node::ArgumentNode, ::Type{Parent}; numbered::Bool = false)
+            parent_branch = parentbranch(node)
+            if parent_branch isa NestedCallNode
+                parent_arguments = _parentarguments(parent_branch, node.number)
+                refs = mapfoldl($references_variant, append!, parent_arguments)
+                return $Result_variant[$deref for ref in refs]
+            else
+                # branch arguments have no parent references
+                return Vector{$Result_variant}()
             end
         end
 
@@ -230,19 +244,6 @@ for variant in (:numbered, :unnumbered)
             $referenced_variant(node, Preceding)
         $referenced_variant(node::ArgumentNode, ::Type{Union{Preceding, Parent}}) =
             $referenced_variant(node, Parent)
-
-        # PARENT
-        $referenced_variant(node::AbstractNode, ::Type{Parent}) = Vector{$Result_variant}()
-        function $referenced_variant(node::ArgumentNode, ::Type{Parent}; numbered::Bool = false)
-            if !isnothing(node.call_source)
-                # branch arguments have no parent references
-                return Vector{$Result_variant}()
-            else
-                parent_arguments = _parentarguments(getparent(node), node.number)
-                refs = mapfoldl($references_variant, append!, parent_arguments)
-                return $Result_variant[$deref for ref in refs]
-            end
-        end
     end
 end
 

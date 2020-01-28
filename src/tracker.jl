@@ -145,14 +145,14 @@ end
 Construct a node tracking a function argument.  Overloadable.
 """
 trackedargument(::AbstractTrackingContext, arg_repr::TapeExpr,
-                call_source::Union{ControlFlowNode, Nothing}, number::Int, info::NodeInfo) =
-    ArgumentNode(arg_repr, call_source, number, info)
+                parent_branch::Union{ControlFlowNode, Nothing}, number::Int, info::NodeInfo) =
+    ArgumentNode(arg_repr, parent_branch, number, info)
 
 function trackedargument(recorder::GraphRecorder, arg_repr::TapeExpr{T},
-                         call_source::Union{ControlFlowNode, Nothing}, number::Int,
+                         parent_branch::Union{ControlFlowNode, Nothing}, number::Int,
                          location::IRIndex) where {T}
     info = NodeInfo(recorder.original_ir, location, recorder.rootnode)
-    node = trackedargument(recorder.context, arg_repr, call_source, number, info)
+    node = trackedargument(recorder.context, arg_repr, parent_branch, number, info)
     return node::DataFlowNode{T}
 end
 

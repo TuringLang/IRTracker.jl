@@ -1,7 +1,7 @@
 
 struct ArgumentNode{T} <: DataFlowNode{T}
     value::TapeConstant{T}
-    call_source::Union{ControlFlowNode, Nothing}
+    branch_node::Union{ControlFlowNode, Nothing}
     number::Int
     info::NodeInfo
 end

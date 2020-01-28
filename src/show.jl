@@ -62,10 +62,8 @@ showcall(io::IO, node::SpecialCallNode) =
     (print(io, node.form, " = "); showvalue(io, getvalue(node)))
 
 function showcall(io::IO, node::ArgumentNode)
-    call_source = node.call_source
-    if !isnothing(call_source)
-        print(io, "@", call_source.info.position, "#", node.number, " = ")
-    end
+    parent_branch = parentbranch(node)
+    print(io, "@", parent_branch.info.position, "#", node.number, " = ")
     showvalue(io, getvalue(node))
 end
 

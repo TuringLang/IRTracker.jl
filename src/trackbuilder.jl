@@ -152,9 +152,9 @@ function constantrecord(builder::TrackBuilder, location, constant_expr)
     return DCGCall.trackedconstant(builder.recorder, constant_repr, location)
 end
 
-function argumentrecord(builder::TrackBuilder, location, argument_expr, call_source, number)
+function argumentrecord(builder::TrackBuilder, location, argument_expr, parent_branch, number)
     argument_repr = DCGCall.TapeConstant(substitute_variable(builder, argument_expr))
-    return DCGCall.trackedargument(builder.recorder, argument_repr, call_source, number, location)
+    return DCGCall.trackedargument(builder.recorder, argument_repr, parent_branch, number, location)
 end
 
 
@@ -233,14 +233,14 @@ function trackarguments!(builder::TrackBuilder, new_block::Block, old_block::Blo
     end
     
     # record jumps to here, if there are any, by adding a new argument and recording it
-    call_source = nothing
+    parent_branch = nothing
     if hasjumpto(builder, old_block)
         branch_argument = argument!(new_block, insert = false)
         pushrecord!(builder, new_block, branch_argument)
         
         # this is stored in argument nodes to point back to the variables they come from
         if !isfirst && length(IRTools.arguments(old_block)) > 0
-            call_source = branch_argument
+            parent_branch = branch_argument
         end
     end
 
@@ -248,7 +248,7 @@ function trackarguments!(builder::TrackBuilder, new_block::Block, old_block::Blo
     for (i, argument) in enumerate(IRTools.arguments(old_block))
         location = inlined(VarIndex(new_block.id, argument.id))
         number = inlined(i)
-        record = argumentrecord(builder, location, argument, call_source, number)
+        record = argumentrecord(builder, location, argument, parent_branch, number)
         pushrecord!(builder, new_block, record)
     end
 
