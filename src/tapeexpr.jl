@@ -63,7 +63,8 @@ position within the expression.
 function references end
 
 
-_contents(expr::TapeCall) = append!(TapeValue[expr.f], expr.arguments)
+_contents(expr::TapeCall) = append!(append!(TapeValue[expr.f], expr.arguments),
+                                    something(expr.varargs, TapeValue[]))
 _contents(expr::TapeSpecialForm) = collect(expr.arguments)
 _contents(expr::TapeConstant) = TapeValue[expr]
 _contents(expr::TapeReference) = TapeValue[expr]

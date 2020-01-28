@@ -147,6 +147,23 @@ _contents(node::ArgumentNode) =
     isnothing(node.call_source) ? TapeValue[] : _contents(node.call_source)
 
 
+function _branchargument(branch::JumpNode, argument_number::Int)
+    return branch.arguments[argument_number]
+end
+
+function _parentarguments(parent::NestedCallNode, argument_number::Int)
+    # 1 -- function, 2..(N+1) -- normal arguments, (N+2) -- varargs
+    if argument_number == 1
+        return TapeValue[parent.call.f]
+    elseif 2 ≤ argument_number ≤ length(parent.call.arguments) + 1
+        return TapeValue[parent.call.arguments[argument_number - 1]]
+    elseif argument_number == length(parent.call.arguments) + 2
+        return collect(parent.call.varargs::ArgumentTuple{TapeValue})
+    else
+        error(parent, "has not argument with number ", argument_number)
+    end
+end
+
 """
     referenced(node[, axis]; numbered = false) -> Vector{<:AbstractNode}
 
@@ -160,6 +177,8 @@ function referenced(node::AbstractNode, ::Type{T} = Preceding;
         return unnumbered_referenced(node, T)
     end
 end
+
+
 
 
 for variant in (:numbered, :unnumbered)
@@ -182,25 +201,27 @@ for variant in (:numbered, :unnumbered)
     @eval begin
         # PRECEDING
         function $referenced_variant(node::JumpNode, ::Type{Preceding})
-            refs = foldl(append!, $references_variant.(node.arguments),
-                         init = $references_variant(node.condition))
-            return [$deref for ref in refs]
+            refs = mapfoldl($references_variant, append!, node.arguments,
+                            init = $references_variant(node.condition))
+            return $Result_variant[$deref for ref in refs]
         end
         $referenced_variant(node::ReturnNode, ::Type{Preceding}) =
-            [$deref for ref in $references_variant(node.argument)]
+            $Result_variant[$deref for ref in $references_variant(node.argument)]
         $referenced_variant(node::SpecialCallNode, ::Type{Preceding}) =
-            [$deref for ref in $references_variant(node.form)]
+            $Result_variant[$deref for ref in $references_variant(node.form)]
         $referenced_variant(node::NestedCallNode, ::Type{Preceding}) =
-            [$deref for ref in $references_variant(node.call)]
+            $Result_variant[$deref for ref in $references_variant(node.call)]
         $referenced_variant(node::PrimitiveCallNode, ::Type{Preceding}) =
-            [$deref for ref in $references_variant(node.call)]
+            $Result_variant[$deref for ref in $references_variant(node.call)]
         $referenced_variant(::ConstantNode, ::Type{Preceding}) = Vector{$Result_variant}()
         function $referenced_variant(node::ArgumentNode, ::Type{Preceding})
             if isnothing(node.call_source)
+                # non-branch arguments have no preceding nodes
                 return Vector{$Result_variant}()
             else
-                refs = $references_variant(node.call_source.arguments[node.number])
-                return [$deref for ref in refs]
+                branch_argument = _branchargument(node.call_source, node.number)
+                refs = $references_variant(branch_argument)
+                return $Result_variant[$deref for ref in refs]
             end
         end
 
@@ -216,22 +237,10 @@ for variant in (:numbered, :unnumbered)
             if !isnothing(node.call_source)
                 # branch arguments have no parent references
                 return Vector{$Result_variant}()
-
             else
-                contents = _contents(getparent(node))
-                if node.number > length(contents)
-                    return Vector{$Result_variant}()
-                else
-                    refs = $references_variant(contents[node.number])
-                    return [$deref for ref in refs]
-                end
-            # elseif node.number == 1
-                # first argument is always the function itself -- need to treat this separately
-                # refs = $references_variant(getparent(node).call.f)
-                # return [$deref for ref in refs]
-            # else
-                # refs = $references_variant(getparent(node).call.arguments[node.number - 1])
-                # return [$deref for ref in refs]
+                parent_arguments = _parentarguments(getparent(node), node.number)
+                refs = mapfoldl($references_variant, append!, parent_arguments)
+                return $Result_variant[$deref for ref in refs]
             end
         end
     end

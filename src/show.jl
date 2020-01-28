@@ -165,8 +165,7 @@ function show(io::IO, expr::TapeCall)
     print(io, expr.f, "(")
     joindelimited(io, expr.arguments, ", ")
 
-    va = expr.varargs
-    if !isnothing(va)
+    if !isnothing(expr.varargs)
         print(io, ", (")
         joindelimited(io, expr.varargs, ", ")
         print(io, ")...")

@@ -117,6 +117,28 @@ using Random
         @test getvalue(call) isa Float64
     end
 
+
+    test8_va(x, y...) = 1
+    test8(x) = test8_va(x, x, x)
+    let call = track(test8, 1)
+        # this will be distorted due to being a closure:
+        # ⟨var"#test8#8"{var"#test8_va#7"}(var"#test8_va#7"())⟩(⟨1⟩) = 1
+        #   @1: [Arg:§1:%1] var"#test8#8"{var"#test8_va#7"}(var"#test8_va#7"())
+        #   @2: [Arg:§1:%2] 1
+        #   @3: [§1:%3] ⟨getfield⟩(@1, ⟨:test8_va⟩) = var"#test8_va#7"()
+        #   @4: [§1:%4] @3(@2, (@2, @2)...) = 1
+        #     @1: [Arg:§1:%1] var"#test8_va#7"()
+        #     @2: [Arg:§1:%2] 1
+        #     @3: [Arg:§1:%3] (1, 1)
+        #     @4: [§1:&1] return ⟨1⟩
+        #   @5: [§1:&1] return @4 = 1
+        
+        @test call isa NestedCallNode
+        @test call[4] isa NestedCallNode
+        @test call[4].call.arguments == (TapeReference(call[2], 2),)
+        @test call[4].call.varargs == (TapeReference(call[2], 2), TapeReference(call[2], 2))
+    end
+
     
     # direct test of  https://github.com/MikeInnes/IRTools.jl/issues/30
     @test_skip track(expm1, 1.0) isa NestedCallNode
