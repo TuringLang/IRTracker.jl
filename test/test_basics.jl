@@ -141,7 +141,8 @@ using Random
 
     
     # direct test of  https://github.com/MikeInnes/IRTools.jl/issues/30
-    @test_skip track(expm1, 1.0) isa NestedCallNode
+    # aka https://github.com/phipsgabler/DynamicComputationGraphs.jl/issues/19
+    @test track(expm1, 1.0) isa NestedCallNode
 end
 
 
