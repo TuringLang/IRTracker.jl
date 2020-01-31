@@ -1,8 +1,8 @@
 using Test
-using DynamicComputationGraphs
+using IRTracker
 
 
-@testset "DynamicComputationGraphs" begin
+@testset "IRTracker" begin
     ########### Basic sanity checks #################
     include("./test_basics.jl")
     
@@ -20,11 +20,11 @@ end
 
 
 # type stability inspection:
-# using DynamicComputationGraphs
+# using IRTracker
 # f(x) = x + 1
-# ctx = DynamicComputationGraphs.DEFAULT_CTX
+# ctx = IRTracker.DEFAULT_CTX
 # f_repr, args_repr =  TapeConstant(f), (TapeConstant(1),)
-# recorder = DynamicComputationGraphs.GraphRecorder(ctx)
+# recorder = IRTracker.GraphRecorder(ctx)
 # @code_warntype track(f, 1)
-# @code_warntype DynamicComputationGraphs._recordnestedcall!(recorder, f, (1,))
+# @code_warntype IRTracker._recordnestedcall!(recorder, f, (1,))
 # @inferred NestedCallNode{Int} track(f, 1)

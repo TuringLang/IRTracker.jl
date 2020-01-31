@@ -1,34 +1,28 @@
 using IRTools
 import Base: getproperty
 
-struct _DCGCall end
-function getproperty(::_DCGCall, name::Symbol)
-    return (args...; kwargs...) -> xcall_kw(DynamicComputationGraphs, name, args...; kwargs...)
+struct XCall
+    var"#module#"::Module
 end
 
-"""
-`DCGCall.<bla>(args...)` is a hack to produce the properly `xcall`ed expression for
-DynamicComputationGraphs.<bla>(args...).
-"""
-const DCGCall = _DCGCall()
-
-
-"""Equivalent of show without using the event loop (for usage in generated functions)."""
-macro coreshow(exs...)
-    blk = Expr(:block)
-    for ex in exs
-        push!(blk.args, :(Core.println($(sprint(Base.show_unquoted, ex) * " = "),
-                                       repr(begin value = $(esc(ex)) end))))
+function getproperty(x::XCall, name::Symbol)
+    mod = getfield(x, Symbol("#module#"))
+    if name === Symbol("#module#")
+        return mod
+    else
+        return (args...; kwargs...) -> xcall_kw(mod, name, args...; kwargs...)
     end
-    
-    isempty(exs) || push!(blk.args, :value)
-    
-    return blk
 end
 
 
+"""
+`IRTCall.<bla>(args...)` is a hack to produce the properly `xcall`ed expression for
+IRTracker.<bla>(args...).
+"""
+const IRTCall = XCall(IRTracker)
 
-function xcall_kw(_f, args...; kwargs...)
+
+function xcall_kw(_f::GlobalRef, args...; kwargs...)
     if isempty(kwargs)
         Expr(:call, _f, args...)
     else
@@ -54,6 +48,22 @@ end
 xcall_kw(mod::Module, f::Symbol, args...; kwargs...) =
     xcall_kw(GlobalRef(mod, f), args...; kwargs...)
 xcall_kw(f::Symbol, args...; kwargs...) = xcall_kw(GlobalRef(Base, f), args...; kwargs...)
+
+
+
+"""Equivalent of show without using the event loop (for usage in generated functions)."""
+macro coreshow(exs...)
+    blk = Expr(:block)
+    for ex in exs
+        push!(blk.args, :(Core.println($(sprint(Base.show_unquoted, ex) * " = "),
+                                       repr(begin value = $(esc(ex)) end))))
+    end
+    
+    isempty(exs) || push!(blk.args, :value)
+    
+    return blk
+end
+
 
 
 @generated function reified_ir(f, args...)

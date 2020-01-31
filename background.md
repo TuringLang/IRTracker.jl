@@ -243,7 +243,7 @@ in VLAD/Stalin∇.
 - Mansinghka, V., Selsam, D. & Perov, Y. Venture: a higher-order probabilistic programming platform
   with programmable inference. arXiv:1404.0099 [cs, stat] (2014).
   
-  Probabilistic execution traces, closest to DynamicComputationGraphs.jl.
+  Probabilistic execution traces, closest to IRTracker.jl.
 - Minka, T. et al. Infer.NET 0.3. http://dotnet.github.io/infer (2018).
 
   Defines static factor graphs, which are then compiled together with an inference engine.

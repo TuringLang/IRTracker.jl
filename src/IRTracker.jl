@@ -1,4 +1,4 @@
-module DynamicComputationGraphs
+module IRTracker
 
 
 include("utils.jl")

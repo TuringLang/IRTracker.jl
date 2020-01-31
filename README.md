@@ -1,6 +1,6 @@
-# DynamicComputationGraphs.jl
+# IRTracker.jl
 
-[![Build Status](https://travis-ci.org/phipsgabler/DynamicComputationGraphs.jl.svg?branch=master)](https://travis-ci.org/phipsgabler/DynamicComputationGraphs.jl)
+[![Build Status](https://travis-ci.org/phipsgabler/IRTracker.jl.svg?branch=master)](https://travis-ci.org/phipsgabler/IRTracker.jl)
 
 The aim of this project is to provide a graph representation suitable for dynamic models, as they
 occur in probabilistic programming languages (e.g. with stochastic control flow, or model
@@ -454,7 +454,7 @@ increase_level(ctx::DepthLimitContext) = DepthLimitContext(ctx.level + 1, ctx.ma
 Then, we can overload some functions for things we want to change:
 
 ```
-import DynamicComputationGraphs: canrecur, tracknested
+import IRTracker: canrecur, tracknested
 
 # this is the main thing to make this work: 
 canrecur(ctx::DepthLimitContext, f, args...) = ctx.level < ctx.maxlevel

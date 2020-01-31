@@ -86,7 +86,7 @@ SSA statement into a `TapeValue` call, or an inlined `TapeValue`, if possible.
 """
 
 function tapevalue(builder::TrackBuilder, value::IRTools.Variable)
-    return DCGCall.trackedvariable(builder.recorder, inlined(value))
+    return IRTCall.trackedvariable(builder.recorder, inlined(value))
 end
 
 function tapevalue(builder::TrackBuilder, value::Any)
@@ -95,7 +95,7 @@ end
 
 function tapevalue(builder::TrackBuilder, value::GlobalRef)
     # GlobalRefs can be resolved only at runtime, so we leave then in a non-inlined expression
-    return DCGCall.TapeConstant(value)
+    return IRTCall.TapeConstant(value)
 end
 
 function tapevalue(builder::TrackBuilder, value::QuoteNode)
@@ -121,13 +121,13 @@ end
 
 function returnrecord(builder::TrackBuilder, location, branch)
     argument_repr = tapevalue(builder, branch.args[1])
-    return DCGCall.trackedreturn(builder.recorder, argument_repr, location)
+    return IRTCall.trackedreturn(builder.recorder, argument_repr, location)
 end
 
 function jumprecord(builder::TrackBuilder, location, branch)
     condition_repr = tapevalue(builder, branch.condition)
     arguments_repr = tapevalues(builder, branch.args)
-    return DCGCall.trackedjump(builder.recorder, branch.block, arguments_repr,
+    return IRTCall.trackedjump(builder.recorder, branch.block, arguments_repr,
                                condition_repr, location)
 end
 
@@ -135,7 +135,7 @@ function callrecord(builder::TrackBuilder, location, call_expr)
     f_expr, arguments_expr = call_expr.args[1], call_expr.args[2:end]
     f_repr = tapevalue(builder, f_expr)
     arguments_repr = tapevalues(builder, arguments_expr)
-    return DCGCall.trackedcall(builder.recorder, f_repr, arguments_repr, location)
+    return IRTCall.trackedcall(builder.recorder, f_repr, arguments_repr, location)
 end
 
 function specialrecord(builder::TrackBuilder, location, special_expr)
@@ -143,18 +143,18 @@ function specialrecord(builder::TrackBuilder, location, special_expr)
     args = map(substitute_variable(builder), special_expr.args)
     form = Expr(head, args...)
     args_repr = tapevalues(builder, special_expr.args)
-    form_repr = DCGCall.TapeSpecialForm(form, QuoteNode(head), args_repr)
-    return DCGCall.trackedspecial(builder.recorder, form_repr, location)
+    form_repr = IRTCall.TapeSpecialForm(form, QuoteNode(head), args_repr)
+    return IRTCall.trackedspecial(builder.recorder, form_repr, location)
 end
 
 function constantrecord(builder::TrackBuilder, location, constant_expr)
     constant_repr = tapevalue(builder, constant_expr)
-    return DCGCall.trackedconstant(builder.recorder, constant_repr, location)
+    return IRTCall.trackedconstant(builder.recorder, constant_repr, location)
 end
 
 function argumentrecord(builder::TrackBuilder, location, argument_expr, parent_branch, number)
-    argument_repr = DCGCall.TapeConstant(substitute_variable(builder, argument_expr))
-    return DCGCall.trackedargument(builder.recorder, argument_repr, parent_branch, number, location)
+    argument_repr = IRTCall.TapeConstant(substitute_variable(builder, argument_expr))
+    return IRTCall.trackedargument(builder.recorder, argument_repr, parent_branch, number, location)
 end
 
 
@@ -167,7 +167,7 @@ the transformed IR.
 """
 function pushrecord!(builder::TrackBuilder, block::Block, record;
                      substituting = nothing, line = 0)
-    r = push!(block, IRTools.stmt(DCGCall.record!(builder.recorder, record), line = line))
+    r = push!(block, IRTools.stmt(IRTCall.record!(builder.recorder, record), line = line))
     isnothing(substituting) || record_new_variable!(builder, substituting, r)
     return r
 end
@@ -229,7 +229,7 @@ function trackarguments!(builder::TrackBuilder, new_block::Block, old_block::Blo
     # this is the first block, here we set up the recorder argument
     if isfirst
         builder.recorder = argument!(new_block, at = 1, insert = false)
-        push!(new_block, DCGCall.saveir!(builder.recorder, inlined(copy(builder.original_ir))))
+        push!(new_block, IRTCall.saveir!(builder.recorder, inlined(copy(builder.original_ir))))
     end
     
     # record jumps to here, if there are any, by adding a new argument and recording it

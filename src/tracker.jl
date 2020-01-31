@@ -21,7 +21,7 @@ function error_ir(F, Args...)
     ir = IRTools.empty(IR(IRTools.meta(Tuple{Core.Typeof(dummy), Core.Typeof.(Args)...})))
     self = IRTools.argument!(ir)
     arg_values = ntuple(_ -> IRTools.argument!(ir), length(Args))
-    error_result = push!(ir, DCGCall.trackingerror(self, arg_values...))
+    error_result = push!(ir, IRTCall.trackingerror(self, arg_values...))
     IRTools.return!(ir, error_result)
     return ir
 end

@@ -1,4 +1,4 @@
-name = "DynamicComputationGraphs"
+name = "IRTracker"
 uuid = "591544fa-5de1-11e9-31f7-cbfeeb0dfc0e"
 authors = ["Philipp Gabler <phipsgabler@users.noreply.github.com>"]
 version = "0.3.1"
