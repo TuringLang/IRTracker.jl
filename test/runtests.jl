@@ -16,6 +16,9 @@ using IRTracker
         include("test_contexts.jl")
         include("test_backward_ad.jl")
     end
+
+    ######### Turing ########################
+    include("test_turing.jl")
 end
 
 
