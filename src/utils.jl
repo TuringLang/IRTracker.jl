@@ -1,8 +1,11 @@
 using IRTools
 import Base: getproperty
 
-struct XCall
-    var"#module#"::Module
+@eval begin
+    # since var"#module#" does not work in pre-1.3
+    struct XCall
+        $(Symbol("#module#"))::Module
+    end
 end
 
 function getproperty(x::XCall, name::Symbol)
