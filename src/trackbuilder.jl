@@ -233,7 +233,7 @@ function trackarguments!(builder::TrackBuilder, new_block::Block, old_block::Blo
     end
     
     # record jumps to here, if there are any, by adding a new argument and recording it
-    parent_branch = nothing
+    parent_branch = inlined(nothing)
     if hasjumpto(builder, old_block)
         branch_argument = argument!(new_block, insert = false)
         pushrecord!(builder, new_block, branch_argument)
