@@ -1,6 +1,6 @@
 # IRTracker.jl
 
-[![Build Status](https://travis-ci.org/phipsgabler/IRTracker.jl.svg?branch=master)](https://travis-ci.org/phipsgabler/IRTracker.jl)
+[![Build Status](https://travis-ci.org/TuringLang/IRTracker.jl.svg?branch=master)](https://travis-ci.org/TuringLang/IRTracker.jl)
 
 **Previously known as _DynamicComputationGraphs_**
 
