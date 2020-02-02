@@ -1,10 +1,9 @@
-# Small GraphViz all of this stolen from catlab:
-# https://github.com/epatters/Catlab.jl/blob/master/src/graphics/Graphviz.jl
-# but simplified and stripped of dependencies
+# Small GraphViz builder; all of this is stolen from catlab
+# (https://github.com/epatters/Catlab.jl/blob/master/src/graphics/Graphviz.jl), but simplified and
+# stripped of dependencies, with few adaptions to my needs.
 
 module GraphViz
 
-# export Expression, Statement, Attributes, Graph, DiGraph, Subgraph, Node, NodeID, Edge, pprint
 
 # AST
 #####
