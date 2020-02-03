@@ -11,6 +11,7 @@ MetaGraphs = "626554b9-1ddb-594c-aa3c-2596fe9399a5"
 [compat]
 IRTools = "0.3.1"
 julia = "1.2"
+MetaGraphs = "0.6.3"
 
 [extras]
 ChainRules = "082447d4-558c-5d27-93f4-14fc19e9eca2"
