@@ -228,7 +228,8 @@ function trackarguments!(builder::TrackBuilder, new_block::Block, old_block::Blo
 
     # this is the first block, here we set up the recorder argument
     if isfirst
-        builder.recorder = argument!(new_block, at = 1, insert = false)
+        _self = argument!(new_block, at = 1, insert = false)
+        builder.recorder = argument!(new_block, at = 2, insert = false)
         push!(new_block, IRTCall.saveir!(builder.recorder, inlined(copy(builder.original_ir))))
     end
     

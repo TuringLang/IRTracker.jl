@@ -1,10 +1,11 @@
 using IRTools
-using IRTools: IR, @dynamo
+using IRTools: IR, inlineable!, pis!, slots!, varargs!
+using IRTools.Inner: argnames!, update!
 
 
 
 """Construct the transformed IR with tracking statements from `old_ir`."""
-function transform_ir(old_ir::IR)
+function transform(old_ir::IR)
     IRTools.explicitbranch!(old_ir) # make implicit jumps explicit
     builder = TrackBuilder(old_ir)
     return buildtracks!(builder)
@@ -12,38 +13,23 @@ end
 
 
 """
-Construct IR with the same interface as `f(args...)`, returing an error that this method can't be
-tracked.
-"""
-function error_ir(F, Args...)
-    # create empty IR which matches the (non-existing) signature given by f(args)
-    dummy(Args...) = nothing
-    ir = IRTools.empty(IR(IRTools.meta(Tuple{Core.Typeof(dummy), Core.Typeof.(Args)...})))
-    self = IRTools.argument!(ir)
-    arg_values = ntuple(_ -> IRTools.argument!(ir), length(Args))
-    error_result = push!(ir, IRTCall.trackingerror(self, arg_values...))
-    IRTools.return!(ir, error_result)
-    return ir
-end
-
-
-"""
     _recordnestedcall(Ctx, F, Args...)
 
-The @dynamo/generated function actually calling the transformed IR.  Returns a tuple of return value
+The generated function actually calling the transformed IR.  Returns a tuple of return value
 and `GraphRecorder`.
 """
-function _recordnestedcall! end
-
-@dynamo function _recordnestedcall!(Rec, F, Args...)
-    ir = IR(F, Args...)
+@generated function _recordnestedcall!(recorder::GraphRecorder, f, args...)
+    T = Tuple{f, args...}
+    meta = IRTools.meta(T)
     
-    if isnothing(ir)
-        return error_ir(F, Args...)
+    if isnothing(meta)
+        return :(throw(MethodError(f, args)))
     else
-        new_ir = transform_ir(ir)
-        # @coreshow new_ir
-        return new_ir
+        tracked = transform(IR(meta))
+        original_argnames = meta.code.slotnames[2:meta.nargs]
+        argnames!(meta, Symbol("#self#"), :recorder, :f, :args)
+        tracked = varargs!(meta, tracked, 3)
+        return update!(meta.code, tracked)
     end
 end
 

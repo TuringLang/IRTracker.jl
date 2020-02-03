@@ -148,6 +148,6 @@ end
 
 
 @testset "errors" begin
-    @test_throws ErrorException track(isodd)            # no method -- too few args
-    @test_throws ErrorException track(isodd, 2, 3)      # no method -- too many args
+    @test_throws MethodError track(isodd)            # no method -- too few args
+    @test_throws MethodError track(isodd, 2, 3)      # no method -- too many args
 end
