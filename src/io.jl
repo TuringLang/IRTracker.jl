@@ -2,7 +2,7 @@ using LightGraphs
 using MetaGraphs
 
 import Base: convert
-import Metagraphs: savedot
+import MetaGraphs: savedot
 
 include("graphviz.jl")
 using .GraphViz
