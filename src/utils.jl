@@ -25,7 +25,7 @@ IRTracker.<bla>(args...).
 const IRTCall = XCall(IRTracker)
 
 
-function xcall_kw(_f::GlobalRef, args...; kwargs...)
+function xcall_kw(_f, args...; kwargs...)
     if isempty(kwargs)
         Expr(:call, _f, args...)
     else
