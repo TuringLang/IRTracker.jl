@@ -86,7 +86,8 @@ SSA statement into a `TapeValue` call, or an inlined `TapeValue`, if possible.
 """
 
 function tapevalue(builder::TrackBuilder, value::IRTools.Variable)
-    return IRTCall.trackedvariable(builder.recorder, inlined(value))
+    original = substitute_variable(builder, value)
+    return IRTCall.trackedvariable(builder.recorder, inlined(value), original)
 end
 
 function tapevalue(builder::TrackBuilder, value::Any)

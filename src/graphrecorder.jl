@@ -2,7 +2,7 @@ using IRTools
 import Base: push!
 
 
-const VariableUsages = Dict{IRTools.Variable, TapeReference}
+const VariableUsages = Dict{IRTools.Variable, Int}
 
 
 """Helper type to keep the data used for recording an extended Wengert list at runtime."""
@@ -45,9 +45,8 @@ function push!(recorder::GraphRecorder, node::AbstractNode)
 end
 
 function record_variable_usage!(recorder::GraphRecorder, node::DataFlowNode, current_position::Int)
-    current_reference = TapeReference(node, current_position)
     current_var = IRTools.var(getlocation(node).line)
-    recorder.variable_usages[current_var] = current_reference
+    recorder.variable_usages[current_var] = current_position
     return recorder
 end
 
@@ -78,11 +77,15 @@ end
 
 
 @doc """
-    trackedvariable(recorder, var)
+    trackedvariable(recorder, var, value)
 
 Convert SSA reference in `var` to the `TapeReference` where `var` has been used last.
 """
-trackedvariable(recorder::GraphRecorder, var::IRTools.Variable) = recorder.variable_usages[var]
+function trackedvariable(recorder::GraphRecorder, var::IRTools.Variable, value::T) where {T}
+    position = recorder.variable_usages[var]
+    node = recorder.children[position]::DataFlowNode{T}
+    return TapeReference(node, position)
+end
 
 
 
