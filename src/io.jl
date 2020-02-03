@@ -1,14 +1,11 @@
 using LightGraphs
 using MetaGraphs
+
 import Base: convert
+import Metagraphs: savedot
 
 include("graphviz.jl")
 using .GraphViz
-
-
-
-const DOTFormat = MetaGraphs.DOTFormat
-export DOTFormat
 
 
 function convert(::Type{MetaDiGraph}, root::NestedCallNode)
@@ -45,11 +42,34 @@ function convert(::Type{MetaDiGraph}, root::NestedCallNode)
     return mg
 end
 
-# MetaGraphs.savegraph("/tmp/graph.dot", graph, MetaGraphs.DOTFormat())
+
+function convert(::Type{GraphViz.Graph}, root::NestedCallNode)
+    stmts = Vector{GraphViz.Statement}()
+    node_indices = Dict{AbstractNode, GraphViz.NodeID}()
+
+    push_node!(stmts, node_indices, root)
+    push_children!(stmts, node_indices, root)
+    
+    graph_attrs = Dict(:ordering => "in",    # edges sorted by incoming
+                       :rankdir => "BT",     # order nodes from right to left
+                       :compound => "true",  # allow edges between clusters
+                       )
+    edge_attrs = Dict(:style => "invis")
+    node_attrs = Dict(:shape => "plaintext")
+    
+    return GraphViz.DiGraph(stmts, graph_attrs = graph_attrs, edge_attrs = edge_attrs,
+                            node_attrs = node_attrs)
+end
+
+
 # dot /tmp/graph.dot -Tpdf -Nfontname="DejaVu Sans Mono" -Efontname="DejaVu Sans Mono" > /tmp/graph.pdf
+function savedot(fn::AbstractString, node::NestedCallNode)
+    open(fn, "w") do fp
+        GraphViz.pprint(fp, convert(GraphViz.Graph, node))
+    end
+end
 
-
-
+######### Details for GraphViz conversion #########################
 
 function remember_node!(node, node_indices)
     ix = length(node_indices) + 1
@@ -109,51 +129,5 @@ function push_node!(stmts, node_indices, node::AbstractNode)
     return push!(stmts, stmt)
 end
 
-function convert(::Type{GraphViz.Graph}, root::NestedCallNode)
-    stmts = Vector{GraphViz.Statement}()
-    node_indices = Dict{AbstractNode, GraphViz.NodeID}()
 
-    push_node!(stmts, node_indices, root)
-    push_children!(stmts, node_indices, root)
-    
-    graph_attrs = Dict(:ordering => "in",    # edges sorted by incoming
-                       :rankdir => "BT",     # order nodes from right to left
-                       :compound => "true",  # allow edges between clusters
-                       )
-    edge_attrs = Dict(:style => "invis")
-    node_attrs = Dict(:shape => "plaintext")
-    
-    return GraphViz.DiGraph(stmts, graph_attrs = graph_attrs, edge_attrs = edge_attrs,
-                            node_attrs = node_attrs)
-end
 
-# digraph  {
-#   graph [ordering="in",rankdir="BT",compound="true"];
-#   edge [style="invis"];
-#   1 [label="⟨f⟩(⟨1⟩)",shape="plaintext"];
-#   subgraph cluster_1 {
-#     label="f";
-#     2 [label="@1: f",shape="plaintext"];
-#     3 [label="@2: 1",shape="plaintext"];
-#     subgraph cluster_4 {
-#       label="+";
-#       5 [label="@1: @3#1",shape="plaintext"];
-#       6 [label="@2: @3#2",shape="plaintext"];
-#       7 [label="@3: @3#3",shape="plaintext"];
-#       8 [label="@4: ⟨add_int⟩(@2, @3)",shape="plaintext"];
-#       9 [label="@5: return @4",shape="plaintext"];
-#     }
-#     4 [label="@3: ⟨+⟩(@2, ⟨1⟩)",shape="plaintext"];
-#     5 -> 4 [ltail=cluster_4,style="dotted"];
-#     9 -> 8 -> 7 -> 6 -> 5 [group="4"];
-#     6 -> 3 [constraint="false",label="1",style="solid"];
-#     8 -> 6 [constraint="false",label="2",style="solid"];
-#     8 -> 7 [constraint="false",label="3",style="solid"];
-#     9 -> 8 [constraint="false",label="1",style="solid"];
-#     10 [label="@4: return @3",shape="plaintext"];
-#   }
-#   4 -> 3 -> 2 [group="2"];
-#   2 -> 1 [ltail=cluster_1,style="dotted"];
-#   4 -> 3 [constraint="false",label="2",style="solid"];
-#   10 -> 4 [constraint="false",label="1",style="solid"];
-# }
