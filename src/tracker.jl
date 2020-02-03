@@ -236,5 +236,5 @@ macro code_tracked(ex)
     Meta.isexpr(ex, :call) || error("Only function calls allowed!")
     f, args = ex.args[1], ex.args[2:end]
     ir = :(IRTools.Inner.code_ir($(esc(f)), IRTools.Inner.typesof($(esc.(args)...))))
-    return :(transform_ir($ir))
+    return :(transform($ir))
 end
