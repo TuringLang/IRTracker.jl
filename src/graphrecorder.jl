@@ -71,7 +71,7 @@ function finalize!(recorder::GraphRecorder, result::T, f_repr::TapeExpr,
 end
 
 
-@doc """
+"""
     trackedvariable(recorder, var, value)
 
 Convert SSA reference in `var` to the `TapeReference` where `var` has been used last.

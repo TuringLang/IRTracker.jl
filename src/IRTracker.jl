@@ -9,7 +9,6 @@ include("trackingcontext.jl")
 include("graphrecorder.jl")
 include("trackbuilder.jl")
 include("tracker.jl")
-include("runtime_functions.jl")
 
 
 
@@ -35,8 +34,8 @@ export printlevels
 
 # tracker.jl
 export track, recordnestedcall
-export canrecur, trackedargument, trackedcall, trackedconstant, trackedjump, trackednested,
-    trackedprimitive, trackedreturn, trackedspecial
+export canrecur, trackedargument, trackedcall, trackedconstant, trackederror, trackedjump,
+    trackednested, trackedprimitive, trackedreturn, trackedspecial
 export @code_tracked
 
 # runtime_functions.jl
