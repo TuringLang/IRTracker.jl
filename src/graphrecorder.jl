@@ -60,17 +60,12 @@ saveir!(recorder::GraphRecorder, ir::IRTools.IR) = (recorder.original_ir = ir)
 
 
 
-function finalize!(recorder::GraphRecorder, result, f_repr, args_repr, info)
-    f, args = getvalue(f_repr), getvalue.(args_repr)
-    ax, vx = _split_va(f, args)
-
-    if isnothing(vx)
-        call = TapeCall(result, f_repr, args_repr[ax])
-    else
-        call = TapeCall(result, f_repr, args_repr[ax], args_repr[vx])
-    end
-    
-    node = NestedCallNode(call, recorder.children, info)
+function finalize!(recorder::GraphRecorder, result::T, f_repr::TapeExpr,
+                   args_repr::ArgumentTuple{TapeExpr}, info) where {T}
+    f = getvalue(f_repr)
+    args_repr, varargs_repr = split_varargs(f, args_repr)
+    call = TapeCall{T}(result, f_repr, args_repr, varargs_repr)
+    node = NestedCallNode{T}(call, recorder.children, info)
     recorder.rootnode[] = node  # set the parent node of all recorded children
     return node
 end
@@ -93,10 +88,10 @@ end
 _inferred_params(signature::UnionAll) = _inferred_params(signature.body)
 _inferred_params(signature) = signature.parameters
 
-_split_va(@nospecialize(f::Core.Builtin), @nospecialize(arguments)) =
-    eachindex(arguments), nothing
+split_varargs(f::Core.Builtin, args_repr::ArgumentTuple{TapeExpr}) = args_repr, ()
 
-function _split_va(@nospecialize(f), @nospecialize(arguments))
+function split_varargs(@nospecialize(f), args_repr::ArgumentTuple{TapeExpr})
+    arguments = getvalue.(args_repr)
     ArgTypes = Tuple{Core.Typeof.(arguments)...}
     m = which(f, ArgTypes)
     L = length(arguments)
@@ -104,8 +99,8 @@ function _split_va(@nospecialize(f), @nospecialize(arguments))
     if m.isva
         inferred_parameters = _inferred_params(m.sig)
         I = length(inferred_parameters) - 1 # remove self parameter
-        return 1:(I - 1), I:L
+        return args_repr[1:(I - 1)], args_repr[I:L]
     else
-        return 1:L, nothing
+        return args_repr, ()
     end
 end

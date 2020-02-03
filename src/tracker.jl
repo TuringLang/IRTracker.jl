@@ -40,7 +40,7 @@ end
     recorder = GraphRecorder(ctx)
     result = _recordnestedcall!(recorder, f, args...)
     node = finalize!(recorder, result, f_repr, args_repr, info)
-    return node::NestedCallNode{typeof(result)}
+    return node
 end
 
 
@@ -198,9 +198,9 @@ See also: [`trackedprimitive`](@ref), [`trackednested`](@ref)
                              args_repr::ArgumentTuple{TapeValue}, info::NodeInfo)
     f, args = getvalue(f_repr), getvalue.(args_repr)
     if isbuiltin(f) || !canrecur(ctx, f, args...) 
-        return trackedprimitive(ctx, f_repr, args_repr, info)::DataFlowNode
+        return trackedprimitive(ctx, f_repr, args_repr, info)#::DataFlowNode
     else
-        return trackednested(ctx, f_repr, args_repr, info)::DataFlowNode
+        return trackednested(ctx, f_repr, args_repr, info)#::DataFlowNode
     end
 end
 
@@ -208,7 +208,7 @@ end
                              args_repr::ArgumentTuple{TapeValue}, location::IRIndex)
     info = NodeInfo(recorder.original_ir, location, recorder.rootnode)
     node = trackedcall(recorder.context, f_repr, args_repr, info)
-    return node::DataFlowNode
+    return node#::DataFlowNode
 end
 
 
