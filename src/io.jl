@@ -63,6 +63,13 @@ end
 
 
 # dot /tmp/graph.dot -Tpdf -Nfontname="DejaVu Sans Mono" -Efontname="DejaVu Sans Mono" > /tmp/graph.pdf
+
+"""
+    savedot(fn, node)
+
+Save a textual representation of `node` in file named `fn`, using the GraphViz format.  Optimized
+to result in a somewhat readable representation of nested calls.
+"""
 function savedot(fn::AbstractString, node::NestedCallNode)
     open(fn, "w") do fp
         GraphViz.pprint(fp, convert(GraphViz.Graph, node))

@@ -1,36 +1,67 @@
 import Base: convert, getindex
 
 
-
 """
-Representation of an expression in an IR statement when tracked in a node.  Contains a 
-reified form of the original and the value obtained during execution (i.e., forward mode).
+    TapeExpr{T}
+
+Abstract supertype of representations of an expression in an IR statement when tracked in a node.
+Contains a reified form of the original and the value obtained during execution (i.e., forward
+mode).  `T` is the type of the value of the statement.
 """
 abstract type TapeExpr{T} end
 
+
+"""
+    TapeValue{T}
+
+Abstract supertype of [`TapeExpr`](@ref)s that represents a simple value (i.e., constants or
+references).
+"""
 abstract type TapeValue{T} <: TapeExpr{T} end
+
+
+"""
+    TapeExpr{T}
+
+Abstract supertype of [`TapeExpr`](@ref)s that contain a non-simple value (i.e., calls or special 
+calls).
+"""
 abstract type TapeForm{T} <: TapeExpr{T} end
 
 
 """
-Representation of an SSA variable.  References a child node of a `NestedCallNode`; like the indices
-of a Wengert list.  Behaves like `Ref` (i.e., you can get the referenced node of `r` by `r[]`).
+    TapeReference{T} <: TapeValue{T}
+
+Tape representation of an SSA variable reference of type `T`.  References a child node of a
+`NestedCallNode`; like the indices of a Wengert list.  Behaves like `Ref` (i.e., you can get the
+referenced node of `r` by `r[]`).
 """
 struct TapeReference{T} <: TapeValue{T}
     referenced::DataFlowNode{T}
     index::Int
 end
 
-getindex(expr::TapeReference{T}) where {T} = expr.referenced::DataFlowNode{T}
+getindex(expr::TapeReference{T}) where {T} = expr.referenced
 
 
-"""Representation of a constant value."""
+"""
+    TapeConstant{T} <: TapeValue{T}
+
+Tape representation of a constant value of type `T`
+"""
 struct TapeConstant{T} <: TapeValue{T}
     value::T
 end
 
 
-"""Representation of a normal function call."""
+"""
+    TapeCall{T} <: TapeExpr{T}
+
+Tape representation of a normal function call with result type `T`.
+
+The arguments of the function call are split into normal `arguments` and `varargs`, since varargs
+calls need to be handled specially in the graph API.
+"""
 struct TapeCall{T} <: TapeExpr{T}
     value::T
     f::TapeValue
@@ -42,7 +73,12 @@ TapeCall(value::T, f::TapeValue, arguments::ArgumentTuple{TapeValue}) where {T} 
     TapeCall{T}(value, f, arguments, nothing)
 
 
-"""Representation of special expression (i.e., anything other than `Expr(:call, ...)`)."""
+"""
+    TapeCall{T} <: TapeExpr{T}
+
+Tape representation of special expression (i.e., anything other than `Expr(:call, ...)`) with
+result type `T`.
+"""
 struct TapeSpecialForm{T} <: TapeExpr{T}
     value::T
     head::Symbol

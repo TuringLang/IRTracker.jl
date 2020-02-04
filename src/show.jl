@@ -1,10 +1,16 @@
 import Base: show
 
+
+"""
+    printlevels(value, levels)
+
+Print only the first `levels` nesting levels of `value`.
+"""
+printlevels(value, levels::Integer) = printlevels(stdout, value, levels)
 printlevels(io::IO, mime::MIME, value, levels::Integer) =
     show(IOContext(io, :maxlevel => levels), mime, value)
 printlevels(io::IO, value, levels::Integer) =
     show(IOContext(io, :maxlevel => levels), MIME"text/plain"(), value)
-printlevels(value, levels::Integer) = printlevels(stdout, value, levels)
 
 
 # INTERNAL STUFF

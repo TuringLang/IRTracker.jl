@@ -4,7 +4,13 @@ using IRTools.Inner: argnames!, update!
 
 
 
-"""Construct the transformed IR with tracking statements from `old_ir`."""
+"""
+    transform(old_ir)
+
+Construct the transformed IR with tracking statements from `old_ir`.
+
+See [`@code_tracked`](@ref) for inspecting the result.
+"""
 function transform(old_ir::IR)
     IRTools.explicitbranch!(old_ir) # make implicit jumps explicit
     builder = TrackBuilder(old_ir)
@@ -13,10 +19,10 @@ end
 
 
 """
-    _recordnestedcall(Ctx, F, Args...)
+    _recordnestedcall!(recorder, f, args...)
 
-The generated function actually calling the transformed IR.  Returns a tuple of return value
-and `GraphRecorder`.
+The generated function actually calling the transformed IR, with an additional `GraphRecorder`
+on which the child nodes are stored.
 """
 @generated function _recordnestedcall!(recorder::GraphRecorder, f, args...)
     T = Tuple{f, args...}
@@ -34,6 +40,12 @@ and `GraphRecorder`.
 end
 
 
+"""
+    recordnestedcall!(ctx, f_repr, args_repr, info)
+
+Construct a `NestedCallNode` from the call represented by `f_repr` on `args_repr`, by tracking using
+`ctx`.
+"""
 @inline function recordnestedcall(ctx::AbstractTrackingContext, f_repr::TapeExpr,
                                   args_repr::ArgumentTuple{TapeValue}, info::NodeInfo)
     f, args = getvalue(f_repr), getvalue.(args_repr)
@@ -228,7 +240,12 @@ Decide whether `f(args...)` can be recursively tracked (within `ctx`).
 @inline canrecur(ctx::AbstractTrackingContext, f, args...) = !isbuiltin(f)
 
 
-"""Determine if a function is a Julia builtin (intrinsic or in `Core.Builtin`)."""
+"""
+    isbuiltin(f)
+
+Determine if the function `f` is a Julia builtin function (an intrinsic, a `Core.Builtin`, or from 
+`Core.Compiler`).
+"""
 @inline function isbuiltin(f)
     # from Cassette.canrecurse
     # (https://github.com/jrevels/Cassette.jl/blob/79eabe829a16b6612e0eba491d9f43dc9c11ff02/src/context.jl#L457-L473)

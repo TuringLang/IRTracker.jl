@@ -1,12 +1,25 @@
 import IRTools
 
 
-"""Extra (optional) data and metadata associated with every node (mostly locations & parent node)."""
+"""
+    NodeInfo
+
+Extra (optional) data and metadata associated with every node (mostly locations & parent node).
+"""
 mutable struct NodeInfo
+    "Original IR a node was recorded from."
     original_ir::Union{IRTools.IR, Nothing}
+
+    "Corresponding IR location of the node."
     location::IRIndex
+
+    "Parent of this node (i.e., the `NestedCallNode` it is stored within)."
     parent_ref::NullableRef{RecursiveNode}  # because we can only set this from the parent!
+
+    "Position of the node within the parent node."
     position::Union{Int, Nothing}
+
+    "Arbitrary metadata that can be used by contexts."
     metadata::Dict{Symbol, Any}
 end
 

@@ -4,8 +4,10 @@ import IRTools: block!
 
 
 """
-Context type used to build up new IR with tracking functionality from some original IR.
-Keeps track of necessary intermediate information.
+    TrackBuilder(ir)
+
+Context type used to build up new IR with tracking functionality from the original `ir`.  Keeps
+track of necessary intermediate information.
 """
 mutable struct TrackBuilder
     original_ir::IR
@@ -13,7 +15,7 @@ mutable struct TrackBuilder
     
     """Map from SSA variable in the original IR to the respective variables in the new IR."""
     variable_map::Dict{Any, Any}
-    """Lables of the blocks from which there are jumps to every block (mapping target -> sources)."""
+    """of Labels the blocks from which there are jumps to every block (mapping target -> sources)."""
     jump_targets::Dict{Int, Vector{Int}}
     """Number (label) of the unified return block to be added at the end."""
     return_block::Int
@@ -275,6 +277,8 @@ end
 
 
 """
+    insert_return_block!(builder)
+
 Set up the common return block in tracking IR.  All returns in the original IR are replaced by 
 explicit jumps to the common `builder.return_block`, to be able to record return statements.
 
@@ -292,7 +296,11 @@ function insert_return_block!(builder::TrackBuilder)
 end
 
 
-"""Create new IR with tracking code from original IR in the builder, and return it."""
+"""
+    buildtracks!(builder)
+
+Create new IR with tracking code from original IR in the `builder`, and return it.
+"""
 function buildtracks!(builder::TrackBuilder)
     for (i, old_block) in enumerate(blocks(builder.original_ir))
         new_block = block!(builder, i)

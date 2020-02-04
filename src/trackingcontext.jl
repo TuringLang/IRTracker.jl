@@ -1,19 +1,34 @@
+"""
+    AbstractTrackingContext
+
+Abstract base type for tracking contexts, on which the tracking functionality can be dispatched on.
+"""
 abstract type AbstractTrackingContext end
 
-"""Tracks everything down to calls of intrinsic functions."""
+"""
+    DefaultTrackingContext
+
+Context for everything all function calls, down to Julia intrinsic functions (see
+[`isbuiltin`](@ref)).
+"""
 struct DefaultTrackingContext <: AbstractTrackingContext end
 
 const DEFAULT_CTX = DefaultTrackingContext()
 
 
 
-"""Tracks nested calls until a certain level."""
+"""
+    DepthLimitContext(maxlevel)
+
+Context to track all function calls down to `maxlevel` nesting levels (or until they are builtins).
+"""
 struct DepthLimitContext <: AbstractTrackingContext
     level::Int
     maxlevel::Int
 end
 
 DepthLimitContext(maxlevel) = DepthLimitContext(1, maxlevel)
+
 
 increase_level(ctx::DepthLimitContext) = DepthLimitContext(ctx.level + 1, ctx.maxlevel)
 
@@ -27,7 +42,11 @@ end
 
 
 
-"""Composes behaviour of a series of other contexts (right to left, as with functions)."""
+"""
+    ComposedContext(contexts...)
+
+DRAFT. Composes behaviour of a series of other contexts (right to left, as with functions).
+"""
 struct ComposedContext{T<:Tuple{Vararg{AbstractTrackingContext}}} <: AbstractTrackingContext
     contexts::T
     ComposedContext(contexts::T) where {T<:Tuple{Vararg{AbstractTrackingContext}}} =

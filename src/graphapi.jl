@@ -6,6 +6,12 @@ import Base: firstindex, getindex, lastindex
 # General graph query API, modelled after XPath axes, see:
 # https://developer.mozilla.org/en-US/docs/Web/XPath/Axes
 
+
+"""
+    Axis
+
+Abstract base type for a query direction axes.
+"""
 abstract type Axis end
 
 abstract type Forward <: Axis end
