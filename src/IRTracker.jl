@@ -1,6 +1,5 @@
 module IRTracker
 
-
 include("utils.jl")
 include("graph.jl")
 include("show.jl")
@@ -34,12 +33,8 @@ export printlevels
 
 # tracker.jl
 export track, recordnestedcall
-export canrecur, trackedargument, trackedcall, trackedconstant, trackederror, trackedjump,
+export canrecur, isbuiltin, trackedargument, trackedcall, trackedconstant, trackederror, trackedjump,
     trackednested, trackedprimitive, trackedreturn, trackedspecial
 export @code_tracked
-
-# runtime_functions.jl
-export isbuiltin
-
 
 end # module
