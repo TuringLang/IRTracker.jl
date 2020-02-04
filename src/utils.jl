@@ -1,8 +1,16 @@
-using IRTools
 import Base: getproperty
+
 
 @eval begin
     # since var"#module#" does not work in pre-1.3
+
+    """
+        XCall(module)
+
+    A helper to create call expressions.  Given `ModCall = XCall(Mod)`, `ModCall.bla(args...)` 
+    will produce the properly `xcall`ed expression for `Mod.bla(args...)`, equivalent to 
+    `xcall(Mod, :bla, args...)`.
+    """
     struct XCall
         $(Symbol("#module#"))::Module
     end
@@ -18,11 +26,6 @@ function getproperty(x::XCall, name::Symbol)
 end
 
 
-"""
-`IRTCall.<bla>(args...)` is a hack to produce the properly `xcall`ed expression for
-IRTracker.<bla>(args...).
-"""
-const IRTCall = XCall(IRTracker)
 
 
 function xcall_kw(_f, args...; kwargs...)
@@ -54,7 +57,11 @@ xcall_kw(f::Symbol, args...; kwargs...) = xcall_kw(GlobalRef(Base, f), args...; 
 
 
 
-"""Equivalent of show without using the event loop (for usage in generated functions)."""
+"""
+    @coreshow(args...)
+
+Equivalent of `@show`, without using the event loop (for usage in generated functions).
+"""
 macro coreshow(exs...)
     blk = Expr(:block)
     for ex in exs
@@ -66,25 +73,3 @@ macro coreshow(exs...)
     
     return blk
 end
-
-
-
-@generated function reified_ir(f, args...)
-    # Since this is generated, it will generate the IR once per method and then return the literal
-    # value inlined.
-    return IRTools.IR(f, args...)
-end
-
-
-mutable struct Cached{T}
-    value::Union{Nothing, Some{T}}
-
-    Cached{T}() where {T} = new{T}(nothing)
-    Cached(something::T) where {T} = new{T}(Some(something))
-end
-
-hasvalue(cached::Cached) = !isnothing(cached.value)
-setvalue!(cached::Cached{T}, value) where {T} = (cached.value = Some(convert(T, value)); value)
-getvalue(cached::Cached) = hasvalue(cached) ? cached.value.value : error("value not set")
-getvalue!(cached::Cached{T}, value) where {T} = hasvalue(cached) ? getvalue(cached) : setvalue!(cached, value)
-reset!(cached::Cached) = (cached.value = nothing)
