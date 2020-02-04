@@ -1,5 +1,5 @@
 using IRTools: Block, IR, Statement, Variable
-using IRTools: argument!, block, blocks, branches, branch!, return!, xcall
+using IRTools: argument!, block, blocks, branches, branch!, return!
 import IRTools: block!
 
 
@@ -112,7 +112,7 @@ Construct an expression returning a tuple of `TapeValues`, given by transforming
 `tapevalue`.
 """
 function tapevalues(builder::TrackBuilder, values)
-    return xcall(:tuple, tapevalue.(Ref(builder), values)...)
+    return BaseCall.tuple(tapevalue.(Ref(builder), values)...)
 end
 
 

@@ -27,6 +27,8 @@ end
 
 
 
+const IRTCall = XCall(IRTracker)
+const BaseCall = XCall(Base)
 
 function xcall_kw(_f, args...; kwargs...)
     if isempty(kwargs)
