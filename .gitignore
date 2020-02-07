@@ -1,1 +1,3 @@
 Manifest.toml
+benchmark/*.json
+benchmark/*.md
