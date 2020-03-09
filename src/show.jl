@@ -59,7 +59,7 @@ end
 
 
 
-showcall(io::IO, node::ConstantNode) = nothing
+showcall(io::IO, node::ConstantNode) = showvalue(io, getvalue(node))
 showcall(io::IO, node::PrimitiveCallNode) =
     (print(io, node.call, " = "); showvalue(io, getvalue(node)))
 showcall(io::IO, node::NestedCallNode) =
@@ -155,7 +155,6 @@ function show(io::IO, mime::MIME"text/plain", node::NestedCallNode, level = 1)
             i < length(children) && print(io, "\n")
         end
     end
-
 end
 
 
