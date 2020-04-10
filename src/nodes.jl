@@ -35,9 +35,9 @@ end
 Representation of an SSA statement with a primitive call in tracked IR (what is primitive depends on
 the tracking context used).  `T` is the type of the recorded value.
 """
-struct PrimitiveCallNode{T} <: DataFlowNode{T}
+struct PrimitiveCallNode{T, F, TArgs, TCall<:TapeCall{T, F, TArgs}} <: DataFlowNode{T}
     "Expression corresponding to the primitive call."
-    call::TapeCall{T}
+    call::TCall
     
     info::NodeInfo
 end
@@ -49,9 +49,9 @@ end
 Representation of an SSA statement consisting of a nested (non-primitive) call in tracked IR.  `T`
 is the type of the recorded value.
 """
-struct NestedCallNode{T} <: RecursiveNode{T}
+struct NestedCallNode{T, F, TArgs, TCall<:TapeCall{T, F, TArgs}} <: RecursiveNode{T}
     "Expression corresponding to the nested call."
-    call::TapeCall{T}
+    call::TCall
 
     "Child nodes of the nested call."
     children::Vector{<:AbstractNode}
@@ -66,9 +66,9 @@ end
 Representation of an SSA statement consisting of a special call in tracked IR.  `T` is the type of
 the recorded value.
 """
-struct SpecialCallNode{T} <: DataFlowNode{T}
+struct SpecialCallNode{T, TArgs, TCall<:TapeSpecialForm{T, TArgs}} <: DataFlowNode{T}
     "Expression corresponding to the special call."
-    form::TapeSpecialForm{T}
+    form::TCall
     
     info::NodeInfo
 end
@@ -79,9 +79,9 @@ end
 
 Representation of a return branch in tracked IR.  
 """
-struct ReturnNode <: ControlFlowNode
+struct ReturnNode{T} <: ControlFlowNode
     "Returned value."
-    argument::TapeValue
+    argument::TapeValue{T}
     
     info::NodeInfo
 end
@@ -92,15 +92,15 @@ end
 
 Representation of a conditional or unconditional jump in tracked IR.
 """
-struct JumpNode <: ControlFlowNode
+struct JumpNode{C, TA<:TapeCallArgs} <: ControlFlowNode
     "Block number of the target of the jump."
     target::Int
 
     "Arguments of the branch the jump corresponds to."
-    arguments::ArgumentTuple{TapeValue}
+    arguments::TA
 
     "Condition of an conditional jump, or `true` in case of an unconditional one."
-    condition::TapeValue
+    condition::TapeValue{C}
     
     info::NodeInfo
 end
