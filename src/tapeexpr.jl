@@ -1,6 +1,3 @@
-import Base: convert, getindex
-
-
 """
     TapeExpr{T}
 
@@ -29,6 +26,25 @@ calls).
 abstract type TapeForm{T} <: TapeExpr{T} end
 
 
+
+const TapeCallArgs = Tuple{Vararg{TapeExpr}}
+
+@generated function argtypes(::TA,
+                             ::TV
+) where {TA<:TapeCallArgs, TV<:TapeCallArgs}
+    argtyps = getvaluetype.(TA.parameters)
+    vargtyps = getvaluetype.(TV.parameters)
+    return Tuple{argtyps..., vargtyps...}
+end
+
+@generated function argtypes(::TA, ::Nothing) where {TA<:TapeCallArgs}
+    argtyps = getvaluetype.(TA.parameters)
+    return Tuple{argtyps...}
+end
+
+
+
+
 """
     TapeReference{T} <: TapeValue{T}
 
@@ -41,7 +57,7 @@ struct TapeReference{T} <: TapeValue{T}
     index::Int
 end
 
-getindex(expr::TapeReference{T}) where {T} = expr.referenced
+Base.getindex(expr::TapeReference{T}) where {T} = expr.referenced
 
 
 """
@@ -55,37 +71,51 @@ end
 
 
 """
-    TapeCall{T} <: TapeExpr{T}
+    TapeCall{T, F, TArgs} <: TapeExpr{T}
 
-Tape representation of a normal function call with result type `T`.
+Tape representation of a normal function call with result type `T`, function type `F`, and
+argument tuple type `TArgs`.
 
 The arguments of the function call are split into normal `arguments` and `varargs`, since varargs
-calls need to be handled specially in the graph API.
+calls need to be handled specially in the graph API.  A `varargs` value of `nothing` indicates that
+the called method had not varargs, while `()` results from an empty vararg tuple.
 """
-struct TapeCall{T} <: TapeExpr{T}
+struct TapeCall{T, F, TArgs<:Tuple, TA<:TapeCallArgs, TV<:Union{TapeCallArgs, Nothing}} <: TapeExpr{T}
     value::T
-    f::TapeValue
-    arguments::ArgumentTuple{TapeValue}
-    varargs::Union{ArgumentTuple{TapeValue}, Nothing}
+    f::TapeValue{F}
+    arguments::TA
+    varargs::TV
 end
 
-TapeCall(value::T, f::TapeValue, arguments::ArgumentTuple{TapeValue}) where {T} =
-    TapeCall{T}(value, f, arguments, nothing)
+function TapeCall(value::T,
+                  f::TapeValue{F},
+                  arguments::TapeCallArgs,
+                  varargs::Union{TapeCallArgs, Nothing}=nothing
+) where {T, F}
+    argtyps = argtypes(arguments, varargs)
+    TA = typeof(arguments)
+    TV = typeof(varargs)
+    return TapeCall{T, F, argtyps, TA, TV}(value, f, arguments, varargs)
+end
 
 
 """
-    TapeCall{T} <: TapeExpr{T}
+    TapeSpecialForm{T} <: TapeExpr{T}
 
 Tape representation of special expression (i.e., anything other than `Expr(:call, ...)`) with
 result type `T`.
 """
-struct TapeSpecialForm{T} <: TapeExpr{T}
+struct TapeSpecialForm{T, TArgs<:Tuple, TA<:TapeCallArgs} <: TapeExpr{T}
     value::T
     head::Symbol
-    arguments::ArgumentTuple{TapeValue}
+    arguments::TA
 end
 
-
+function TapeSpecialForm(value::T, head::Symbol, arguments::TapeCallArgs) where {T}
+    argtyps = argtypes(arguments, nothing)
+    TA = typeof(arguments)
+    return TapeSpecialForm{T, argtyps, TA}(value, head, arguments)
+end
 
 
 """
@@ -122,6 +152,9 @@ getvalue(expr::TapeCall) = expr.value
 getvalue(expr::TapeSpecialForm) = expr.value
 getvalue(expr::TapeConstant) = expr.value
 getvalue(expr::TapeReference) = getvalue(expr[])
+
+getvaluetype(expr::TapeExpr) = getvaluetype(typeof(expr))
+getvaluetype(::Type{<:TapeExpr{T}}) where {T} = T
 
 
 

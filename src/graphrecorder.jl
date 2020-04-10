@@ -94,8 +94,8 @@ function finalize!(recorder::GraphRecorder, result::T, f_repr::TapeExpr,
                    args_repr::ArgumentTuple{TapeExpr}, info) where {T}
     f = getvalue(f_repr)
     args_repr, varargs_repr = split_varargs(f, args_repr)
-    call = TapeCall{T}(result, f_repr, args_repr, varargs_repr)
-    node = NestedCallNode{T}(call, recorder.children, info)
+    call = TapeCall(result, f_repr, args_repr, varargs_repr)
+    node = NestedCallNode(call, recorder.children, info)
     recorder.rootnode[] = node  # set the parent node of all recorded children
     return node
 end
