@@ -18,7 +18,7 @@ abstract type TapeValue{T} <: TapeExpr{T} end
 
 
 """
-    TapeExpr{T}
+    TapeForm{T}
 
 Abstract supertype of [`TapeExpr`](@ref)s that contain a non-simple value (i.e., calls or special 
 calls).
@@ -27,7 +27,7 @@ abstract type TapeForm{T} <: TapeExpr{T} end
 
 
 
-const TapeCallArgs = Tuple{Vararg{TapeExpr}}
+const TapeCallArgs = Tuple{Vararg{TapeValue}}
 
 @generated function argtypes(::TA,
                              ::TV
@@ -52,12 +52,12 @@ Tape representation of an SSA variable reference of type `T`.  References a chil
 `NestedCallNode`; like the indices of a Wengert list.  Behaves like `Ref` (i.e., you can get the
 referenced node of `r` by `r[]`).
 """
-struct TapeReference{T} <: TapeValue{T}
-    referenced::DataFlowNode{T}
+struct TapeReference{T, TR<:DataFlowNode{T}} <: TapeValue{T}
+    referenced::TR
     index::Int
 end
 
-Base.getindex(expr::TapeReference{T}) where {T} = expr.referenced
+Base.getindex(expr::TapeReference) = expr.referenced
 
 
 """
@@ -80,9 +80,9 @@ The arguments of the function call are split into normal `arguments` and `vararg
 calls need to be handled specially in the graph API.  A `varargs` value of `nothing` indicates that
 the called method had not varargs, while `()` results from an empty vararg tuple.
 """
-struct TapeCall{T, F, TArgs<:Tuple, TA<:TapeCallArgs, TV<:Union{TapeCallArgs, Nothing}} <: TapeExpr{T}
+struct TapeCall{T, F, TArgs<:Tuple, TF<: TapeValue{F}, TA<:TapeCallArgs, TV<:Union{TapeCallArgs, Nothing}} <: TapeForm{T}
     value::T
-    f::TapeValue{F}
+    f::TF
     arguments::TA
     varargs::TV
 end
@@ -93,9 +93,10 @@ function TapeCall(value::T,
                   varargs::Union{TapeCallArgs, Nothing}=nothing
 ) where {T, F}
     argtyps = argtypes(arguments, varargs)
+    TF = typeof(f)
     TA = typeof(arguments)
     TV = typeof(varargs)
-    return TapeCall{T, F, argtyps, TA, TV}(value, f, arguments, varargs)
+    return TapeCall{T, F, argtyps, TF, TA, TV}(value, f, arguments, varargs)
 end
 
 
@@ -105,7 +106,7 @@ end
 Tape representation of special expression (i.e., anything other than `Expr(:call, ...)`) with
 result type `T`.
 """
-struct TapeSpecialForm{T, TArgs<:Tuple, TA<:TapeCallArgs} <: TapeExpr{T}
+struct TapeSpecialForm{T, TArgs<:Tuple, TA<:TapeCallArgs} <: TapeForm{T}
     value::T
     head::Symbol
     arguments::TA

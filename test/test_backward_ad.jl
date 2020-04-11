@@ -46,7 +46,7 @@ function pullback!(node::NestedCallNode, Ω̄)
     return node
 end
 
-function trackedcall(ctx::BDiffContext, f_repr::TapeExpr,
+function trackedcall(ctx::BDiffContext, f_repr::TapeValue,
                      args_repr::ArgumentTuple{TapeValue}, info::NodeInfo)
     local f, args = getvalue(f_repr), getvalue.(args_repr)
     rule = rrule(f, args...)

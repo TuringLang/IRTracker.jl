@@ -34,7 +34,7 @@ increase_level(ctx::DepthLimitContext) = DepthLimitContext(ctx.level + 1, ctx.ma
 
 canrecur(ctx::DepthLimitContext, f, args...) = ctx.level < ctx.maxlevel
 
-function trackednested(ctx::DepthLimitContext, f_repr::TapeExpr,
+function trackednested(ctx::DepthLimitContext, f_repr::TapeValue,
                        args_repr::ArgumentTuple{TapeValue}, info::NodeInfo)
     new_ctx = increase_level(ctx)
     return recordnestedcall(new_ctx, f_repr, args_repr, info)
@@ -70,28 +70,28 @@ function foldcontexts(composed::ComposedContext, track, args...)
 end
 
 
-trackedreturn(composed::ComposedContext, arg_repr::TapeExpr, info::NodeInfo) =
+trackedreturn(composed::ComposedContext, arg_repr::TapeValue, info::NodeInfo) =
     foldcontexts(composed, arg_repr, info)
 
 trackedjump(composed::ComposedContext, target::Int, args_repr::ArgumentTuple{TapeValue},
-            cond_repr::TapeExpr, info::NodeInfo) =
+            cond_repr::TapeValue, info::NodeInfo) =
                 foldcontexts(composed, target, args_repr, cond_repr, info)
 
-trackedspecial(composed::ComposedContext, form_repr::TapeExpr, info::NodeInfo) =
+trackedspecial(composed::ComposedContext, form_repr::TapeSpecialForm, info::NodeInfo) =
     foldcontexts(composed, form_repr, info)
 
-trackedconstant(composed::ComposedContext, const_repr::TapeExpr, info::NodeInfo) =
+trackedconstant(composed::ComposedContext, const_repr::TapeValue, info::NodeInfo) =
     foldcontexts(composed, const_repr, info)
 
-trackedargument(composed::ComposedContext, arg_repr::TapeExpr, number::Int, info::NodeInfo) =
+trackedargument(composed::ComposedContext, arg_repr::TapeValue, number::Int, info::NodeInfo) =
     foldcontexts(composed, arg_repr, number, info)
 
-trackedprimitive(composed::ComposedContext, f_repr::TapeExpr,
-                 args_repr::ArgumentTuple{TapeExpr}, info::NodeInfo) =
+trackedprimitive(composed::ComposedContext, f_repr::TapeValue,
+                 args_repr::ArgumentTuple{TapeValue}, info::NodeInfo) =
                      foldcontexts(composed, f_repr, args_repr, info)
 
-trackednested(composed::ComposedContext, f_repr::TapeExpr,
-              args_repr::ArgumentTuple{TapeExpr}, info::NodeInfo) =
+trackednested(composed::ComposedContext, f_repr::TapeValue,
+              args_repr::ArgumentTuple{TapeValue}, info::NodeInfo) =
                   foldcontexts(composed, f_repr, args_repr, info)
 
 canrecur(composed::ComposedContext, f, args...) =

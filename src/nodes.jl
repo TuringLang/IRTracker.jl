@@ -30,7 +30,7 @@ end
 
 
 """
-    PrimitiveCallNode{T} <: DataFlowNode{T}
+    PrimitiveCallNode{T, F, TArgs} <: DataFlowNode{T}
 
 Representation of an SSA statement with a primitive call in tracked IR (what is primitive depends on
 the tracking context used).  `T` is the type of the recorded value.
@@ -44,7 +44,7 @@ end
 
 
 """
-    NestedCallNode{T} <: RecursiveNode{T}
+    NestedCallNode{T, F, TArgs} <: RecursiveNode{T}
 
 Representation of an SSA statement consisting of a nested (non-primitive) call in tracked IR.  `T`
 is the type of the recorded value.
@@ -61,7 +61,7 @@ end
 
 
 """
-    SpecialCallNode <: DataFlowNode
+    SpecialCallNode{T, TArgs} <: DataFlowNode{T}
 
 Representation of an SSA statement consisting of a special call in tracked IR.  `T` is the type of
 the recorded value.
@@ -79,9 +79,9 @@ end
 
 Representation of a return branch in tracked IR.  
 """
-struct ReturnNode{T} <: ControlFlowNode
+struct ReturnNode{T, TR<:TapeValue{T}} <: ControlFlowNode
     "Returned value."
-    argument::TapeValue{T}
+    argument::TR
     
     info::NodeInfo
 end
@@ -92,7 +92,7 @@ end
 
 Representation of a conditional or unconditional jump in tracked IR.
 """
-struct JumpNode{C, TA<:TapeCallArgs} <: ControlFlowNode
+struct JumpNode{C, TC<:TapeValue{C}, TA<:TapeCallArgs} <: ControlFlowNode
     "Block number of the target of the jump."
     target::Int
 
@@ -100,7 +100,7 @@ struct JumpNode{C, TA<:TapeCallArgs} <: ControlFlowNode
     arguments::TA
 
     "Condition of an conditional jump, or `true` in case of an unconditional one."
-    condition::TapeValue{C}
+    condition::TC
     
     info::NodeInfo
 end
