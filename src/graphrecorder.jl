@@ -109,7 +109,7 @@ Convert SSA reference in `var` to the `TapeReference` where `var` has been used 
 function trackedvariable(recorder::GraphRecorder, var::IRTools.Variable, value::T) where {T}
     position = recorder.variable_usages[var]
     node = recorder.children[position]
-    return TapeReference(node, position)
+    return TapeReference(node, position, value)
 end
 
 
@@ -118,8 +118,6 @@ end
 _inferred_params(signature::UnionAll) = _inferred_params(signature.body)
 _inferred_params(signature) = signature.parameters
 
-split_varargs(f::Core.Builtin, args_repr::ArgumentTuple{TapeExpr}) = args_repr, ()
-
 
 """
     split_varargs(f, args_repr)
@@ -127,7 +125,7 @@ split_varargs(f::Core.Builtin, args_repr::ArgumentTuple{TapeExpr}) = args_repr, 
 Given function `f`, and argument expression tuple `args_repr`, split the tuple into the "normal" and
 the "varargs" part (by reflecting on the dispatched method).
 """
-function split_varargs(@nospecialize(f), args_repr::ArgumentTuple{TapeExpr})
+function split_varargs(@nospecialize(f), args_repr::ArgumentTuple{TapeValue})
     arguments = getvalue.(args_repr)
     ArgTypes = Tuple{Core.Typeof.(arguments)...}
     m = which(f, ArgTypes)
@@ -140,4 +138,8 @@ function split_varargs(@nospecialize(f), args_repr::ArgumentTuple{TapeExpr})
     else
         return args_repr, ()
     end
+end
+
+@generated function split_varargs(f::Core.Builtin, args_repr::ArgumentTuple{TapeValue})
+    return :(args_repr, ())
 end

@@ -55,6 +55,7 @@ referenced node of `r` by `r[]`).
 struct TapeReference{T, TR<:DataFlowNode{T}} <: TapeValue{T}
     referenced::TR
     index::Int
+    value::T
 end
 
 Base.getindex(expr::TapeReference) = expr.referenced
@@ -152,7 +153,7 @@ end
 getvalue(expr::TapeCall) = expr.value
 getvalue(expr::TapeSpecialForm) = expr.value
 getvalue(expr::TapeConstant) = expr.value
-getvalue(expr::TapeReference) = getvalue(expr[])
+getvalue(expr::TapeReference) = expr.value
 
 getvaluetype(expr::TapeExpr) = getvaluetype(typeof(expr))
 getvaluetype(::Type{<:TapeExpr{T}}) where {T} = T

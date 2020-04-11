@@ -135,8 +135,8 @@ using Random
         
         @test call isa NestedCallNode
         @test call[4] isa NestedCallNode
-        @test call[4].call.arguments == (TapeReference(call[2], 2),)
-        @test call[4].call.varargs == (TapeReference(call[2], 2), TapeReference(call[2], 2))
+        @test call[4].call.arguments == (TapeReference(call[2], 2, 1),)
+        @test call[4].call.varargs == (TapeReference(call[2], 2, 1), TapeReference(call[2], 2, 1))
     end
 
     
