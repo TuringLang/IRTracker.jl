@@ -155,6 +155,22 @@ getvalue(expr::TapeSpecialForm) = expr.value
 getvalue(expr::TapeConstant) = expr.value
 getvalue(expr::TapeReference) = expr.value
 
+function getargument(expr::TapeCall, i)
+    nargs = length(expr.arguments)
+    if i ≤ nargs
+        return expr.arguments[i]
+    else
+        return expr.varargs[i - nargs]
+    end
+end
+getarguments(expr::TapeCall) = (expr.arguments..., something(expr.varargs, ())...)
+get_args_varargs(expr::TapeCall) = expr.arguments, expr.varargs
+
+getargument(expr::TapeSpecialForm, i) = expr.arguments[i]
+getarguments(expr::TapeSpecialForm) = expr.arguments
+
+getfunction(expr::TapeCall) = expr.f
+
 getvaluetype(expr::TapeExpr) = getvaluetype(typeof(expr))
 getvaluetype(::Type{<:TapeExpr{T}}) where {T} = T
 

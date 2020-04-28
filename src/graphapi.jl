@@ -94,11 +94,11 @@ getparent(node::AbstractNode) = getparent(node.info)
 
 
 """
-    getarguments(node) -> Vector{ArgumentNode}
+    getcallarguments(node) -> Vector{ArgumentNode}
 
-Return the sub-nodes representing the arguments of a nested call.
+Return the sub-nodes representing the function arguments of a nested call.
 """
-getarguments(node::AbstractNode) =
+getcallarguments(node::NestedCallNode) =
     [child for child in node.children if child isa ArgumentNode && isnothing(child.branch_node)]
 
 
@@ -127,6 +127,14 @@ getvalue(node::NestedCallNode) = getvalue(node.call)
 getvalue(node::PrimitiveCallNode) = getvalue(node.call)
 getvalue(node::ConstantNode) = getvalue(node.value)
 getvalue(node::ArgumentNode) = getvalue(node.value)
+
+getargument(node::Union{NestedCallNode, PrimitiveCallNode}, i) = getargument(node.call, i)
+getargument(node::SpecialCallNode, i) = getargument(node.form, i)
+
+getarguments(node::Union{NestedCallNode, PrimitiveCallNode}) = getarguments(node.call)
+getarguments(node::SpecialCallNode) = getarguments(node.form)
+
+getfunction(node::Union{NestedCallNode, PrimitiveCallNode}) = getfunction(node.call)
 
 getmetadata(node::AbstractNode) = getmetadata(node.info)
 
