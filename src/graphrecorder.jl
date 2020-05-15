@@ -109,7 +109,7 @@ Convert SSA reference in `var` to the `TapeReference` where `var` has been used 
 function trackedvariable(recorder::GraphRecorder, var::IRTools.Variable, value::T) where {T}
     position = recorder.variable_usages[var]
     node = recorder.children[position]
-    return TapeReference(node, position, value)
+    return TapeReference(value, node, position)
 end
 
 

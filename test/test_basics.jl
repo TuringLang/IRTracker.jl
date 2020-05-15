@@ -135,14 +135,36 @@ using Random
         
         @test call isa NestedCallNode
         @test call[4] isa NestedCallNode
-        @test call[4].call.arguments == (TapeReference(call[2], 2, 1),)
-        @test call[4].call.varargs == (TapeReference(call[2], 2, 1), TapeReference(call[2], 2, 1))
+        @test call[4].call.arguments == (TapeReference(1, call[2], 2),)
+        @test call[4].call.varargs == (TapeReference(1, call[2], 2), TapeReference(1, call[2], 2))
     end
 
     
     # direct test of  https://github.com/MikeInnes/IRTools.jl/issues/30
     # aka https://github.com/phipsgabler/DynamicComputationGraphs.jl/issues/19
     @test track(expm1, 1.0) isa NestedCallNode
+
+
+    function test9(x)
+        r = [1,2]
+        push!(r, x)
+        r[1] = x
+        return r
+    end
+
+    let call = track(test9, 42)
+        # ⟨f⟩(⟨42⟩, ()...) = [42, 2, 42]
+        #   @1: [Arg:§1:%1] f
+        #   @2: [Arg:§1:%2] 42
+        #   @3: [§1:%3] ⟨Base.vect⟩(⟨1⟩, ⟨2⟩) = [1, 2]
+        #   @4: [§1:%4] ⟨push!⟩(@3, @2) = [1, 2, 42]
+        #   @5: [§1:%5] ⟨setindex!⟩(@3, @2, ⟨1⟩) = [42, 2, 42]
+        #   @6: [§1:&1] return @3 = [42, 2, 42]
+
+        @test getsnapshot(call[3]) ≅ [1, 2]
+        @test getsnapshot(call[4]) ≅ [1, 2, 42]
+        @test getsnapshot(call[5]) ≅ [42, 2, 42]
+    end
 end
 
 

@@ -21,7 +21,7 @@ export TapeCall, TapeConstant, TapeExpr, TapeReference, TapeSpecialForm, TapeVal
 
 # graphapi.jl
 export getargument, getarguments, getcallarguments, getchildren, getfunction, getmetadata,
-    getmetadata!, getir, getlocation, getparent, getposition, getvalue, setmetadata!
+    getmetadata!, getir, getlocation, getparent, getposition, getsnapshot, getvalue, setmetadata!
 export Ancestor, Child, Descendant, Following, Parent, Preceding
 export backward, dependents, forward, query, referenced
 

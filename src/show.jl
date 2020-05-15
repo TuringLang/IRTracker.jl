@@ -59,26 +59,26 @@ end
 
 
 
-showcall(io::IO, node::ConstantNode) = showvalue(io, getvalue(node))
+showcall(io::IO, node::ConstantNode) = showvalue(io, getsnapshot(node))
 showcall(io::IO, node::PrimitiveCallNode) =
-    (print(io, node.call, " = "); showvalue(io, getvalue(node)))
+    (print(io, node.call, " = "); showvalue(io, getsnapshot(node)))
 showcall(io::IO, node::NestedCallNode) =
-    (print(io, node.call, " = "); showvalue(io, getvalue(node)))
+    (print(io, node.call, " = "); showvalue(io, getsnapshot(node)))
 showcall(io::IO, node::SpecialCallNode) =
-    (print(io, node.form, " = "); showvalue(io, getvalue(node)))
+    (print(io, node.form, " = "); showvalue(io, getsnapshot(node)))
 
 function showcall(io::IO, node::ArgumentNode)
     parent_position = parentbranch(node).info.position
     if !isnothing(parent_position)
         print(io, "@", parent_position, "#", node.number, " = ")
     end
-    showvalue(io, getvalue(node))
+    showvalue(io, getsnapshot(node))
 end
 
 function showcall(io::IO, node::ReturnNode)
     if node.argument isa TapeReference
         print(io, "return ", node.argument, " = ")
-        showvalue(io, getvalue(node.argument))
+        showvalue(io, getsnapshot(node.argument))
     else
         print(io, "return ", node.argument)
     end
@@ -99,11 +99,11 @@ function showcall(io::IO, node::JumpNode)
     end
 
     reason = node.condition
-    if !isnothing(getvalue(reason))
+    if !isnothing(getsnapshot(reason))
         print(io, " since ", reason)
         if reason isa TapeReference
             print(io, " == ")
-            showvalue(io, getvalue(reason))
+            showvalue(io, getsnapshot(reason))
         end
     end
 end
@@ -164,7 +164,7 @@ show(io::IO, index::BranchIndex) = print(io, "§", index.block, ":&", index.line
 
 
 show(io::IO, expr::TapeReference) = print(io, "@", expr.index)
-show(io::IO, expr::TapeConstant) = (print(io, "⟨"); showvalue(io, expr.value); print(io, "⟩"))
+show(io::IO, expr::TapeConstant) = (print(io, "⟨"); showvalue(io, getsnapshot(expr)); print(io, "⟩"))
 
 function show(io::IO, expr::TapeCall)
     print(io, expr.f, "(")

@@ -41,7 +41,7 @@ end
 end
 
 
-@testset "sanity checks" begin
+@testset "Turing" begin
     @test track(KalmanFilter(observations)) isa NestedCallNode
     @test track(MutatingKalmanFilter(observations)) isa NestedCallNode
 end
