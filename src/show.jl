@@ -10,7 +10,7 @@ printlevels(value, levels::Integer) = printlevels(stdout, value, levels)
 printlevels(io::IO, mime::MIME, value, levels::Integer) =
     show(IOContext(io, :maxlevel => levels), mime, value)
 printlevels(io::IO, value, levels::Integer) =
-    show(IOContext(io, :maxlevel => levels), MIME"text/plain"(), value)
+    show(IOContext(io, :maxlevel => levels), MIME("text/plain"), value)
 
 
 # INTERNAL STUFF
@@ -184,6 +184,3 @@ function show(io::IO, expr::TapeSpecialForm)
     joindelimited(io, expr.arguments, ", ")
     print(io, ")")
 end
-
-# show(io::IO, info::StatementInfo)= 
-    # print(io, "StatementInfo(", something(info.metadata, ""), ")")
