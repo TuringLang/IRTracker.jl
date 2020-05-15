@@ -20,7 +20,7 @@ export ArgumentNode, ConstantNode, JumpNode, NestedCallNode, PrimitiveCallNode,
 export TapeCall, TapeConstant, TapeExpr, TapeReference, TapeSpecialForm, TapeValue
 
 # graphapi.jl
-export getargument, getargument, getcallarguments, getchildren, getfunction, getmetadata,
+export getargument, getarguments, getcallarguments, getchildren, getfunction, getmetadata,
     getmetadata!, getir, getlocation, getparent, getposition, getvalue, setmetadata!
 export Ancestor, Child, Descendant, Following, Parent, Preceding
 export backward, dependents, forward, query, referenced

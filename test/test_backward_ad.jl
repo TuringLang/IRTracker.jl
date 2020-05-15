@@ -38,7 +38,7 @@ function pullback!(node::NestedCallNode, Ω̄)
         pullback!(child, Ω̄)
     end
 
-    args = getarguments(node)
+    args = getcallarguments(node)
     for (i, ref) in referenced(node; numbered = true)
         accumulate!(ref, getmetadata(args[i], :Ω̄, Zero()))
     end
@@ -67,7 +67,7 @@ end
 function grad(f, args...)
     node = track(BDiffContext(), f, args...)
     pullback!(node, One())
-    args = getarguments(node)
+    args = getcallarguments(node)
     
     # leave out differential of function #self argument
     return ntuple(i -> getmetadata(args[i + 1], :Ω̄, nothing), length(args) - 1)
