@@ -4,41 +4,28 @@
 
 Container for a value of `T` together with a deepcopy of it.
 """
-mutable struct Snapshot{T}
+struct Snapshot{T}
     original::T
     copy::T
-    iscopied::Bool
 end
 
-Snapshot(x) = Snapshot{Core.Typeof(x)}(x, x, false)
-
-function snapshot!(s::Snapshot{T}) where {T}
-    if !s.iscopied
-        try
-            s.copy = deepcopy(s.original)
-        catch ex
-            @warn "Snapshotting object of type $(T) failed, using original reference instead"
-            T <: Dict && println(ex)
-        end
-        s.iscopied = true
+function Snapshot(original)
+    try
+        return Snapshot{Core.Typeof(original)}(original, deepcopy(original))
+    catch ex
+        @warn "Snapshotting object of type $(typeof(original)) failed, using original reference instead"
+        return Snapshot{Core.Typeof(original)}(original, original)
     end
-
-    return s
 end
 
 
-Base.:(==)(s::Snapshot, t::Snapshot) = getsnapshot(s) == getsnapshot(t)
 Base.show(io::IO, s::Snapshot) = print(io, "Snapshot(", s.copy, ")")
 
 function getoriginal(s::Snapshot)
-    # only if we access the reference, do the actual copy (short of the ability to do proper COW)
-    snapshot!(s)
     return s.original
 end
 
 function getsnapshot(s::Snapshot)
-    # the copied value might be shared, so we need to snapshot as well
-    snapshot!(s)
     return s.copy
 end
 
@@ -109,8 +96,6 @@ TapeReference(value, referenced, index) =
     TapeReference{Core.Typeof(value), typeof(referenced)}(Snapshot(value), referenced, index)
 
 Base.getindex(expr::TapeReference) = expr.referenced
-Base.:(==)(r1::TapeReference, r2::TapeReference) =
-    r1.value == r2.value && r1.referenced == r2.referenced && r1.index == r2.index
 
 
 """
@@ -123,8 +108,6 @@ struct TapeConstant{T} <: TapeValue{T}
 end
 
 TapeConstant(value) = TapeConstant{Core.Typeof(value)}(Snapshot(value))
-
-Base.:(==)(c1::TapeConstant, c2::TapeConstant) = c1.value == c2.value
 
 
 """
@@ -157,9 +140,6 @@ function TapeCall(value,
     return TapeCall{T, F, argtyps, TF, TA, TV}(Snapshot(value), f, arguments, varargs)
 end
 
-Base.:(==)(c1::TapeCall, c2::TapeCall) =
-    c1.value == c2.value && c1.f == c2.f && c1.arguments == c2.arguments && c1.varargs == c2.varargs
-
 
 """
     TapeSpecialForm{T} <: TapeExpr{T}
@@ -179,9 +159,6 @@ function TapeSpecialForm(value, head::Symbol, arguments::TapeCallArgs)
     TA = typeof(arguments)
     return TapeSpecialForm{T, argtyps, TA}(Snapshot(value), head, arguments)
 end
-
-Base.:(==)(c1::TapeSpecialForm, c2::TapeSpecialForm) =
-    c1.value == c2.value && c1.head == c2.head && c1.arguments == c2.arguments
 
 
 """
