@@ -13,7 +13,9 @@ function Snapshot(original)
     try
         return Snapshot{Core.Typeof(original)}(original, deepcopy(original))
     catch ex
-        @warn "Snapshotting object of type $(typeof(original)) failed, using original reference instead"
+        # @warn "Snapshotting object of type $(typeof(original)) failed, using original reference instead"
+        # ex isa UndefRefError && showerror(stdout, ex, stacktrace())
+        # println()
         return Snapshot{Core.Typeof(original)}(original, original)
     end
 end
@@ -21,15 +23,8 @@ end
 
 Base.show(io::IO, s::Snapshot) = print(io, "Snapshot(", s.copy, ")")
 
-function getoriginal(s::Snapshot)
-    return s.original
-end
-
-function getsnapshot(s::Snapshot)
-    return s.copy
-end
-
-
+getoriginal(s::Snapshot) = s.original
+getsnapshot(s::Snapshot) = s.copy
 
 
 """
@@ -108,6 +103,7 @@ struct TapeConstant{T} <: TapeValue{T}
 end
 
 TapeConstant(value) = TapeConstant{Core.Typeof(value)}(Snapshot(value))
+
 
 
 """
@@ -191,15 +187,9 @@ function references(expr::TapeExpr; numbered::Bool = false)
 end
 
 
-getvalue(expr::TapeCall) = getoriginal(expr.value)
-getvalue(expr::TapeSpecialForm) = getoriginal(expr.value)
-getvalue(expr::TapeConstant) = getoriginal(expr.value)
-getvalue(expr::TapeReference) = getoriginal(expr.value)
+getvalue(expr::TapeExpr) = getoriginal(expr.value)
+getsnapshot(expr::TapeExpr) = getsnapshot(expr.value)
 
-getsnapshot(expr::TapeCall) = getsnapshot(expr.value)
-getsnapshot(expr::TapeSpecialForm) = getsnapshot(expr.value)
-getsnapshot(expr::TapeConstant) = getsnapshot(expr.value)
-getsnapshot(expr::TapeReference) = getsnapshot(expr.value)
 
 function getargument(expr::TapeCall, i)
     nargs = length(expr.arguments)
