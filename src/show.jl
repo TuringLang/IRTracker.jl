@@ -61,23 +61,23 @@ end
 
 showcall(io::IO, node::ConstantNode) = showvalue(io, getsnapshot(node))
 showcall(io::IO, node::PrimitiveCallNode) =
-    (print(io, node.call, " = "); showvalue(io, getsnapshot(node)))
+    (print(io, node.call, " → "); showvalue(io, getsnapshot(node)))
 showcall(io::IO, node::NestedCallNode) =
-    (print(io, node.call, " = "); showvalue(io, getsnapshot(node)))
+    (print(io, node.call, " → "); showvalue(io, getsnapshot(node)))
 showcall(io::IO, node::SpecialCallNode) =
-    (print(io, node.form, " = "); showvalue(io, getsnapshot(node)))
+    (print(io, node.form, " → "); showvalue(io, getsnapshot(node)))
 
 function showcall(io::IO, node::ArgumentNode)
     parent_position = parentbranch(node).info.position
     if !isnothing(parent_position)
-        print(io, "@", parent_position, "#", node.number, " = ")
+        print(io, "@", parent_position, "#", node.number, " → ")
     end
     showvalue(io, getsnapshot(node))
 end
 
 function showcall(io::IO, node::ReturnNode)
     if node.argument isa TapeReference
-        print(io, "return ", node.argument, " = ")
+        print(io, "return ", node.argument, " → ")
         showvalue(io, getsnapshot(node.argument))
     else
         print(io, "return ", node.argument)
