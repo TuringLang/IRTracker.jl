@@ -128,6 +128,12 @@ getvalue(node::PrimitiveCallNode) = getvalue(node.call)
 getvalue(node::ConstantNode) = getvalue(node.value)
 getvalue(node::ArgumentNode) = getvalue(node.value)
 
+getsnapshot(node::SpecialCallNode) = getsnapshot(node.form)
+getsnapshot(node::NestedCallNode) = getsnapshot(node.call)
+getsnapshot(node::PrimitiveCallNode) = getsnapshot(node.call)
+getsnapshot(node::ConstantNode) = getsnapshot(node.value)
+getsnapshot(node::ArgumentNode) = getsnapshot(node.value)
+
 getargument(node::Union{NestedCallNode, PrimitiveCallNode}, i) = getargument(node.call, i)
 getargument(node::SpecialCallNode, i) = getargument(node.form, i)
 

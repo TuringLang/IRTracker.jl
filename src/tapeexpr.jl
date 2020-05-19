@@ -1,3 +1,32 @@
+
+"""
+    Snapshot{T}
+
+Container for a value of `T` together with a deepcopy of it.
+"""
+struct Snapshot{T}
+    original::T
+    copy::T
+end
+
+function Snapshot(original)
+    try
+        return Snapshot{Core.Typeof(original)}(original, deepcopy(original))
+    catch ex
+        # @warn "Snapshotting object of type $(typeof(original)) failed, using original reference instead"
+        # ex isa UndefRefError && showerror(stdout, ex, stacktrace())
+        # println()
+        return Snapshot{Core.Typeof(original)}(original, original)
+    end
+end
+
+
+Base.show(io::IO, s::Snapshot) = print(io, "Snapshot(", s.copy, ")")
+
+getoriginal(s::Snapshot) = s.original
+getsnapshot(s::Snapshot) = s.copy
+
+
 """
     TapeExpr{T}
 
@@ -53,10 +82,13 @@ Tape representation of an SSA variable reference of type `T`.  References a chil
 referenced node of `r` by `r[]`).
 """
 struct TapeReference{T, TR<:DataFlowNode{T}} <: TapeValue{T}
+    value::Snapshot{T}
     referenced::TR
     index::Int
-    value::T
 end
+
+TapeReference(value, referenced, index) =
+    TapeReference{Core.Typeof(value), typeof(referenced)}(Snapshot(value), referenced, index)
 
 Base.getindex(expr::TapeReference) = expr.referenced
 
@@ -67,8 +99,11 @@ Base.getindex(expr::TapeReference) = expr.referenced
 Tape representation of a constant value of type `T`
 """
 struct TapeConstant{T} <: TapeValue{T}
-    value::T
+    value::Snapshot{T}
 end
+
+TapeConstant(value) = TapeConstant{Core.Typeof(value)}(Snapshot(value))
+
 
 
 """
@@ -82,22 +117,23 @@ calls need to be handled specially in the graph API.  A `varargs` value of `noth
 the called method had not varargs, while `()` results from an empty vararg tuple.
 """
 struct TapeCall{T, F, TArgs<:Tuple, TF<: TapeValue{F}, TA<:TapeCallArgs, TV<:Union{TapeCallArgs, Nothing}} <: TapeForm{T}
-    value::T
+    value::Snapshot{T}
     f::TF
     arguments::TA
     varargs::TV
 end
 
-function TapeCall(value::T,
+function TapeCall(value,
                   f::TapeValue{F},
                   arguments::TapeCallArgs,
                   varargs::Union{TapeCallArgs, Nothing}=nothing
-) where {T, F}
+) where {F}
     argtyps = argtypes(arguments, varargs)
+    T = Core.Typeof(value)
     TF = typeof(f)
     TA = typeof(arguments)
     TV = typeof(varargs)
-    return TapeCall{T, F, argtyps, TF, TA, TV}(value, f, arguments, varargs)
+    return TapeCall{T, F, argtyps, TF, TA, TV}(Snapshot(value), f, arguments, varargs)
 end
 
 
@@ -108,15 +144,16 @@ Tape representation of special expression (i.e., anything other than `Expr(:call
 result type `T`.
 """
 struct TapeSpecialForm{T, TArgs<:Tuple, TA<:TapeCallArgs} <: TapeForm{T}
-    value::T
+    value::Snapshot{T}
     head::Symbol
     arguments::TA
 end
 
-function TapeSpecialForm(value::T, head::Symbol, arguments::TapeCallArgs) where {T}
+function TapeSpecialForm(value, head::Symbol, arguments::TapeCallArgs)
     argtyps = argtypes(arguments, nothing)
+    T = Core.Typeof(value)
     TA = typeof(arguments)
-    return TapeSpecialForm{T, argtyps, TA}(value, head, arguments)
+    return TapeSpecialForm{T, argtyps, TA}(Snapshot(value), head, arguments)
 end
 
 
@@ -150,10 +187,9 @@ function references(expr::TapeExpr; numbered::Bool = false)
 end
 
 
-getvalue(expr::TapeCall) = expr.value
-getvalue(expr::TapeSpecialForm) = expr.value
-getvalue(expr::TapeConstant) = expr.value
-getvalue(expr::TapeReference) = expr.value
+getvalue(expr::TapeExpr) = getoriginal(expr.value)
+getsnapshot(expr::TapeExpr) = getsnapshot(expr.value)
+
 
 function getargument(expr::TapeCall, i)
     nargs = length(expr.arguments)

@@ -41,7 +41,14 @@ end
 end
 
 
-@testset "sanity checks" begin
+@testset "Turing" begin
     @test track(KalmanFilter(observations)) isa NestedCallNode
     @test track(MutatingKalmanFilter(observations)) isa NestedCallNode
 end
+
+   # [1] getindex at ./array.jl:744 [inlined]
+   # [2] _iterate at ./dict.jl:675 [inlined]
+   # [3] iterate at ./dict.jl:677 [inlined]
+   # [4] deepcopy_internal(::Dict{String,BitArray{1}}, ::IdDict{Any,Any}) at ./deepcopy.jl:112
+   # [5] deepcopy at ./deepcopy.jl:30 [inlined]
+
