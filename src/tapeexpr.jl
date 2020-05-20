@@ -28,7 +28,13 @@ end
 
 # modules can't be deepcopied anyway
 Snapshot(m::Module) = Snapshot(m, m)
-Snapshot(typ::Type) = Snapshot(typ, typ)
+
+# This is a weird but necessary solution:
+# Some isa UnionAll == true
+# UnionAll <: DataType == false
+# supertype(UnionAll) == Type{T}
+Snapshot(u::UnionAll) = Snapshot{UnionAll}(u, u)
+Snapshot(t::DataType) = Snapshot{DataType}(t, t)
 
 
 Base.show(io::IO, s::Snapshot) = print(io, "Snapshot(", s.copy, ")")

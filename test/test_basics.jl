@@ -143,8 +143,10 @@ using Random
     # direct test of  https://github.com/MikeInnes/IRTools.jl/issues/30
     # aka https://github.com/phipsgabler/DynamicComputationGraphs.jl/issues/19
     @test track(expm1, 1.0) isa NestedCallNode
+end
 
 
+@testset "shapshotting" begin
     function test9(x)
         r = [1,2]
         push!(r, x)
@@ -165,8 +167,14 @@ using Random
         @test getsnapshot(call[4]) ≅ [1, 2, 42]
         @test getsnapshot(call[5]) ≅ [42, 2, 42]
     end
-end
 
+    # Issue #44
+    test10(x) = x isa AbstractVector{<:Some}
+    let call = track(test10, 1)
+        @test call isa NestedCallNode
+        @test getvalue(call) ≅ false
+    end
+end
 
 
 @testset "errors" begin
