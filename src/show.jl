@@ -184,7 +184,7 @@ function show(io::IO, expr::TapeCall)
 end
 
 function show(io::IO, expr::TapeSpecialForm)
-    print(io, expr.head, "(")
+    print(io, "\$(", expr.head, ")(")
     joindelimited(io, expr.arguments, ", ")
     print(io, ")")
 end
