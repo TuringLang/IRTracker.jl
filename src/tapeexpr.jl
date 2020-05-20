@@ -1,24 +1,34 @@
 
-"""
-    Snapshot{T}
+# """
+#     Snapshot{X}
 
-Container for a value of `T` together with a deepcopy of it.
-"""
+# Container for a value of `T` together with a deepcopy of it.
+# """
 struct Snapshot{T}
     original::T
     copy::T
 end
 
+
 function Snapshot(original)
     try
-        return Snapshot{Core.Typeof(original)}(original, deepcopy(original))
+        return Snapshot(original, deepcopy(original))
     catch ex
-        # @warn "Snapshotting object of type $(typeof(original)) failed, using original reference instead"
-        # ex isa UndefRefError && showerror(stdout, ex, stacktrace())
-        # println()
-        return Snapshot{Core.Typeof(original)}(original, original)
+        if ex isa ErrorException
+            @warn "Snapshotting object of type $(typeof(original)) failed, using original reference instead"
+            # @show original
+            # ex isa UndefRefError && showerror(stdout, ex, stacktrace())
+            # println()
+            return Snapshot(original, original)
+        else
+            rethrow(ex)
+        end
     end
 end
+
+# modules can't be deepcopied anyway
+Snapshot(m::Module) = Snapshot(m, m)
+Snapshot(typ::Type) = Snapshot(typ, typ)
 
 
 Base.show(io::IO, s::Snapshot) = print(io, "Snapshot(", s.copy, ")")
@@ -88,7 +98,7 @@ struct TapeReference{T, TR<:DataFlowNode{T}} <: TapeValue{T}
 end
 
 TapeReference(value, referenced, index) =
-    TapeReference{Core.Typeof(value), typeof(referenced)}(Snapshot(value), referenced, index)
+    TapeReference{typeof(value), typeof(referenced)}(Snapshot(value), referenced, index)
 
 Base.getindex(expr::TapeReference) = expr.referenced
 
@@ -102,7 +112,7 @@ struct TapeConstant{T} <: TapeValue{T}
     value::Snapshot{T}
 end
 
-TapeConstant(value) = TapeConstant{Core.Typeof(value)}(Snapshot(value))
+TapeConstant(value) = TapeConstant{typeof(value)}(Snapshot(value))
 
 
 
@@ -129,7 +139,7 @@ function TapeCall(value,
                   varargs::Union{TapeCallArgs, Nothing}=nothing
 ) where {F}
     argtyps = argtypes(arguments, varargs)
-    T = Core.Typeof(value)
+    T = typeof(value)
     TF = typeof(f)
     TA = typeof(arguments)
     TV = typeof(varargs)
@@ -151,7 +161,7 @@ end
 
 function TapeSpecialForm(value, head::Symbol, arguments::TapeCallArgs)
     argtyps = argtypes(arguments, nothing)
-    T = Core.Typeof(value)
+    T = typeof(value)
     TA = typeof(arguments)
     return TapeSpecialForm{T, argtyps, TA}(Snapshot(value), head, arguments)
 end
