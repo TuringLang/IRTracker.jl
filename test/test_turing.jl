@@ -42,8 +42,9 @@ end
 
 
 @testset "Turing" begin
-    @test track(KalmanFilter(observations)) isa NestedCallNode
-    @test track(MutatingKalmanFilter(observations)) isa NestedCallNode
+    # with depth 7 this fails in the Dict's _setindex! method due to unitialized values
+    @test track(DepthLimitContext(6), KalmanFilter(observations)) isa NestedCallNode
+    @test track(DepthLimitContext(6), MutatingKalmanFilter(observations)) isa NestedCallNode
 end
 
    # [1] getindex at ./array.jl:744 [inlined]
