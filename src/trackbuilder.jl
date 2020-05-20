@@ -199,13 +199,28 @@ function trackbranches!(builder::TrackBuilder, new_block::Block, branches)
 end
 
 
+function iscglobal(expr)
+    if Meta.isexpr(expr, :call, 3)
+        f = expr.args[1]
+        if f isa GlobalRef
+            return f.name == :cglobal
+        else
+            return f == :cglobal
+        end
+    end
+
+    return false
+end
+
 function trackstatement!(builder::TrackBuilder, new_block::Block,
                           variable::Variable, statement::Statement)
     location = inlined(VarIndex(new_block.id, variable.id))
     expr = statement.expr
-
-    if Meta.isexpr(expr, :call)
+    
+    if Meta.isexpr(expr, :call) && !iscglobal(expr)
         # normal call expression; nested vs. primitive is handled in `record!`
+        # except `cglobal`, which has to be treated like a `ccall` `:foreigncall`, but
+        # isn't lowered like a `ccall`.
         record = callrecord(builder, location, expr)
     elseif expr isa Expr
         # other special things, like `:new`, `:boundscheck`, or `:foreigncall`
