@@ -305,7 +305,7 @@ end
 Return all nodes that reference `node`; i.e., all data that immediately depends on it.
 """
 function dependents(node::AbstractNode)
-    return [f for f in query(node, Following) if node in referenced(f, Preceding)]
+    return AbstractNode[f for f in query(node, Following) if node in referenced(f, Preceding)]
     # or: filter(f -> (node in references(f, Preceding))::Bool, query(node, Following))
     # an instance of https://github.com/JuliaLang/julia/issues/28889
 end
