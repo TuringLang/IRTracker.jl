@@ -48,7 +48,7 @@ Construct a `NestedCallNode` from the call represented by `f_repr` on `args_repr
 """
 @inline function recordnestedcall(ctx::AbstractTrackingContext, f_repr::TapeValue,
                                   args_repr::ArgumentTuple{TapeValue}, info::NodeInfo)
-    f, args = getvalue(f_repr), getvalue.(args_repr)
+    f, args = getvalue_ref(f_repr), getvalue_ref.(args_repr)
     recorder = GraphRecorder(ctx)
     result = _recordnestedcall!(recorder, f, args...)
     node = finalize!(recorder, result, f_repr, args_repr, info)
@@ -168,7 +168,7 @@ See also: [`trackedcall`](@ref)
 """
 @inline function trackedprimitive(::AbstractTrackingContext, f_repr::TapeValue,
                                   args_repr::ArgumentTuple{TapeValue}, info::NodeInfo)
-    f, args = getvalue(f_repr), getvalue.(args_repr)
+    f, args = getvalue_ref(f_repr), getvalue_ref.(args_repr)
     call = TapeCall(f(args...), f_repr, args_repr)
     return PrimitiveCallNode(call, info)
 end
@@ -207,7 +207,7 @@ See also: [`trackedprimitive`](@ref), [`trackednested`](@ref)
 """
 @inline function trackedcall(ctx::AbstractTrackingContext, f_repr::TapeValue,
                              args_repr::ArgumentTuple{TapeValue}, info::NodeInfo)
-    f, args = getvalue(f_repr), getvalue.(args_repr)
+    f, args = getvalue_ref(f_repr), getvalue_ref.(args_repr)
     if isbuiltin(f) || !canrecur(ctx, f, args...) 
         return trackedprimitive(ctx, f_repr, args_repr, info)
     else

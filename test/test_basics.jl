@@ -163,9 +163,9 @@ end
         #   @5: [§1:%5] ⟨setindex!⟩(@3, @2, ⟨1⟩) = [42, 2, 42]
         #   @6: [§1:&1] return @3 = [42, 2, 42]
 
-        @test getsnapshot(call[3]) ≅ [1, 2]
-        @test getsnapshot(call[4]) ≅ [1, 2, 42]
-        @test getsnapshot(call[5]) ≅ [42, 2, 42]
+        @test getvalue(call[3]) ≅ [1, 2]
+        @test getvalue(call[4]) ≅ [1, 2, 42]
+        @test getvalue(call[5]) ≅ [42, 2, 42]
     end
 
     # Issue #44

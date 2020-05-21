@@ -120,19 +120,28 @@ return the precise statement.
 """
 getir(node::AbstractNode) = getir(node.info)
 
-getvalue(::JumpNode) = nothing
-getvalue(::ReturnNode) = nothing
+"""
+Return the original value of the IR during tracking (only for internal purposes!).
+"""
+getvalue_ref(::JumpNode) = nothing
+getvalue_ref(::ReturnNode) = nothing
+getvalue_ref(node::SpecialCallNode) = getvalue_ref(node.form)
+getvalue_ref(node::NestedCallNode) = getvalue_ref(node.call)
+getvalue_ref(node::PrimitiveCallNode) = getvalue_ref(node.call)
+getvalue_ref(node::ConstantNode) = getvalue_ref(node.value)
+getvalue_ref(node::ArgumentNode) = getvalue_ref(node.value)
+
+""" 
+Return the value of the node at the point the node was tracked (as a snapshot -- mutable values
+are deepcopied).
+"""
+function getvalue end
+
 getvalue(node::SpecialCallNode) = getvalue(node.form)
 getvalue(node::NestedCallNode) = getvalue(node.call)
 getvalue(node::PrimitiveCallNode) = getvalue(node.call)
 getvalue(node::ConstantNode) = getvalue(node.value)
 getvalue(node::ArgumentNode) = getvalue(node.value)
-
-getsnapshot(node::SpecialCallNode) = getsnapshot(node.form)
-getsnapshot(node::NestedCallNode) = getsnapshot(node.call)
-getsnapshot(node::PrimitiveCallNode) = getsnapshot(node.call)
-getsnapshot(node::ConstantNode) = getsnapshot(node.value)
-getsnapshot(node::ArgumentNode) = getsnapshot(node.value)
 
 getargument(node::Union{NestedCallNode, PrimitiveCallNode}, i) = getargument(node.call, i)
 getargument(node::SpecialCallNode, i) = getargument(node.form, i)

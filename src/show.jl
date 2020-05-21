@@ -63,26 +63,26 @@ end
 
 
 
-showcall(io::IO, node::ConstantNode) = showvalue(io, getsnapshot(node))
+showcall(io::IO, node::ConstantNode) = showvalue(io, getvalue(node))
 showcall(io::IO, node::PrimitiveCallNode) =
-    (print(io, node.call, " → "); showvalue_typed(io, getsnapshot(node)))
+    (print(io, node.call, " → "); showvalue_typed(io, getvalue(node)))
 showcall(io::IO, node::NestedCallNode) =
-    (print(io, node.call, " → "); showvalue_typed(io, getsnapshot(node)))
+    (print(io, node.call, " → "); showvalue_typed(io, getvalue(node)))
 showcall(io::IO, node::SpecialCallNode) =
-    (print(io, node.form, " → "); showvalue_typed(io, getsnapshot(node)))
+    (print(io, node.form, " → "); showvalue_typed(io, getvalue(node)))
 
 function showcall(io::IO, node::ArgumentNode)
     parent_position = parentbranch(node).info.position
     if !isnothing(parent_position)
         print(io, "@", parent_position, "#", node.number, " → ")
     end
-    showvalue_typed(io, getsnapshot(node))
+    showvalue_typed(io, getvalue(node))
 end
 
 function showcall(io::IO, node::ReturnNode)
     if node.argument isa TapeReference
         print(io, "return ", node.argument, " → ")
-        showvalue_typed(io, getsnapshot(node.argument))
+        showvalue_typed(io, getvalue(node.argument))
     else
         print(io, "return ", node.argument)
     end
@@ -103,11 +103,11 @@ function showcall(io::IO, node::JumpNode)
     end
 
     reason = node.condition
-    if !isnothing(getsnapshot(reason))
+    if !isnothing(getvalue(reason))
         print(io, " since ", reason)
         if reason isa TapeReference
             print(io, " == ")
-            showvalue(io, getsnapshot(reason))
+            showvalue(io, getvalue(reason))
         end
     end
 end
@@ -168,7 +168,7 @@ show(io::IO, index::BranchIndex) = print(io, "§", index.block, ":&", index.line
 
 
 show(io::IO, expr::TapeReference) = print(io, "@", expr.index)
-show(io::IO, expr::TapeConstant) = (print(io, "⟨"); showvalue(io, getsnapshot(expr)); print(io, "⟩"))
+show(io::IO, expr::TapeConstant) = (print(io, "⟨"); showvalue(io, getvalue(expr)); print(io, "⟩"))
 
 function show(io::IO, expr::TapeCall)
     print(io, expr.f, "(")

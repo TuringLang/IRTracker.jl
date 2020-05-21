@@ -203,8 +203,8 @@ function references(expr::TapeExpr; numbered::Bool = false)
 end
 
 
-getvalue(expr::TapeExpr) = getoriginal(expr.value)
-getsnapshot(expr::TapeExpr) = getsnapshot(expr.value)
+getvalue_ref(expr::TapeExpr) = getoriginal(expr.value)
+getvalue(expr::TapeExpr) = getsnapshot(expr.value)
 
 
 function getargument(expr::TapeCall, i)

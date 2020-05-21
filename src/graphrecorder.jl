@@ -71,7 +71,7 @@ record_variable_usage!(recorder::GraphRecorder, ::ControlFlowNode, ::Int) = reco
 
 Push `node` onto `recorder` and return its value.
 """
-record!(recorder::GraphRecorder, node::AbstractNode) = (push!(recorder, node); getvalue(node))
+record!(recorder::GraphRecorder, node::AbstractNode) = (push!(recorder, node); getvalue_ref(node))
 
 
 """
@@ -92,7 +92,7 @@ final node.
 """
 function finalize!(recorder::GraphRecorder, result::T, f_repr::TapeExpr,
                    args_repr::ArgumentTuple{TapeExpr}, info) where {T}
-    f = getvalue(f_repr)
+    f = getvalue_ref(f_repr)
     args_repr, varargs_repr = split_varargs(f, args_repr)
     call = TapeCall(result, f_repr, args_repr, varargs_repr)
     node = NestedCallNode(call, recorder.children, info)
@@ -126,7 +126,7 @@ Given function `f`, and argument expression tuple `args_repr`, split the tuple i
 the "varargs" part (by reflecting on the dispatched method).
 """
 function split_varargs(@nospecialize(f), args_repr::ArgumentTuple{TapeValue})
-    arguments = getvalue.(args_repr)
+    arguments = getvalue_ref.(args_repr)
     ArgTypes = Tuple{Core.Typeof.(arguments)...}
     m = which(f, ArgTypes)
     L = length(arguments)
