@@ -59,45 +59,41 @@ first time and less the second time:
     
 ```
 julia> printlevels(track(geom, 1, 0.5), 3)
-⟨geom⟩(⟨1⟩, ⟨0.5⟩) = 3	
-  @1: [Arg:§1:%1] geom	
-  @2: [Arg:§1:%2] 1	
-  @3: [Arg:§1:%3] 0.5	
-  @4: [§1:%4] ⟨rand⟩() = 0.7595635877474407	
-    @1: [Arg:§1:%1] rand	
-    @2: [§1:%2] ⟨Random.default_rng⟩() = (…some huge Mersenne twister constant)
-    @3: [§1:%3] @1(@2, ⟨Float64⟩) = 0.7595635877474407	
-    @4: [§1:&1] return @3 = 0.7595635877474407 
-  @5: [§1:%5] ⟨<⟩(@4, @3) = false	
-    @1: [Arg:§1:%1] <	
-    @2: [Arg:§1:%2] 0.7595635877474407	
-    @3: [Arg:§1:%3] 0.5	
-    @4: [§1:%4] ⟨lt_float⟩(@2, @3) = false	
-    @5: [§1:&1] return @4 = false 
-  @6: [§1:&1] goto §2 since @5 == false 
-  @7: [§2:%6] ⟨+⟩(@2, ⟨1⟩) = 2	
-    @1: [Arg:§1:%1] +	
-    @2: [Arg:§1:%2] 1	
-    @3: [Arg:§1:%3] 1	
-    @4: [§1:%4] ⟨add_int⟩(@2, @3) = 2	
-    @5: [§1:&1] return @4 = 2 
-  @8: [§2:%7] ⟨geom⟩(@7, @3) = 3	
-    @1: [Arg:§1:%1] geom	
-    @2: [Arg:§1:%2] 2	
-    @3: [Arg:§1:%3] 0.5	
-    @4: [§1:%4] ⟨rand⟩() = 0.8639835284162187	
-    @5: [§1:%5] ⟨<⟩(@4, @3) = false	
-    @6: [§1:&1] goto §2 since @5 == false 
-    @7: [§2:%6] ⟨+⟩(@2, ⟨1⟩) = 3	
-    @8: [§2:%7] ⟨geom⟩(@7, @3) = 3	
-    @9: [§2:&1] return @8 = 3 
-  @9: [§2:&1] return @8 = 3 
-
+julia> printlevels(track(geom, 1, 0.5), 3)
+⟨geom⟩(⟨1⟩, ⟨0.5⟩, ()...) → 3::Int64
+  @1: [Arg:§1:%1] geom::typeof(geom)
+  @2: [Arg:§1:%2] 1::Int64
+  @3: [Arg:§1:%3] 0.5::Float64
+  @4: [§1:%4] ⟨rand⟩(, ()...) → 0.5962171580369058::Float64
+    @1: [Arg:§1:%1] @4#1 → rand::typeof(rand)
+    @2: [§1:%2] ⟨Random.default_rng⟩(, ()...) → Random.MersenneTwister(…)::Random.MersenneTwister
+    @3: [§1:%3] @1(@2, ⟨Float64⟩, ()...) → 0.5962171580369058::Float64
+    @4: [§1:&1] return @3 → 0.5962171580369058::Float64
+  @5: [§1:%5] ⟨<⟩(@4, @3, ()...) → false::Bool
+    @1: [Arg:§1:%1] @5#1 → <::typeof(<)
+    @2: [Arg:§1:%2] @5#2 → 0.5962171580369058::Float64
+    @3: [Arg:§1:%3] @5#3 → 0.5::Float64
+    @4: [§1:%4] ⟨lt_float⟩(@2, @3) → false::Bool
+    @5: [§1:&1] return @4 → false::Bool
+  @6: [§1:&1] goto §2 since @5 == false
+  @7: [§2:%6] ⟨+⟩(@2, ⟨1⟩, ()...) → 2::Int64
+    @1: [Arg:§1:%1] @7#1 → +::typeof(+)
+    @2: [Arg:§1:%2] @7#2 → 1::Int64
+    @3: [Arg:§1:%3] @7#3 → 1::Int64
+    @4: [§1:%4] ⟨add_int⟩(@2, @3) → 2::Int64
+    @5: [§1:&1] return @4 → 2::Int64
+  @8: [§2:%7] ⟨geom⟩(@7, @3, ()...) → 3::Int64
+    @1: [Arg:§1:%1] @8#1 → geom::typeof(geom)
+    @2: [Arg:§1:%2] @8#2 → 2::Int64
+    @3: [Arg:§1:%3] @8#3 → 0.5::Float64
+    @4: [§1:%4] ⟨rand⟩(, ()...) → 0.8004790305828287::Float64
+    @5: [§1:%5] ⟨<⟩(@4, @3, ()...) → false::Bool
+    @6: [§1:&1] goto §2 since @5 == false
+    @7: [§2:%6] ⟨+⟩(@2, ⟨1⟩, ()...) → 3::Int64
+    @8: [§2:%7] ⟨geom⟩(@7, @3, ()...) → 3::Int64
+    @9: [§2:&1] return @8 → 3::Int64
+  @9: [§2:&1] return @8 → 3::Int64
 ```
-
-or in a simplified graphical form:
-
-![Graph extracted from the example function](paper/graph.png)
 
 (This result is expanded to only three levels, since the full output would be huge.)
 
@@ -119,6 +115,7 @@ This, together with the original IR, while being a bit cryptic, contains the fol
   itself and is not used most of the time).
 - Constants (literals in the expressions) are written in ⟨angle brackets⟩ (this makes debugging the
   transformed code easier).
+- Not shown here, but “special expression”, such as `Expr(:foreigncall, …)`, are written as `$(foreigncall)(…)`.
 
 Furthermore, argument assignments in blocks jumped to by branches are linked back to the respective
 arguments by using the notation `@i#j = value`:
@@ -136,34 +133,36 @@ julia> function h(x, n)
 h (generic function with 1 method)
 
 julia> printlevels(track(h, 2.0, 2), 2)
-⟨h⟩(⟨2.0⟩, ⟨2⟩) = 3.0	
-  @1: [Arg:§1:%1] h	
-  @2: [Arg:§1:%2] 2.0	
-  @3: [Arg:§1:%3] 2	
-  @4: [§1:%4] ⟨zero⟩(@2) = 0.0	
-  @5: [§1:&1] goto §2 (⟨0⟩, @4) 
-  @6: [Arg:§2:%5] @5#1 = 0	
-  @7: [Arg:§2:%6] @5#2 = 0.0	
-  @8: [§2:%7] ⟨<⟩(@6, @3) = true	
-  @9: [§2:&2] goto §3 
-  @10: [§3:%8] ⟨^⟩(@2, @6) = 1.0	
-  @11: [§3:%9] ⟨+⟩(@7, @10) = 1.0	
-  @12: [§3:%10] ⟨+⟩(@6, ⟨1⟩) = 1	
-  @13: [§3:&1] goto §2 (@12, @11) 
-  @14: [Arg:§2:%5] @13#1 = 1	
-  @15: [Arg:§2:%6] @13#2 = 1.0	
-  @16: [§2:%7] ⟨<⟩(@14, @3) = true	
-  @17: [§2:&2] goto §3 
-  @18: [§3:%8] ⟨^⟩(@2, @14) = 2.0	
-  @19: [§3:%9] ⟨+⟩(@15, @18) = 3.0	
-  @20: [§3:%10] ⟨+⟩(@14, ⟨1⟩) = 2	
-  @21: [§3:&1] goto §2 (@20, @19) 
-  @22: [Arg:§2:%5] @21#1 = 2	
-  @23: [Arg:§2:%6] @21#2 = 3.0	
-  @24: [§2:%7] ⟨<⟩(@22, @3) = false	
-  @25: [§2:&1] goto §4 since @24 == false 
-  @26: [§4:&1] return @23 = 3.0 
+⟨h⟩(⟨2.0⟩, ⟨2⟩, ()...) → 3.0::Float64
+  @1: [Arg:§1:%1] h::typeof(h)
+  @2: [Arg:§1:%2] 2.0::Float64
+  @3: [Arg:§1:%3] 2::Int64
+  @4: [§1:%4] ⟨zero⟩(@2, ()...) → 0.0::Float64
+  @5: [§1:&1] goto §2 (⟨0⟩, @4)
+  @6: [Arg:§2:%5] @5#1 → 0::Int64
+  @7: [Arg:§2:%6] @5#2 → 0.0::Float64
+  @8: [§2:%7] ⟨<⟩(@6, @3, ()...) → true::Bool
+  @9: [§2:&2] goto §3
+  @10: [§3:%8] ⟨^⟩(@2, @6, ()...) → 1.0::Float64
+  @11: [§3:%9] ⟨+⟩(@7, @10, ()...) → 1.0::Float64
+  @12: [§3:%10] ⟨+⟩(@6, ⟨1⟩, ()...) → 1::Int64
+  @13: [§3:&1] goto §2 (@12, @11)
+  @14: [Arg:§2:%5] @13#1 → 1::Int64
+  @15: [Arg:§2:%6] @13#2 → 1.0::Float64
+  @16: [§2:%7] ⟨<⟩(@14, @3, ()...) → true::Bool
+  @17: [§2:&2] goto §3
+  @18: [§3:%8] ⟨^⟩(@2, @14, ()...) → 2.0::Float64
+  @19: [§3:%9] ⟨+⟩(@15, @18, ()...) → 3.0::Float64
+  @20: [§3:%10] ⟨+⟩(@14, ⟨1⟩, ()...) → 2::Int64
+  @21: [§3:&1] goto §2 (@20, @19)
+  @22: [Arg:§2:%5] @21#1 → 2::Int64
+  @23: [Arg:§2:%6] @21#2 → 3.0::Float64
+  @24: [§2:%7] ⟨<⟩(@22, @3, ()...) → false::Bool
+  @25: [§2:&1] goto §4 since @24 == false
+  @26: [§4:&1] return @23 → 3.0::Float64
 ```
+
+The spurious `()...` arguments represent the empty varargs part.
 
 In this form, a backward pass is as trivial as following back the references from the last `return`
 and adding adjoint values in the metadata.
@@ -185,8 +184,8 @@ each block), somehow like this:
 
 ```
 julia> @code_tracked geom(1, 0.5)
-1: (%4, %1, %2, %3)
-  %5 = saveir!(%4, $(QuoteNode(1: (%1, %2, %3)
+1: (%4, %5, %1, %2, %3)
+  %6 = saveir!(%5, $(QuoteNode(1: (%1, %2, %3)
   %4 = Main.rand()
   %5 = %4 < %3
   br 2 unless %5
@@ -195,55 +194,54 @@ julia> @code_tracked geom(1, 0.5)
   %6 = %2 + 1
   %7 = Main.geom(%6, %3)
   return %7)))
-  %6 = TapeConstant(%1)
-  %7 = trackedargument(%4, %6, nothing, $(QuoteNode(1)), $(QuoteNode(§1:%1)))
-  %8 = record!(%4, %7)
-  %9 = TapeConstant(%2)
-  %10 = trackedargument(%4, %9, nothing, $(QuoteNode(2)), $(QuoteNode(§1:%2)))
-  %11 = record!(%4, %10)
-  %12 = TapeConstant(%3)
-  %13 = trackedargument(%4, %12, nothing, $(QuoteNode(3)), $(QuoteNode(§1:%3)))
-  %14 = record!(%4, %13)
-  %15 = TapeConstant(Main.rand)
-  %16 = tuple()
-  %17 = trackedcall(%4, %15, %16, $(QuoteNode(§1:%4)))
-  %18 = record!(%4, %17)
-  %19 = TapeConstant(Main.:<)
-  %20 = trackedvariable(%4, $(QuoteNode(%4)))
-  %21 = trackedvariable(%4, $(QuoteNode(%3)))
-  %22 = tuple(%20, %21)
-  %23 = trackedcall(%4, %19, %22, $(QuoteNode(§1:%5)))
-  %24 = record!(%4, %23)
-  %25 = tuple()
-  %26 = trackedvariable(%4, $(QuoteNode(%5)))
-  %27 = trackedjump(%4, 2, %25, %26, $(QuoteNode(§1:&1)))
-  %28 = trackedvariable(%4, $(QuoteNode(%2)))
-  %29 = trackedreturn(%4, %28, $(QuoteNode(§1:&2)))
-  br 2 (%27) unless %24
-  br 3 (%2, %29)
-2: (%30)
-  %31 = record!(%4, %30)
-  %32 = TapeConstant(Main.:+)
-  %33 = trackedvariable(%4, $(QuoteNode(%2)))
-  %34 = tuple(%33, $(QuoteNode(⟨1⟩)))
-  %35 = trackedcall(%4, %32, %34, $(QuoteNode(§2:%6)))
-  %36 = record!(%4, %35)
-  %37 = TapeConstant(Main.geom)
-  %38 = trackedvariable(%4, $(QuoteNode(%6)))
-  %39 = trackedvariable(%4, $(QuoteNode(%3)))
-  %40 = tuple(%38, %39)
-  %41 = trackedcall(%4, %37, %40, $(QuoteNode(§2:%7)))
-  %42 = record!(%4, %41)
-  %43 = trackedvariable(%4, $(QuoteNode(%7)))
-  %44 = trackedreturn(%4, %43, $(QuoteNode(§2:&1)))
-  br 3 (%42, %44)
-3: (%45, %46)
-  %47 = record!(%4, %46)
-  return %45
-
+  %7 = TapeConstant(%1)
+  %8 = trackedargument(%5, %7, $(QuoteNode(nothing)), $(QuoteNode(1)), $(QuoteNode(§1:%1)))
+  %9 = record!(%5, %8)
+  %10 = TapeConstant(%2)
+  %11 = trackedargument(%5, %10, $(QuoteNode(nothing)), $(QuoteNode(2)), $(QuoteNode(§1:%2)))
+  %12 = record!(%5, %11)
+  %13 = TapeConstant(%3)
+  %14 = trackedargument(%5, %13, $(QuoteNode(nothing)), $(QuoteNode(3)), $(QuoteNode(§1:%3)))
+  %15 = record!(%5, %14)
+  %16 = TapeConstant(Main.rand)
+  %17 = Base.tuple()
+  %18 = trackedcall(%5, %16, %17, $(QuoteNode(§1:%4)))
+  %19 = record!(%5, %18)
+  %20 = TapeConstant(Main.:<)
+  %21 = trackedvariable(%5, $(QuoteNode(%4)), %19)
+  %22 = trackedvariable(%5, $(QuoteNode(%3)), %3)
+  %23 = Base.tuple(%21, %22)
+  %24 = trackedcall(%5, %20, %23, $(QuoteNode(§1:%5)))
+  %25 = record!(%5, %24)
+  %26 = Base.tuple()
+  %27 = trackedvariable(%5, $(QuoteNode(%5)), %25)
+  %28 = trackedjump(%5, 2, %26, %27, $(QuoteNode(§1:&1)))
+  %29 = trackedvariable(%5, $(QuoteNode(%2)), %2)
+  %30 = trackedreturn(%5, %29, $(QuoteNode(§1:&2)))
+  br 2 (%28) unless %25
+  br 3 (%2, %30)
+2: (%31)
+  %32 = record!(%5, %31)
+  %33 = TapeConstant(Main.:+)
+  %34 = trackedvariable(%5, $(QuoteNode(%2)), %2)
+  %35 = Base.tuple(%34, $(QuoteNode(⟨1⟩)))
+  %36 = trackedcall(%5, %33, %35, $(QuoteNode(§2:%6)))
+  %37 = record!(%5, %36)
+  %38 = TapeConstant(Main.geom)
+  %39 = trackedvariable(%5, $(QuoteNode(%6)), %37)
+  %40 = trackedvariable(%5, $(QuoteNode(%3)), %3)
+  %41 = Base.tuple(%39, %40)
+  %42 = trackedcall(%5, %38, %41, $(QuoteNode(§2:%7)))
+  %43 = record!(%5, %42)
+  %44 = trackedvariable(%5, $(QuoteNode(%7)), %43)
+  %45 = trackedreturn(%5, %44, $(QuoteNode(§2:&1)))
+  br 3 (%43, %45)
+3: (%46, %47)
+  %48 = record!(%5, %47)
+  return %46
 ```
 
-The extra argument, `%4`, is a `GraphRecorder` object where all statements are recorded onto using
+The extra argument, `%5`, is a `GraphRecorder` object where all statements are recorded onto using
 `record!`.  Each kind of statement is reified by a call to `tracked<whatever>` (plus some
 preparations), and finally replaced by `record!`, which returns its original value. The function
 `trackcall` recursively does the same kind of thing to the nested calls (depending the current
@@ -265,7 +263,7 @@ There’s some things to note:
 - The purpose of `trackedvariable` is to make sure that tape references (`@i` in the output)
   actually point to the last usage of a SSA variable (since that can happen multiple times in a
   loop).
-- There are some splice-in `QuoteNode`s.  These result from inlined literal values known at the time
+- There are some spliced-in `QuoteNode`s.  These result from inlined literal values known at the time
   of the transformation (either because they are statically determined, such as IR
   indices/locations, or because they result from literals in the original code).
   
@@ -305,12 +303,12 @@ f (generic function with 1 method)
 julia> node = track(f, 1.0);
 
 julia> printlevels(node, 2)
-⟨f⟩(⟨1.0⟩) = 1.8414709848078965
-  @1: [Arg:§1:%1] f	
-  @2: [Arg:§1:%2] 1.0	
-  @3: [§1:%3] ⟨sin⟩(@2) = 0.8414709848078965
-  @4: [§1:%4] ⟨+⟩(@3, @2) = 1.8414709848078965
-  @5: [§1:&1] return @4 = 1.8414709848078965
+⟨f⟩(⟨1.0⟩, ()...) → 1.8414709848078965::Float64
+  @1: [Arg:§1:%1] f::typeof(f)
+  @2: [Arg:§1:%2] 1.0::Float64
+  @3: [§1:%3] ⟨sin⟩(@2, ()...) → 0.8414709848078965::Float64
+  @4: [§1:%4] ⟨+⟩(@3, @2, ()...) → 1.8414709848078965::Float64
+  @5: [§1:&1] return @4 → 1.8414709848078965::Float64
 ```
 
 Nodes in general may have children and a parent:
@@ -318,11 +316,11 @@ Nodes in general may have children and a parent:
 ```
 julia> getchildren(node)
 5-element Array{AbstractNode,1}:
- @1: f
- @2: 1.0
- @3: ⟨sin⟩(@2) = 0.8414709848078965
- @4: ⟨+⟩(@3, @2) = 1.8414709848078965	
- @5: return @4 = 1.8414709848078965
+ @1: f::typeof(f)
+ @2: 1.0::Float64
+ @3: ⟨sin⟩(@2, ()...) → 0.8414709848078965::Float64
+ @4: ⟨+⟩(@3, @2, ()...) → 1.8414709848078965::Float64
+ @5: return @4 → 1.8414709848078965::Float64 
  
 julia> getparent(node[4]) === node
 true
@@ -336,22 +334,22 @@ transitively (within the current `NestedCallNode`):
 
 ```
 julia> printlevels(node, 2)
-⟨f⟩(⟨1.0⟩) = 1.8414709848078965
-  @1: [Arg:§1:%1] f	
-  @2: [Arg:§1:%2] 1.0	
-  @3: [§1:%3] ⟨sin⟩(@2) = 0.8414709848078965
-  @4: [§1:%4] ⟨+⟩(@3, @2) = 1.8414709848078965
-  @5: [§1:&1] return @4 = 1.8414709848078965
+⟨f⟩(⟨1.0⟩, ()...) → 1.8414709848078965::Float64
+  @1: [Arg:§1:%1] f::typeof(f)
+  @2: [Arg:§1:%2] 1.0::Float64
+  @3: [§1:%3] ⟨sin⟩(@2, ()...) → 0.8414709848078965::Float64
+  @4: [§1:%4] ⟨+⟩(@3, @2, ()...) → 1.8414709848078965::Float64
+  @5: [§1:&1] return @4 → 1.8414709848078965::Float64
   
 julia> referenced(node[5])
-1-element Array{NestedCallNode,1}:
- @4: ⟨+⟩(@3, @2) = 1.8414709848078965
+1-element Array{AbstractNode,1}:
+ @4: ⟨+⟩(@3, @2, ()...) → 1.8414709848078965::Float64
  
 julia> backward(node[5])
 3-element Array{AbstractNode,1}:
- @4: ⟨+⟩(@3, @2) = 1.8414709848078965	
- @3: ⟨sin⟩(@2) = 0.8414709848078965
- @2: 1.0
+ @4: ⟨+⟩(@3, @2, ()...) → 1.8414709848078965::Float64
+ @3: ⟨sin⟩(@2, ()...) → 0.8414709848078965::Float64
+ @2: 1.0::Float64
 ```
 
 For special cases, such as when implementing AD, we can also require the references to be numbered
@@ -359,13 +357,14 @@ according to their position in calls:
 
 ```
 julia> referenced(node[5], numbered = true)
-1-element Array{Pair{Int64,NestedCallNode},1}:
- 1 => @4: ⟨+⟩(@3, @2) = 1.8414709848078965	
+1-element Array{Pair{Int64,AbstractNode},1}:
+ 1 => @4: ⟨+⟩(@3, @2, ()...) → 1.8414709848078965::Float64
+
 
 julia> referenced(node[4], numbered = true)
-2-element Array{Pair{Int64,_A} where _A,1}:
- 2 => @3: ⟨sin⟩(@2) = 0.8414709848078965	
- 3 => @2: 1.0
+2-element Array{Pair{Int64,AbstractNode},1}:
+ 2 => @3: ⟨sin⟩(@2, ()...) → 0.8414709848078965::Float64
+ 3 => @2: 1.0::Float64
 ```
 
 Constant arguments are left out.  For function calls, `1` corresponds to the function itself.
@@ -374,15 +373,15 @@ Constant arguments are left out.  For function calls, `1` corresponds to the fun
 
 ```
 julia> dependents(node[2])
-2-element Array{NestedCallNode,1}:
- @3: ⟨sin⟩(@2) = 0.8414709848078965
- @4: ⟨+⟩(@3, @2) = 1.8414709848078965	
+2-element Array{AbstractNode,1}:
+ @3: ⟨sin⟩(@2, ()...) → 0.8414709848078965::Float64
+ @4: ⟨+⟩(@3, @2, ()...) → 1.8414709848078965::Float64	
 
 julia> forward(node[2])
 3-element Array{AbstractNode,1}:
- @3: ⟨sin⟩(@2) = 0.8414709848078965
- @4: ⟨+⟩(@3, @2) = 1.8414709848078965	
- @5: return @4 = 1.8414709848078965
+ @3: ⟨sin⟩(@2, ()...) → 0.8414709848078965::Float64
+ @4: ⟨+⟩(@3, @2, ()...) → 1.8414709848078965::Float64
+ @5: return @4 → 1.8414709848078965::Float64
 ```
 
 See also the `query` function for a more detailed, internal iterface to the node hierarchy.
@@ -391,21 +390,21 @@ Finally, we can also inspect various properties of each node:
 
 ```
 julia> typeof(node[3])
-NestedCallNode
+NestedCallNode{Float64,typeof(sin),Tuple{Float64},TapeCall{Float64,typeof(sin),Tuple{Float64},TapeConstant{typeof(sin)},Tuple{TapeReference{Float64,ArgumentNode{Float64}}},Tuple{}}}
 
 julia> getvalue(node[3])
 0.8414709848078965
 
-julia> node[3].call.f
+julia> getfunction(node[3])
 ⟨sin⟩
 
-julia> getvalue(node[3].call.f)
-sin (generic function with 12 methods)
+julia> getvalue(getfunction(node[3]))
+sin (generic function with 12 methods))
 
-julia> node[3].call.arguments
+julia> getarguments(node[3])
 (@2,)
 
-julia> getvalue.(node[3].call.arguments)
+julia> getvalue.(getarguments(node[3]))
 (1.0,)
 ```
 
@@ -413,7 +412,7 @@ Each node also has a location in the original IR:
 
 ```
 julia> printlevels(node[4], 1)  # this node is huge...
-@4: [§1:%4] ⟨+⟩(@3, @2) = 1.8414709848078965
+@4: [§1:%4] ⟨+⟩(@3, @2, ()...) → 1.8414709848078965::Float64
 
 julia> getlocation(node[4])
 §1:%4
@@ -476,16 +475,16 @@ Once we have a custom context, we can just pass it as the first argument to `tra
 
 ```
 julia> call = track(DepthLimitContext(2), geom, 1, 0.5)
-⟨geom⟩(⟨1⟩, ⟨0.5⟩) = 3
-  @1: [Arg:§1:%1] geom	
-  @2: [Arg:§1:%2] 1	
-  @3: [Arg:§1:%3] 0.5	
-  @4: [§1:%4] ⟨rand⟩() = 0.6323441648826984	
-  @5: [§1:%5] ⟨<⟩(@4, @3) = false	
-  @6: [§1:&1] goto §2 since @5 == false 
-  @7: [§2:%6] ⟨+⟩(@2, ⟨1⟩) = 2	
-  @8: [§2:%7] ⟨geom⟩(@7, @3) = 3	
-  @9: [§2:&1] return @8 = 3
+⟨geom⟩(⟨1⟩, ⟨0.5⟩, ()...) → 4::Int64
+  @1: [Arg:§1:%1] geom::typeof(geom)
+  @2: [Arg:§1:%2] 1::Int64
+  @3: [Arg:§1:%3] 0.5::Float64
+  @4: [§1:%4] ⟨rand⟩() → 0.933407016129252::Float64
+  @5: [§1:%5] ⟨<⟩(@4, @3) → false::Bool
+  @6: [§1:&1] goto §2 since @5 == false
+  @7: [§2:%6] ⟨+⟩(@2, ⟨1⟩) → 2::Int64
+  @8: [§2:%7] ⟨geom⟩(@7, @3) → 4::Int64
+  @9: [§2:&1] return @8 → 4::Int64
 ```
 
 Note that here, all the nodes at level 2 are `PrimitiveNode`s!
