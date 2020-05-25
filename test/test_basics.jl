@@ -139,6 +139,30 @@ using Random
         @test call[4].call.varargs == (TapeReference(1, call[2], 2), TapeReference(1, call[2], 2))
     end
 
+
+    # test for proper tracking into Core._apply, see https://github.com/TuringLang/IRTracker.jl/issues/37
+    test9_f(args...) = tuple(args..., nothing)
+    test9_g(args) = test9_f(nothing, args..., args...)
+    let call = track(test9_g, (1, 2))
+        # this will be distorted due to being a closure:
+        # ⟨var"#test9_g#8"{var"#test9_f#7"}(var"#test9_f#7"())⟩(⟨(1, 2)⟩, ()...) → (nothing, 1, 2, 1, 2, nothing)
+        #   @1: [Arg:§1:%1] var"#test9_g#8"{var"#test9_f#7"}(var"#test9_f#7"())
+        #   @2: [Arg:§1:%2] (1, 2)
+        #   @3: [§1:%3] ⟨getfield⟩(@1, ⟨:test9_f⟩) → var"#test9_f#7"()
+        #   @4: [§1:%4] ⟨tuple⟩(⟨nothing⟩) → (nothing,)
+        #   @5: [§1:%5] ⟨Core._apply⟩(@3, (@4, @2, @2)...) → (nothing, 1, 2, 1, 2, nothing)
+        #     @1: [Arg:§1:%1] @5#1 → var"#test9_f#7"()
+        #     @2: [Arg:§1:%2] @5#2 → (nothing, 1, 2, 1, 2)
+        #     @3: [§1:%3] ⟨tuple⟩(⟨nothing⟩) → (nothing,)
+        #     @4: [§1:%4] ⟨Core._apply⟩(⟨tuple⟩, (@2, @3)...) → (nothing, 1, 2, 1, 2, nothing)
+        #     @5: [§1:&1] return @4 → (nothing, 1, 2, 1, 2, nothing)
+        #   @6: [§1:&1] return @5 → (nothing, 1, 2, 1, 2, nothing)
+
+        
+        @test getvalue(call) ≅ (nothing, 1, 2, 1, 2, nothing)
+        @test call[5] isa NestedCallNode{<:Tuple, typeof(Core._apply)}
+        @test call[5][4] isa PrimitiveCallNode{<:Tuple, typeof(Core._apply)}
+    end
     
     # direct test of  https://github.com/MikeInnes/IRTools.jl/issues/30
     # aka https://github.com/phipsgabler/DynamicComputationGraphs.jl/issues/19
