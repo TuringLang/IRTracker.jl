@@ -1,3 +1,7 @@
+# Release 0.5.1
+
+- Correctly handle and recursively track into `Core._apply` (fixes #37).
+
 # Release 0.5
 
 - Better printing (constants, unicode, special forms, types of results…)
