@@ -83,6 +83,7 @@ not yet available.
 """
 saveir!(recorder::GraphRecorder, ir::IRTools.IR) = (recorder.original_ir = ir)
 
+
 """
     finalize!(recorder, result, f_repr, args_repr, info)
 
@@ -95,6 +96,20 @@ function finalize!(recorder::GraphRecorder, result::T, f_repr::TapeExpr,
     f = getvalue_ref(f_repr)
     args_repr, varargs_repr = split_varargs(f, args_repr)
     call = TapeCall(result, f_repr, args_repr, varargs_repr)
+    node = NestedCallNode(call, recorder.children, info)
+    recorder.rootnode[] = node  # set the parent node of all recorded children
+    return node
+end
+
+"""
+    finalize_apply!(recorder, result, f_repr, args_repr, info)
+
+Like [`finalize!`](@ref), but takes care of properly transforming a `Core._apply` call.
+"""
+function finalize_apply!(recorder::GraphRecorder, result::T, f_repr::TapeExpr,
+                         args_repr::ArgumentTuple{TapeExpr}, info) where {T}
+    # in this context, f_repr = TapeConstant(Core._apply); and the args are actually varargs
+    call = TapeCall(result, f_repr, (first(args_repr),), Base.tail(args_repr))
     node = NestedCallNode(call, recorder.children, info)
     recorder.rootnode[] = node  # set the parent node of all recorded children
     return node

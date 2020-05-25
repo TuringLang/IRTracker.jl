@@ -55,6 +55,16 @@ Construct a `NestedCallNode` from the call represented by `f_repr` on `args_repr
     return node
 end
 
+@inline function recordnestedcall_apply(ctx::AbstractTrackingContext, f_repr::TapeValue,
+                                        args_repr::ArgumentTuple{TapeValue}, info::NodeInfo)
+    # in this context, f_repr = TapeConstant(Core._apply)
+    f, apply_args = getvalue_ref(first(args_repr)), getvalue_ref.(Base.tail(args_repr))
+    recorder = GraphRecorder(ctx)
+    result = _recordnestedcall!(recorder, f, (apply_args...)...)
+    node = finalize_apply!(recorder, result, f_repr, args_repr, info)
+    return node
+end
+
 
 """
     track([ctx, ]f, args...) -> Union{PrimitiveCallNode, NestedCallNode}
@@ -208,18 +218,53 @@ See also: [`trackedprimitive`](@ref), [`trackednested`](@ref)
 @inline function trackedcall(ctx::AbstractTrackingContext, f_repr::TapeValue,
                              args_repr::ArgumentTuple{TapeValue}, info::NodeInfo)
     f, args = getvalue_ref(f_repr), getvalue_ref.(args_repr)
-    if isbuiltin(f) || !canrecur(ctx, f, args...) 
-        return trackedprimitive(ctx, f_repr, args_repr, info)
+
+    if f isa typeof(Core._apply)
+        trackedcall_apply(ctx, f_repr, args_repr, info)
     else
-        return trackednested(ctx, f_repr, args_repr, info)
+        if isbuiltin(f) || !canrecur(ctx, f, args...)
+            return trackedprimitive(ctx, f_repr, args_repr, info)
+        else
+            return trackednested(ctx, f_repr, args_repr, info)
+        end
     end
 end
+
 
 @inline function trackedcall(recorder::GraphRecorder, f_repr::TapeValue,
                              args_repr::ArgumentTuple{TapeValue}, location::IRIndex)
     info = NodeInfo(recorder.original_ir, location, recorder.rootnode)
     node = trackedcall(recorder.context, f_repr, args_repr, info)
     return node
+end
+
+
+# APPLY CALL HANDLERS -- FOR INTERNAL USE ONLY!!
+# (These server the same purpose as the variants without "_apply".)
+@inline function trackedcall_apply(ctx::AbstractTrackingContext, f_repr::TapeValue,
+                                   args_repr::ArgumentTuple{TapeValue}, info::NodeInfo)
+    # in this context, f_repr = TapeConstant(Core._apply)
+    real_f, real_args = getvalue_ref(first(args_repr)), getvalue_ref.(Base.tail(args_repr))
+    if isbuiltin(real_f) || !canrecur(ctx, real_f, (real_args...)...)
+        return trackedprimitive_apply(ctx, f_repr, args_repr, info)
+    else
+        return trackednested_apply(ctx, f_repr, args_repr, info)
+    end
+end
+
+@inline function trackednested_apply(ctx::AbstractTrackingContext, f_repr::TapeValue,
+                              args_repr::ArgumentTuple{TapeValue}, info::NodeInfo)
+    # in this context, f_repr = TapeConstant(Core._apply)
+    return recordnestedcall_apply(ctx, f_repr, args_repr, info)
+end
+
+@inline function trackedprimitive_apply(ctx::AbstractTrackingContext, f_repr::TapeValue,
+                                       args_repr::ArgumentTuple{TapeValue}, info::NodeInfo)
+    # in this context, f_repr = TapeConstant(Core._apply)
+    f, args = getvalue_ref(f_repr), getvalue_ref.(args_repr)
+    # call = TapeCall(f(args...), f_repr, (), args_repr)
+    call = TapeCall(f(args...), f_repr, (first(args_repr),), Base.tail(args_repr))
+    return PrimitiveCallNode(call, info)
 end
 
 
