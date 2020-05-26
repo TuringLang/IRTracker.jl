@@ -1,6 +1,5 @@
 using Distributions
 using DynamicPPL
-using Turing
 
 
 const observations = randn(10) .+ range(1, step = 0.3, length = 10)
@@ -43,21 +42,22 @@ end
 
 
 # See AutoGibbs
-const ModelEval = Union{typeof(DynamicPPL.evaluate_singlethreaded),
-                  typeof(DynamicPPL.evaluate_multithreaded)}
+const ModelEval = Union{typeof(DynamicPPL.evaluate_threadsafe),
+                        typeof(DynamicPPL.evaluate_threadunsafe)}
 
 
 struct AutoGibbsContext{F} <: AbstractTrackingContext end
 
 IRTracker.canrecur(ctx::AutoGibbsContext{F}, ::Model{F}, args...) where {F} = true
 IRTracker.canrecur(ctx::AutoGibbsContext{F}, ::ModelEval, ::Model{F}, args...) where {F} = true
+IRTracker.canrecur(ctx::AutoGibbsContext{F}, ::typeof(Core._apply), ::Model{F}, args...) where {F} = true
 IRTracker.canrecur(ctx::AutoGibbsContext{F}, f::F, args...) where {F} = true
 IRTracker.canrecur(ctx::AutoGibbsContext, f, args...) = false
 
 trackmodel(model::Model{F}) where {F} = track(AutoGibbsContext{F}(), model)
 
 
-@testset "Turing" begin
+@testset "DynamicPPL" begin
     # with depth 7 this fails in the Dict's _setindex! method due to unitialized values
     # [1] getindex at ./array.jl:744 [inlined]
     # [2] _iterate at ./dict.jl:675 [inlined]
@@ -71,6 +71,3 @@ trackmodel(model::Model{F}) where {F} = track(AutoGibbsContext{F}(), model)
     @test trackmodel(KalmanFilter(observations)) isa NestedCallNode
     @test trackmodel(MutatingKalmanFilter(observations)) isa NestedCallNode
 end
-
-
-

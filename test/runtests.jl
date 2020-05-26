@@ -18,7 +18,7 @@ using IRTracker
     end
 
     ######### Turing ########################
-    include("test_turing.jl")
+    include("test_dppl.jl")
 end
 
 
