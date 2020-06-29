@@ -455,7 +455,7 @@ increase_level(ctx::DepthLimitContext) = DepthLimitContext(ctx.level + 1, ctx.ma
 Then, we can overload some functions for things we want to change:
 
 ```
-import IRTracker: canrecur, tracknested
+import IRTracker: canrecur, trackednested
 
 # this is the main thing to make this work: 
 canrecur(ctx::DepthLimitContext, f, args...) = ctx.level < ctx.maxlevel
