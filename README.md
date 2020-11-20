@@ -57,43 +57,7 @@ with IR code
 `geom(1, 0.5)` as follows, under the assumption that `rand()` returns a value greater than β the
 first time and less the second time:
     
-```
-julia> printlevels(track(geom, 1, 0.5), 3)
-julia> printlevels(track(geom, 1, 0.5), 3)
-⟨geom⟩(⟨1⟩, ⟨0.5⟩, ()...) → 3::Int64
-  @1: [Arg:§1:%1] geom::typeof(geom)
-  @2: [Arg:§1:%2] 1::Int64
-  @3: [Arg:§1:%3] 0.5::Float64
-  @4: [§1:%4] ⟨rand⟩(, ()...) → 0.5962171580369058::Float64
-    @1: [Arg:§1:%1] @4#1 → rand::typeof(rand)
-    @2: [§1:%2] ⟨Random.default_rng⟩(, ()...) → Random.MersenneTwister(…)::Random.MersenneTwister
-    @3: [§1:%3] @1(@2, ⟨Float64⟩, ()...) → 0.5962171580369058::Float64
-    @4: [§1:&1] return @3 → 0.5962171580369058::Float64
-  @5: [§1:%5] ⟨<⟩(@4, @3, ()...) → false::Bool
-    @1: [Arg:§1:%1] @5#1 → <::typeof(<)
-    @2: [Arg:§1:%2] @5#2 → 0.5962171580369058::Float64
-    @3: [Arg:§1:%3] @5#3 → 0.5::Float64
-    @4: [§1:%4] ⟨lt_float⟩(@2, @3) → false::Bool
-    @5: [§1:&1] return @4 → false::Bool
-  @6: [§1:&1] goto §2 since @5 == false
-  @7: [§2:%6] ⟨+⟩(@2, ⟨1⟩, ()...) → 2::Int64
-    @1: [Arg:§1:%1] @7#1 → +::typeof(+)
-    @2: [Arg:§1:%2] @7#2 → 1::Int64
-    @3: [Arg:§1:%3] @7#3 → 1::Int64
-    @4: [§1:%4] ⟨add_int⟩(@2, @3) → 2::Int64
-    @5: [§1:&1] return @4 → 2::Int64
-  @8: [§2:%7] ⟨geom⟩(@7, @3, ()...) → 3::Int64
-    @1: [Arg:§1:%1] @8#1 → geom::typeof(geom)
-    @2: [Arg:§1:%2] @8#2 → 2::Int64
-    @3: [Arg:§1:%3] @8#3 → 0.5::Float64
-    @4: [§1:%4] ⟨rand⟩(, ()...) → 0.8004790305828287::Float64
-    @5: [§1:%5] ⟨<⟩(@4, @3, ()...) → false::Bool
-    @6: [§1:&1] goto §2 since @5 == false
-    @7: [§2:%6] ⟨+⟩(@2, ⟨1⟩, ()...) → 3::Int64
-    @8: [§2:%7] ⟨geom⟩(@7, @3, ()...) → 3::Int64
-    @9: [§2:&1] return @8 → 3::Int64
-  @9: [§2:&1] return @8 → 3::Int64
-```
+![Extended Wengert list of geom with annotations](/figures/extended-wengert-list.png)
 
 (This result is expanded to only three levels, since the full output would be huge.)
 
@@ -182,64 +146,7 @@ Constructing this kind of trace should be possible by extending the original IR 
 constant number of statements before and after each original statement (and some at the beginning of
 each block), somehow like this:
 
-```
-julia> @code_tracked geom(1, 0.5)
-1: (%4, %5, %1, %2, %3)
-  %6 = saveir!(%5, $(QuoteNode(1: (%1, %2, %3)
-  %4 = Main.rand()
-  %5 = %4 < %3
-  br 2 unless %5
-  return %2
-2:
-  %6 = %2 + 1
-  %7 = Main.geom(%6, %3)
-  return %7)))
-  %7 = TapeConstant(%1)
-  %8 = trackedargument(%5, %7, $(QuoteNode(nothing)), $(QuoteNode(1)), $(QuoteNode(§1:%1)))
-  %9 = record!(%5, %8)
-  %10 = TapeConstant(%2)
-  %11 = trackedargument(%5, %10, $(QuoteNode(nothing)), $(QuoteNode(2)), $(QuoteNode(§1:%2)))
-  %12 = record!(%5, %11)
-  %13 = TapeConstant(%3)
-  %14 = trackedargument(%5, %13, $(QuoteNode(nothing)), $(QuoteNode(3)), $(QuoteNode(§1:%3)))
-  %15 = record!(%5, %14)
-  %16 = TapeConstant(Main.rand)
-  %17 = Base.tuple()
-  %18 = trackedcall(%5, %16, %17, $(QuoteNode(§1:%4)))
-  %19 = record!(%5, %18)
-  %20 = TapeConstant(Main.:<)
-  %21 = trackedvariable(%5, $(QuoteNode(%4)), %19)
-  %22 = trackedvariable(%5, $(QuoteNode(%3)), %3)
-  %23 = Base.tuple(%21, %22)
-  %24 = trackedcall(%5, %20, %23, $(QuoteNode(§1:%5)))
-  %25 = record!(%5, %24)
-  %26 = Base.tuple()
-  %27 = trackedvariable(%5, $(QuoteNode(%5)), %25)
-  %28 = trackedjump(%5, 2, %26, %27, $(QuoteNode(§1:&1)))
-  %29 = trackedvariable(%5, $(QuoteNode(%2)), %2)
-  %30 = trackedreturn(%5, %29, $(QuoteNode(§1:&2)))
-  br 2 (%28) unless %25
-  br 3 (%2, %30)
-2: (%31)
-  %32 = record!(%5, %31)
-  %33 = TapeConstant(Main.:+)
-  %34 = trackedvariable(%5, $(QuoteNode(%2)), %2)
-  %35 = Base.tuple(%34, $(QuoteNode(⟨1⟩)))
-  %36 = trackedcall(%5, %33, %35, $(QuoteNode(§2:%6)))
-  %37 = record!(%5, %36)
-  %38 = TapeConstant(Main.geom)
-  %39 = trackedvariable(%5, $(QuoteNode(%6)), %37)
-  %40 = trackedvariable(%5, $(QuoteNode(%3)), %3)
-  %41 = Base.tuple(%39, %40)
-  %42 = trackedcall(%5, %38, %41, $(QuoteNode(§2:%7)))
-  %43 = record!(%5, %42)
-  %44 = trackedvariable(%5, $(QuoteNode(%7)), %43)
-  %45 = trackedreturn(%5, %44, $(QuoteNode(§2:&1)))
-  br 3 (%43, %45)
-3: (%46, %47)
-  %48 = record!(%5, %47)
-  return %46
-```
+![Annotated transformed code of geom](/figures/translation.png)
 
 The extra argument, `%5`, is a `GraphRecorder` object where all statements are recorded onto using
 `record!`.  Each kind of statement is reified by a call to `tracked<whatever>` (plus some
